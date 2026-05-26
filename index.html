@@ -307,6 +307,24 @@
 
   .toast.show { opacity: 1; transform: translateY(0); }
 
+  .history-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 9px 1.25rem;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .history-entry:last-child { border-bottom: none; }
+  .history-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .dot-add { background: var(--accent); }
+  .dot-paid { background: #2E6DB4; }
+  .dot-delete { background: var(--red); }
+  .dot-other { background: #7B3FA0; }
+  .history-action { color: var(--text); flex: 1; }
+  .history-time { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-faint); white-space: nowrap; margin-top: 2px; }
+  #history-body { max-height: 320px; overflow-y: auto; }
+
   @media (max-width: 600px) {
     header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
     header p { text-align: left; }
@@ -328,6 +346,38 @@
 
   <div class="summary-grid" id="summary"></div>
 
+  <!-- Clients -->
+  <section>
+    <div class="section-header" onclick="toggleForm('client-form', this)">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Clients
+      </div>
+      <button class="toggle-btn" tabindex="-1">+ Add client</button>
+    </div>
+    <div class="add-form" id="client-form">
+      <div class="form-grid">
+        <div>
+          <label>Name / nickname</label>
+          <input type="text" id="cl-name" placeholder="e.g. Mr. Johnson" />
+        </div>
+        <div>
+          <label>Note (optional)</label>
+          <input type="text" id="cl-note" placeholder="e.g. Corner of Oak St." />
+        </div>
+        <div>
+          <label>Rate per mow ($)</label>
+          <input type="number" id="cl-rate" placeholder="0.00" min="0" step="0.01" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addClient()">Add client</button>
+        <button class="btn btn-ghost" onclick="toggleForm('client-form')">Cancel</button>
+      </div>
+    </div>
+    <div id="clients-wrap"><div class="empty-state">No clients yet.</div></div>
+  </section>
+
   <!-- Lawn Jobs -->
   <section>
     <div class="section-header" onclick="toggleForm('lawn-form', this)">
@@ -342,9 +392,6 @@
         <div>
           <label>Client</label>
           <select id="lj-client">
-            <option value="G">G (Grandma) — $25</option>
-            <option value="GG">GG (Great-Grandfather) — $25</option>
-            <option value="Miss Joey">Miss Joey — $35</option>
           </select>
         </div>
         <div>
@@ -423,12 +470,86 @@
     </div>
   </section>
 
+  <!-- History Log -->
+  <section>
+    <div class="section-header" onclick="toggleSection('history-body')">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Full history
+      </div>
+      <button class="toggle-btn" tabindex="-1" onclick="event.stopPropagation(); clearHistory()">Clear</button>
+    </div>
+    <div id="history-body">
+      <div id="history-wrap"><div class="empty-state">No history yet.</div></div>
+    </div>
+  </section>
+
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const RATES = { 'G': 25, 'GG': 25, 'Miss Joey': 35 };
+const SEED_CLIENTS = [
+  {id:'c1', name:'G', note:'Grandma', rate:25},
+  {id:'c2', name:'GG', note:'Great-Grandfather', rate:25},
+  {id:'c3', name:'Miss Joey', note:'', rate:35},
+];
+
+let clients = JSON.parse(localStorage.getItem('ll_clients') || 'null') || SEED_CLIENTS;
+
+function getRate(name) {
+  const c = clients.find(c => c.name === name);
+  return c ? c.rate : 0;
+}
+
+function refreshClientDropdown() {
+  const sel = document.getElementById('lj-client');
+  sel.innerHTML = clients.map(c =>
+    `<option value="${c.name}">${c.name}${c.note ? ' ('+c.note+')' : ''} — $${c.rate}</option>`
+  ).join('');
+}
+
+function renderClients() {
+  const wrap = document.getElementById('clients-wrap');
+  if (!clients.length) { wrap.innerHTML = '<div class="empty-state">No clients yet.</div>'; return; }
+  wrap.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Note</th><th>Rate</th><th style="text-align:right">Actions</th></tr></thead>
+    <tbody>${clients.map(c => `
+      <tr>
+        <td style="font-weight:500">${c.name}</td>
+        <td style="color:var(--text-muted)">${c.note || '—'}</td>
+        <td class="mono">$${c.rate}</td>
+        <td><div class="row-actions"><button class="act-btn danger" onclick="deleteClient('${c.id}')">remove</button></div></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+  refreshClientDropdown();
+}
+
+function addClient() {
+  const name = document.getElementById('cl-name').value.trim();
+  const note = document.getElementById('cl-note').value.trim();
+  const rate = parseFloat(document.getElementById('cl-rate').value);
+  if (!name || isNaN(rate) || rate <= 0) { alert('Please enter a name and rate.'); return; }
+  if (clients.find(c => c.name.toLowerCase() === name.toLowerCase())) { alert('A client with that name already exists.'); return; }
+  clients.push({id:'c'+Date.now(), name, note, rate});
+  localStorage.setItem('ll_clients', JSON.stringify(clients));
+  logHistory('add', `Added client — ${name}${note ? ' ('+note+')' : ''} at $${rate}/lawn`);
+  renderClients();
+  document.getElementById('cl-name').value = '';
+  document.getElementById('cl-note').value = '';
+  document.getElementById('cl-rate').value = '';
+  toast('Client added ✓');
+}
+
+function deleteClient(id) {
+  const c = clients.find(c => c.id===id);
+  if (!confirm(`Remove ${c.name} from your client list?`)) return;
+  clients = clients.filter(c => c.id!==id);
+  localStorage.setItem('ll_clients', JSON.stringify(clients));
+  logHistory('delete', `Removed client — ${c.name}`);
+  renderClients(); render();
+  toast('Client removed');
+}
 
 const SEED = [
   {id:'l1',client:'Miss Joey',date:'2026-05-10',status:'unpaid'},
@@ -452,10 +573,53 @@ const SEED = [
 
 let lawnJobs = JSON.parse(localStorage.getItem('ll_lawn') || 'null') || SEED;
 let otherMoney = JSON.parse(localStorage.getItem('ll_other') || '[]');
+let historyLog = JSON.parse(localStorage.getItem('ll_history') || '[]');
 
 function save() {
   localStorage.setItem('ll_lawn', JSON.stringify(lawnJobs));
   localStorage.setItem('ll_other', JSON.stringify(otherMoney));
+  localStorage.setItem('ll_history', JSON.stringify(historyLog));
+  localStorage.setItem('ll_clients', JSON.stringify(clients));
+}
+
+function logHistory(type, message) {
+  historyLog.unshift({
+    id: 'h' + Date.now(),
+    type,
+    message,
+    ts: new Date().toISOString()
+  });
+  if (historyLog.length > 200) historyLog = historyLog.slice(0, 200);
+}
+
+function renderHistory() {
+  const wrap = document.getElementById('history-wrap');
+  if (!historyLog.length) {
+    wrap.innerHTML = '<div class="empty-state">No history yet.</div>';
+    return;
+  }
+  wrap.innerHTML = historyLog.map(h => {
+    const dotClass = { add:'dot-add', paid:'dot-paid', delete:'dot-delete', other:'dot-other' }[h.type] || 'dot-add';
+    const d = new Date(h.ts);
+    const dateStr = d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const timeStr = d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    return `<div class="history-entry">
+      <div class="history-dot ${dotClass}"></div>
+      <div class="history-action">${h.message}</div>
+      <div class="history-time">${dateStr} ${timeStr}</div>
+    </div>`;
+  }).join('');
+}
+
+function clearHistory() {
+  if (!confirm('Clear all history?')) return;
+  historyLog = [];
+  save(); renderHistory(); toast('History cleared');
+}
+
+function toggleSection(id) {
+  const el = document.getElementById(id);
+  el.style.display = el.style.display === 'none' ? 'block' : '';
 }
 
 function fmt(d) {
@@ -483,7 +647,7 @@ function render() {
       <tr>
         <td class="mono">${fmt(j.date)}</td>
         <td>${j.client}</td>
-        <td class="mono">$${RATES[j.client]}</td>
+        <td class="mono">$${getRate(j.client)}</td>
         <td>${statusBadge(j.status)}</td>
         <td>
           <div class="row-actions">
@@ -517,9 +681,9 @@ function render() {
       <tbody>${rows}</tbody></table></div>`;
   }
 
-  const unpaid = lawnJobs.filter(j => j.status==='unpaid').reduce((s,j)=>s+RATES[j.client],0);
-  const check = lawnJobs.filter(j => j.status==='check').reduce((s,j)=>s+RATES[j.client],0);
-  const paid = lawnJobs.filter(j => j.status==='paid').reduce((s,j)=>s+RATES[j.client],0);
+  const unpaid = lawnJobs.filter(j => j.status==='unpaid').reduce((s,j)=>s+getRate(j.client),0);
+  const check = lawnJobs.filter(j => j.status==='check').reduce((s,j)=>s+getRate(j.client),0);
+  const paid = lawnJobs.filter(j => j.status==='paid').reduce((s,j)=>s+getRate(j.client),0);
   const gifts = otherMoney.filter(e=>e.type!=='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
   const expenses = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
   const cash = paid + gifts - expenses;
@@ -533,6 +697,8 @@ function render() {
 
   document.getElementById('last-updated').innerHTML =
     `Last updated<br>${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}<br>${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`;
+
+  renderHistory();
 }
 
 function toggleForm(id) {
@@ -541,19 +707,25 @@ function toggleForm(id) {
 }
 
 function markPaid(id) {
+  const j = lawnJobs.find(j => j.id===id);
   lawnJobs = lawnJobs.map(j => j.id===id ? {...j, status:'paid'} : j);
+  logHistory('paid', `Marked ${j.client} lawn (${fmt(j.date)}) as paid — $${getRate(j.client)}`);
   save(); render(); toast('Marked as paid ✓');
 }
 
 function deleteJob(id) {
   if (!confirm('Delete this job?')) return;
+  const j = lawnJobs.find(j => j.id===id);
   lawnJobs = lawnJobs.filter(j => j.id!==id);
+  logHistory('delete', `Deleted lawn job — ${j.client} on ${fmt(j.date)} ($${getRate(j.client)})`);
   save(); render(); toast('Job deleted');
 }
 
 function deleteOther(id) {
   if (!confirm('Delete this entry?')) return;
+  const e = otherMoney.find(e => e.id===id);
   otherMoney = otherMoney.filter(e => e.id!==id);
+  logHistory('delete', `Deleted entry — "${e.desc}" $${parseFloat(e.amount).toFixed(2)} (${e.type})`);
   save(); render(); toast('Entry deleted');
 }
 
@@ -563,6 +735,7 @@ function addLawnJob() {
   const status = document.getElementById('lj-status').value;
   if (!date) { alert('Please select a date.'); return; }
   lawnJobs.push({id:'l'+Date.now(), client, date, status});
+  logHistory('add', `Added lawn job — ${client} on ${fmt(date)}, status: ${status} ($${getRate(client)})`);
   save(); render();
   document.getElementById('lj-date').value = '';
   toast('Job added ✓');
@@ -575,6 +748,7 @@ function addOtherMoney() {
   const amount = parseFloat(document.getElementById('om-amount').value);
   if (!desc || !date || isNaN(amount) || amount <= 0) { alert('Please fill in all fields.'); return; }
   otherMoney.push({id:'o'+Date.now(), desc, date, type, amount});
+  logHistory('other', `Added ${type} entry — "${desc}" $${amount.toFixed(2)} on ${fmt(date)}`);
   save(); render();
   document.getElementById('om-desc').value = '';
   document.getElementById('om-date').value = '';
@@ -592,6 +766,7 @@ function toast(msg) {
 }
 
 render();
+renderClients();
 </script>
 </body>
 </html>
