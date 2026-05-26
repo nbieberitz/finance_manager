@@ -453,9 +453,13 @@ tr:hover td { background: var(--surface2); }
         <button class="btn btn-ghost" onclick="toggleForm('lawn-form')">Cancel</button>
       </div>
     </div>
+    <div id="bulk-bar" style="display:none;padding:8px 1.25rem;background:var(--surface2);border-bottom:1px solid var(--border);display:none;align-items:center;gap:10px">
+      <span id="bulk-count" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted)"></span>
+      <button class="act-btn success" onclick="bulkMarkPaid()" style="font-size:12px;padding:4px 14px">mark selected as paid</button>
+    </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Date</th><th>Client</th><th>Amount</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
+        <thead><tr><th style="width:36px"><input type="checkbox" id="select-all-jobs" onclick="toggleSelectAll(this)" style="cursor:pointer;width:14px;height:14px;accent-color:#4ADE80" /></th><th>Date</th><th>Client</th><th>Amount</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody id="lawn-tbody"></tbody>
       </table>
     </div>
@@ -620,8 +624,9 @@ function render() {
   const sorted = [...lawnJobs].filter(j=>j.status!=='paid').sort((a,b) => b.date.localeCompare(a.date));
   const tbody = document.getElementById('lawn-tbody');
   tbody.innerHTML = !sorted.length
-    ? '<tr><td colspan="5"><div class="empty-state">No jobs yet.</div></td></tr>'
+    ? '<tr><td colspan="6"><div class="empty-state">No jobs yet.</div></td></tr>'
     : sorted.map(j => `<tr id="jrow-${j.id}">
+        <td style="width:36px"><input type="checkbox" class="job-cb" data-id="${j.id}" onclick="updateBulkBar()" style="cursor:pointer;width:14px;height:14px;accent-color:#4ADE80" /></td>
         <td class="mono">${fmt(j.date)}</td>
         <td>${j.client}</td>
         <td class="mono amount-pos">$${getRate(j.client)}</td>
@@ -695,7 +700,7 @@ function renderHistory() {
       <div class="history-action">${h.message}</div>
       <div class="history-time">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}<br>${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
       <div class="row-actions" style="flex-shrink:0;margin-left:8px">
-        ${h.type==='paid' && h.jobId ? `<button class="act-btn" style="color:var(--amber);border-color:#3D2800" onclick="undoPaid('${h.id}')">undo</button>` : ''}
+        ${h.type==='paid' && (h.jobId || h.bulkJobIds) ? `<button class="act-btn" style="color:#4ADE80;border-color:#0A3D1A" onclick="undoPaid('${h.id}')">undo</button>` : ''}
         <button class="act-btn edit" onclick="editHistory('${h.id}')">edit</button>
         <button class="act-btn danger" onclick="deleteHistory('${h.id}')">delete</button>
       </div>
@@ -762,6 +767,63 @@ function deleteClient(id) {
   save(); renderClients(); render(); toast('Client removed');
 }
 
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.job-cb').forEach(c => c.checked = cb.checked);
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const checked = document.querySelectorAll('.job-cb:checked');
+  const bar = document.getElementById('bulk-bar');
+  const countEl = document.getElementById('bulk-count');
+  const allCb = document.getElementById('select-all-jobs');
+  const all = document.querySelectorAll('.job-cb');
+  if (checked.length > 0) {
+    bar.style.display = 'flex';
+    countEl.textContent = `${checked.length} job${checked.length>1?'s':''} selected`;
+  } else {
+    bar.style.display = 'none';
+  }
+  if (allCb) allCb.checked = all.length > 0 && checked.length === all.length;
+}
+
+function bulkMarkPaid() {
+  const checked = [...document.querySelectorAll('.job-cb:checked')];
+  if (!checked.length) return;
+  const ids = checked.map(c => c.dataset.id);
+  const jobs = ids.map(id => lawnJobs.find(j => j.id===id)).filter(Boolean);
+
+  // Group by client
+  const byClient = {};
+  jobs.forEach(j => {
+    if (!byClient[j.client]) byClient[j.client] = [];
+    byClient[j.client].push(j);
+  });
+
+  // Mark all as paid and log one entry per client
+  const hid = Date.now();
+  Object.entries(byClient).forEach(([client, cJobs], i) => {
+    const total = cJobs.reduce((s, j) => s + getRate(j.client), 0);
+    const dates = cJobs.map(j => j.date).sort();
+    const dateRange = dates.length === 1
+      ? fmt(dates[0])
+      : `${fmt(dates[0])} – ${fmt(dates[dates.length-1])}`;
+    const jobIds = cJobs.map(j => j.id);
+    historyLog.unshift({
+      id: 'h'+(hid+i),
+      type: 'paid',
+      message: `Marked ${client} paid — ${cJobs.length} job${cJobs.length>1?'s':''} (${dateRange}) — $${total}`,
+      ts: new Date().toISOString(),
+      bulkJobIds: jobIds,
+      prevStatuses: Object.fromEntries(cJobs.map(j=>[j.id, j.status]))
+    });
+  });
+
+  lawnJobs = lawnJobs.map(j => ids.includes(j.id) ? {...j, status:'paid'} : j);
+  if (historyLog.length > 300) historyLog = historyLog.slice(0, 300);
+  save(); render(); toast(`${jobs.length} jobs marked as paid ✓`);
+}
+
 function markPaid(id) {
   const j=lawnJobs.find(j=>j.id===id);
   const prev=j.status;
@@ -773,13 +835,28 @@ function markPaid(id) {
 
 function undoPaid(hid) {
   const h = historyLog.find(h=>h.id===hid);
-  if (!h || !h.jobId) return;
-  const job = lawnJobs.find(j=>j.id===h.jobId);
-  if (!job) { toast('Job no longer exists'); return; }
-  const restore = h.prevStatus || 'unpaid';
-  lawnJobs = lawnJobs.map(j=>j.id===h.jobId ? {...j, status:restore} : j);
-  historyLog = historyLog.filter(h=>h.id!==hid);
-  logHistory('add', `Undid payment — ${job.client} job (${fmt(job.date)}) restored to ${restore}`);
+  if (!h) return;
+
+  // Single job undo
+  if (h.jobId) {
+    const job = lawnJobs.find(j=>j.id===h.jobId);
+    if (!job) { toast('Job no longer exists'); return; }
+    const restore = h.prevStatus || 'unpaid';
+    lawnJobs = lawnJobs.map(j=>j.id===h.jobId ? {...j, status:restore} : j);
+    historyLog = historyLog.filter(h=>h.id!==hid);
+    logHistory('add', `Undid payment — ${job.client} job (${fmt(job.date)}) restored to ${restore}`);
+  }
+
+  // Bulk undo
+  if (h.bulkJobIds) {
+    h.bulkJobIds.forEach(jid => {
+      const prev = h.prevStatuses?.[jid] || 'unpaid';
+      lawnJobs = lawnJobs.map(j=>j.id===jid ? {...j, status:prev} : j);
+    });
+    historyLog = historyLog.filter(h=>h.id!==hid);
+    logHistory('add', `Undid bulk payment — ${h.bulkJobIds.length} jobs restored`);
+  }
+
   save(); render(); toast('Payment undone ✓');
 }
 
