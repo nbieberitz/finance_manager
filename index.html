@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Finance Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #F7F8F3;
+    --surface: #FFFFFF;
+    --surface2: #EEF2EA;
+    --accent: #1A4731;
+    --accent-light: #2D6A4F;
+    --accent-pale: #D8EBE1;
+    --text: #0F1A13;
+    --text-muted: #5A6B5E;
+    --text-faint: #A0AFA4;
+    --border: #D4DDD6;
+    --red: #C0392B;
+    --red-pale: #FCECEA;
+    --amber: #8B5E00;
+    --amber-pale: #FEF3DC;
+    --blue: #1A3F6F;
+    --blue-pale: #E0EBF8;
+    --green: #1A4731;
+    --green-pale: #D8EBE1;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  header {
+    max-width: 860px;
+    margin: 0 auto 2rem;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    border-bottom: 1.5px solid var(--accent);
+    padding-bottom: 1rem;
+  }
+
+  header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  header p {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    text-align: right;
+    line-height: 1.6;
+  }
+
+  .container { max-width: 860px; margin: 0 auto; }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 2rem;
+  }
+
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .metric::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+
+  .metric.amber::before { background: #D4A017; }
+  .metric.blue::before { background: #2E6DB4; }
+  .metric.green::before { background: var(--accent); }
+  .metric.red::before { background: var(--red); }
+
+  .metric-label {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .metric-value {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.75rem;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .metric.amber .metric-value { color: var(--amber); }
+  .metric.blue .metric-value { color: var(--blue); }
+  .metric.green .metric-value { color: var(--green); }
+
+  section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-title svg { width: 15px; height: 15px; stroke: var(--accent); fill: none; stroke-width: 2; }
+
+  .toggle-btn {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    padding: 4px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .toggle-btn:hover { background: var(--surface2); }
+
+  .add-form {
+    padding: 1rem 1.25rem;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    display: none;
+  }
+
+  .add-form.open { display: block; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+
+  label {
+    display: block;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  input, select {
+    width: 100%;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input:focus, select:focus { border-color: var(--accent); }
+
+  .form-actions { margin-top: 12px; display: flex; gap: 8px; align-items: center; }
+
+  .btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 7px 18px;
+    border-radius: var(--radius-sm);
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: 0.88; }
+  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--surface2); }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  th {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-faint);
+    padding: 8px 1.25rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+  }
+
+  td {
+    font-size: 13px;
+    padding: 9px 1.25rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    color: var(--text);
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg); }
+
+  .mono { font-family: 'DM Mono', monospace; }
+
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 500;
+    padding: 3px 9px;
+    border-radius: 20px;
+    letter-spacing: 0.03em;
+  }
+
+  .badge-unpaid { background: var(--amber-pale); color: var(--amber); }
+  .badge-check { background: var(--blue-pale); color: var(--blue); }
+  .badge-paid { background: var(--green-pale); color: var(--green); }
+  .badge-gift { background: #F0EBF8; color: #5B3A8A; }
+  .badge-expense { background: var(--red-pale); color: var(--red); }
+  .badge-income { background: var(--green-pale); color: var(--green); }
+
+  .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+
+  .act-btn {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    padding: 3px 9px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: background 0.12s;
+  }
+
+  .act-btn:hover { background: var(--surface2); }
+  .act-btn.danger { color: var(--red); border-color: #F5C0BB; }
+  .act-btn.danger:hover { background: var(--red-pale); }
+  .act-btn.success { color: var(--green); border-color: var(--accent-pale); }
+  .act-btn.success:hover { background: var(--green-pale); }
+
+  .empty-state {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-faint);
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  .table-wrap { overflow-x: auto; }
+
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    background: var(--accent);
+    color: #fff;
+    font-size: 13px;
+    padding: 10px 18px;
+    border-radius: var(--radius);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 600px) {
+    header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+    header p { text-align: left; }
+    th:nth-child(4), td:nth-child(4) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Lawn Ledger</h1>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;font-family:'DM Mono',monospace">Nathaniel's business tracker</div>
+  </div>
+  <p id="last-updated">Loading...</p>
+</header>
+
+<div class="container">
+
+  <div class="summary-grid" id="summary"></div>
+
+  <!-- Lawn Jobs -->
+  <section>
+    <div class="section-header" onclick="toggleForm('lawn-form', this)">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M3 18h18M3 6h18M3 12h18"/></svg>
+        Lawn jobs
+      </div>
+      <button class="toggle-btn" tabindex="-1">+ Add job</button>
+    </div>
+    <div class="add-form" id="lawn-form">
+      <div class="form-grid">
+        <div>
+          <label>Client</label>
+          <select id="lj-client">
+            <option value="G">G (Grandma) — $25</option>
+            <option value="GG">GG (Great-Grandfather) — $25</option>
+            <option value="Miss Joey">Miss Joey — $35</option>
+          </select>
+        </div>
+        <div>
+          <label>Date</label>
+          <input type="date" id="lj-date" />
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="lj-status">
+            <option value="unpaid">Unpaid</option>
+            <option value="check">Check coming</option>
+            <option value="paid">Paid</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addLawnJob()">Add job</button>
+        <button class="btn btn-ghost" onclick="toggleForm('lawn-form')">Cancel</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Client</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th style="text-align:right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="lawn-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Other Money -->
+  <section>
+    <div class="section-header" onclick="toggleForm('other-form', this)">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        Other money
+      </div>
+      <button class="toggle-btn" tabindex="-1">+ Add entry</button>
+    </div>
+    <div class="add-form" id="other-form">
+      <div class="form-grid">
+        <div>
+          <label>Description</label>
+          <input type="text" id="om-desc" placeholder="e.g. Birthday money" />
+        </div>
+        <div>
+          <label>Date</label>
+          <input type="date" id="om-date" />
+        </div>
+        <div>
+          <label>Type</label>
+          <select id="om-type">
+            <option value="gift">Gift / birthday</option>
+            <option value="income">Other income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+        <div>
+          <label>Amount ($)</label>
+          <input type="number" id="om-amount" placeholder="0.00" min="0" step="0.01" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addOtherMoney()">Add entry</button>
+        <button class="btn btn-ghost" onclick="toggleForm('other-form')">Cancel</button>
+      </div>
+    </div>
+    <div id="other-wrap">
+      <div class="empty-state">No entries yet.</div>
+    </div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const RATES = { 'G': 25, 'GG': 25, 'Miss Joey': 35 };
+
+const SEED = [
+  {id:'l1',client:'Miss Joey',date:'2026-05-10',status:'unpaid'},
+  {id:'l2',client:'G',date:'2026-05-15',status:'unpaid'},
+  {id:'l3',client:'GG',date:'2026-05-15',status:'unpaid'},
+  {id:'l4',client:'GG',date:'2026-04-24',status:'unpaid'},
+  {id:'l5',client:'GG',date:'2026-05-01',status:'unpaid'},
+  {id:'l6',client:'GG',date:'2026-05-08',status:'unpaid'},
+  {id:'l7',client:'GG',date:'2026-03-20',status:'check'},
+  {id:'l8',client:'GG',date:'2026-04-05',status:'check'},
+  {id:'l9',client:'GG',date:'2026-04-10',status:'check'},
+  {id:'l10',client:'GG',date:'2026-04-17',status:'check'},
+  {id:'l11',client:'G',date:'2026-03-20',status:'unpaid'},
+  {id:'l12',client:'G',date:'2026-04-05',status:'unpaid'},
+  {id:'l13',client:'G',date:'2026-04-10',status:'unpaid'},
+  {id:'l14',client:'G',date:'2026-04-17',status:'unpaid'},
+  {id:'l15',client:'G',date:'2026-04-24',status:'unpaid'},
+  {id:'l16',client:'G',date:'2026-05-01',status:'unpaid'},
+  {id:'l17',client:'G',date:'2026-05-08',status:'unpaid'},
+];
+
+let lawnJobs = JSON.parse(localStorage.getItem('ll_lawn') || 'null') || SEED;
+let otherMoney = JSON.parse(localStorage.getItem('ll_other') || '[]');
+
+function save() {
+  localStorage.setItem('ll_lawn', JSON.stringify(lawnJobs));
+  localStorage.setItem('ll_other', JSON.stringify(otherMoney));
+}
+
+function fmt(d) {
+  const [y,m,dy] = d.split('-');
+  return `${parseInt(m)}/${parseInt(dy)}/${y.slice(2)}`;
+}
+
+function statusBadge(s) {
+  const map = {
+    unpaid: ['badge-unpaid','Unpaid'],
+    check: ['badge-check','Check coming'],
+    paid: ['badge-paid','Paid']
+  };
+  const [cls, label] = map[s] || ['',''];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function render() {
+  const sorted = [...lawnJobs].sort((a,b) => b.date.localeCompare(a.date));
+  const tbody = document.getElementById('lawn-tbody');
+  if (!sorted.length) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state">No lawn jobs yet.</div></td></tr>';
+  } else {
+    tbody.innerHTML = sorted.map(j => `
+      <tr>
+        <td class="mono">${fmt(j.date)}</td>
+        <td>${j.client}</td>
+        <td class="mono">$${RATES[j.client]}</td>
+        <td>${statusBadge(j.status)}</td>
+        <td>
+          <div class="row-actions">
+            ${j.status !== 'paid' ? `<button class="act-btn success" onclick="markPaid('${j.id}')">mark paid</button>` : ''}
+            <button class="act-btn danger" onclick="deleteJob('${j.id}')">delete</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  const omSorted = [...otherMoney].sort((a,b) => b.date.localeCompare(a.date));
+  const omWrap = document.getElementById('other-wrap');
+  if (!omSorted.length) {
+    omWrap.innerHTML = '<div class="empty-state">No entries yet.</div>';
+  } else {
+    const rows = omSorted.map(e => {
+      const isExp = e.type === 'expense';
+      const amtStr = (isExp ? '-' : '+') + '$' + parseFloat(e.amount).toFixed(2);
+      const badgeCls = e.type === 'gift' ? 'badge-gift' : isExp ? 'badge-expense' : 'badge-income';
+      const badgeLbl = e.type === 'gift' ? 'Gift / birthday' : isExp ? 'Expense' : 'Income';
+      return `<tr>
+        <td class="mono">${fmt(e.date)}</td>
+        <td>${e.desc}</td>
+        <td class="mono" style="color:${isExp ? 'var(--red)' : 'var(--green)'}">${amtStr}</td>
+        <td><span class="badge ${badgeCls}">${badgeLbl}</span></td>
+        <td><div class="row-actions"><button class="act-btn danger" onclick="deleteOther('${e.id}')">delete</button></div></td>
+      </tr>`;
+    }).join('');
+    omWrap.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Type</th><th style="text-align:right">Actions</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+  }
+
+  const unpaid = lawnJobs.filter(j => j.status==='unpaid').reduce((s,j)=>s+RATES[j.client],0);
+  const check = lawnJobs.filter(j => j.status==='check').reduce((s,j)=>s+RATES[j.client],0);
+  const paid = lawnJobs.filter(j => j.status==='paid').reduce((s,j)=>s+RATES[j.client],0);
+  const gifts = otherMoney.filter(e=>e.type!=='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
+  const expenses = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
+  const cash = paid + gifts - expenses;
+
+  document.getElementById('summary').innerHTML = `
+    <div class="metric amber"><div class="metric-label">Unpaid (lawn)</div><div class="metric-value">$${unpaid}</div></div>
+    <div class="metric blue"><div class="metric-label">Check incoming</div><div class="metric-value">$${check}</div></div>
+    <div class="metric amber"><div class="metric-label">Total owed to you</div><div class="metric-value">$${unpaid+check}</div></div>
+    <div class="metric green"><div class="metric-label">Cash in hand</div><div class="metric-value">$${cash.toFixed(2)}</div></div>
+  `;
+
+  document.getElementById('last-updated').innerHTML =
+    `Last updated<br>${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}<br>${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`;
+}
+
+function toggleForm(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+}
+
+function markPaid(id) {
+  lawnJobs = lawnJobs.map(j => j.id===id ? {...j, status:'paid'} : j);
+  save(); render(); toast('Marked as paid ✓');
+}
+
+function deleteJob(id) {
+  if (!confirm('Delete this job?')) return;
+  lawnJobs = lawnJobs.filter(j => j.id!==id);
+  save(); render(); toast('Job deleted');
+}
+
+function deleteOther(id) {
+  if (!confirm('Delete this entry?')) return;
+  otherMoney = otherMoney.filter(e => e.id!==id);
+  save(); render(); toast('Entry deleted');
+}
+
+function addLawnJob() {
+  const client = document.getElementById('lj-client').value;
+  const date = document.getElementById('lj-date').value;
+  const status = document.getElementById('lj-status').value;
+  if (!date) { alert('Please select a date.'); return; }
+  lawnJobs.push({id:'l'+Date.now(), client, date, status});
+  save(); render();
+  document.getElementById('lj-date').value = '';
+  toast('Job added ✓');
+}
+
+function addOtherMoney() {
+  const desc = document.getElementById('om-desc').value.trim();
+  const date = document.getElementById('om-date').value;
+  const type = document.getElementById('om-type').value;
+  const amount = parseFloat(document.getElementById('om-amount').value);
+  if (!desc || !date || isNaN(amount) || amount <= 0) { alert('Please fill in all fields.'); return; }
+  otherMoney.push({id:'o'+Date.now(), desc, date, type, amount});
+  save(); render();
+  document.getElementById('om-desc').value = '';
+  document.getElementById('om-date').value = '';
+  document.getElementById('om-amount').value = '';
+  toast('Entry added ✓');
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+render();
+</script>
+</body>
+</html>
