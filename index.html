@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Finance Manager</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <style>
 :root {
   --bg: #0D0F0E;
@@ -384,6 +387,17 @@ tr:hover td { background: var(--surface2); }
   header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   th:nth-child(4), td:nth-child(4) { display: none; }
 }
+
+/* Auth */
+.auth-area { display:flex; align-items:center; gap:10px; }
+.auth-user { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-muted); }
+.auth-user img { width:28px; height:28px; border-radius:50%; border:1px solid var(--border-mid); }
+.btn-signin { display:flex; align-items:center; gap:8px; padding:7px 14px; background:var(--surface2); border:1px solid var(--border-mid); border-radius:8px; color:var(--text); font-size:13px; cursor:pointer; transition:background .15s; font-family:'Inter',sans-serif; }
+.btn-signin:hover { background:var(--surface3); }
+.btn-signout { background:none; border:none; color:var(--text-muted); font-size:11px; cursor:pointer; padding:2px 6px; border-radius:4px; font-family:'Inter',sans-serif; }
+.btn-signout:hover { color:var(--red); }
+#auth-loading { font-size:12px; color:var(--text-muted); font-family:'JetBrains Mono',monospace; }
+.sync-dot { width:6px; height:6px; border-radius:50%; background:#4ADE80; display:inline-block; margin-right:5px; }
 </style>
 </head>
 <body>
@@ -391,9 +405,10 @@ tr:hover td { background: var(--surface2); }
 <header>
   <div class="logo">
     <h1>Finance Manager</h1>
-
   </div>
-
+  <div class="auth-area" id="auth-area">
+    <span id="auth-loading">connecting…</span>
+  </div>
 </header>
 
 <div class="container">
@@ -544,19 +559,87 @@ const SEED_JOBS = [
   {id:'l17',client:'G',date:'2026-05-08',status:'unpaid'},
 ];
 
-let clients    = JSON.parse(localStorage.getItem('ll_clients') || 'null') || SEED_CLIENTS;
-let lawnJobs   = JSON.parse(localStorage.getItem('ll_lawn')    || 'null') || SEED_JOBS;
-let otherMoney = JSON.parse(localStorage.getItem('ll_other')   || '[]');
-let historyLog = JSON.parse(localStorage.getItem('ll_history') || '[]');
-let balances   = JSON.parse(localStorage.getItem('ll_balances')|| '{"bank":0,"cash":0}');
+// ── Firebase ──────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyCbN_krdSpUY3fB6lXYwK7dwyo4HiXY_Ks",
+  authDomain: "finance-manager-56a03.firebaseapp.com",
+  projectId: "finance-manager-56a03",
+  storageBucket: "finance-manager-56a03.firebasestorage.app",
+  messagingSenderId: "812739334467",
+  appId: "1:812739334467:web:12cf4972c373ebad09dff6"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+let currentUser = null;
 
-function save() {
-  localStorage.setItem('ll_clients', JSON.stringify(clients));
-  localStorage.setItem('ll_lawn',    JSON.stringify(lawnJobs));
-  localStorage.setItem('ll_other',   JSON.stringify(otherMoney));
-  localStorage.setItem('ll_history', JSON.stringify(historyLog));
-  localStorage.setItem('ll_balances',JSON.stringify(balances));
+function userDoc() { return db.collection('users').doc(currentUser.uid); }
+
+async function loadFromFirestore() {
+  const snap = await userDoc().get();
+  if (snap.exists) {
+    const d = snap.data();
+    clients    = d.clients    || SEED_CLIENTS;
+    lawnJobs   = d.lawnJobs   || SEED_JOBS;
+    otherMoney = d.otherMoney || [];
+    historyLog = d.historyLog || [];
+    balances   = d.balances   || { bank: 0, cash: 0 };
+  } else {
+    // First sign-in — seed defaults
+    clients = SEED_CLIENTS; lawnJobs = SEED_JOBS;
+    otherMoney = []; historyLog = []; balances = { bank: 0, cash: 0 };
+    await saveToFirestore();
+  }
+  render(); renderClients(); renderHistory();
 }
+
+let saveTimer;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveToFirestore, 800);
+}
+
+async function saveToFirestore() {
+  if (!currentUser) return;
+  await userDoc().set({ clients, lawnJobs, otherMoney, historyLog, balances });
+}
+
+auth.onAuthStateChanged(user => {
+  const area = document.getElementById('auth-area');
+  if (user) {
+    currentUser = user;
+    area.innerHTML = `
+      <div class="auth-user">
+        <span class="sync-dot"></span>
+        <img src="${user.photoURL || ''}" onerror="this.style.display='none'" />
+        <span>${user.displayName || user.email}</span>
+        <button class="btn-signout" onclick="signOut()">sign out</button>
+      </div>`;
+    loadFromFirestore();
+  } else {
+    currentUser = null;
+    area.innerHTML = `
+      <button class="btn-signin" onclick="signIn()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+        Sign in with Google
+      </button>`;
+  }
+});
+
+function signIn() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider);
+}
+function signOut() {
+  if (confirm('Sign out?')) auth.signOut();
+}
+
+// ── App data ──────────────────────────────────────────────
+let clients    = SEED_CLIENTS;
+let lawnJobs   = SEED_JOBS;
+let otherMoney = [];
+let historyLog = [];
+let balances   = { bank: 0, cash: 0 };
 
 function getRate(name) { const c = clients.find(c => c.name===name); return c ? c.rate : 0; }
 
@@ -1004,9 +1087,6 @@ function toast(msg) {
   clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>el.classList.remove('show'),2200);
 }
-
-render();
-renderClients();
 </script>
 </body>
 </html>
