@@ -4,342 +4,382 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Finance Manager</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
 <style>
-  :root {
-    --bg: #F7F8F3;
-    --surface: #FFFFFF;
-    --surface2: #EEF2EA;
-    --accent: #1A4731;
-    --accent-light: #2D6A4F;
-    --accent-pale: #D8EBE1;
-    --text: #0F1A13;
-    --text-muted: #5A6B5E;
-    --text-faint: #A0AFA4;
-    --border: #D4DDD6;
-    --red: #C0392B;
-    --red-pale: #FCECEA;
-    --amber: #8B5E00;
-    --amber-pale: #FEF3DC;
-    --blue: #1A3F6F;
-    --blue-pale: #E0EBF8;
-    --green: #1A4731;
-    --green-pale: #D8EBE1;
-    --radius: 10px;
-    --radius-sm: 6px;
-  }
+:root {
+  --bg: #0D0F0E;
+  --surface: #141714;
+  --surface2: #1C201C;
+  --surface3: #232823;
+  --accent: #4ADE80;
+  --accent-dim: #22C55E;
+  --accent-pale: #052E16;
+  --text: #E8EDE9;
+  --text-muted: #7A8C7D;
+  --text-faint: #3D4D3F;
+  --border: #1F261F;
+  --border-mid: #2A352A;
+  --red: #F87171;
+  --red-pale: #2A0A0A;
+  --amber: #FCD34D;
+  --amber-pale: #271A00;
+  --blue: #60A5FA;
+  --blue-pale: #0A1628;
+  --purple: #C084FC;
+  --purple-pale: #1A0A2A;
+  --radius: 12px;
+  --radius-sm: 7px;
+}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    font-family: 'DM Sans', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    padding: 2rem 1rem;
-  }
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 2rem 1rem 4rem;
+}
 
-  header {
-    max-width: 860px;
-    margin: 0 auto 2rem;
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    border-bottom: 1.5px solid var(--accent);
-    padding-bottom: 1rem;
-  }
+header {
+  max-width: 900px;
+  margin: 0 auto 2.5rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border-mid);
+}
 
-  header h1 {
-    font-family: 'DM Serif Display', serif;
-    font-size: 2rem;
-    color: var(--accent);
-    line-height: 1;
-  }
+.logo { display: flex; flex-direction: column; gap: 4px; }
 
-  header p {
-    font-size: 12px;
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-    text-align: right;
-    line-height: 1.6;
-  }
+.logo h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
 
-  .container { max-width: 860px; margin: 0 auto; }
+.logo span {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
 
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 12px;
-    margin-bottom: 2rem;
-  }
+#last-updated {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-faint);
+  text-align: right;
+  line-height: 1.7;
+}
 
-  .metric {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem 1.25rem;
-    position: relative;
-    overflow: hidden;
-  }
+.container { max-width: 900px; margin: 0 auto; }
 
-  .metric::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-  }
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 10px;
+  margin-bottom: 2rem;
+}
 
-  .metric.amber::before { background: #D4A017; }
-  .metric.blue::before { background: #2E6DB4; }
-  .metric.green::before { background: var(--accent); }
-  .metric.red::before { background: var(--red); }
+.metric {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
 
-  .metric-label {
-    font-size: 11px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-muted);
-    margin-bottom: 6px;
-  }
+.metric:hover { border-color: var(--border-mid); }
 
-  .metric-value {
-    font-family: 'DM Mono', monospace;
-    font-size: 1.75rem;
-    font-weight: 500;
-    color: var(--text);
-  }
+.metric-label {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
 
-  .metric.amber .metric-value { color: var(--amber); }
-  .metric.blue .metric-value { color: var(--blue); }
-  .metric.green .metric-value { color: var(--green); }
+.metric-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.6rem;
+  font-weight: 500;
+  line-height: 1;
+}
 
-  section {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    margin-bottom: 1.5rem;
-    overflow: hidden;
-  }
+.metric.green .metric-value { color: var(--accent); }
+.metric.amber .metric-value { color: var(--amber); }
+.metric.blue .metric-value { color: var(--blue); }
+.metric.red .metric-value { color: var(--red); }
+.metric.purple .metric-value { color: var(--purple); }
 
-  .section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.85rem 1.25rem;
-    border-bottom: 1px solid var(--border);
-    background: var(--surface);
-    cursor: pointer;
-    user-select: none;
-  }
+.metric-sub {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
 
-  .section-title {
-    font-size: 13px;
-    font-weight: 500;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--accent);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+}
 
-  .section-title svg { width: 15px; height: 15px; stroke: var(--accent); fill: none; stroke-width: 2; }
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  gap: 12px;
+}
 
-  .toggle-btn {
-    font-size: 11px;
-    font-family: 'DM Mono', monospace;
-    padding: 4px 12px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: background 0.15s;
-  }
+.section-header:hover { background: var(--surface2); }
 
-  .toggle-btn:hover { background: var(--surface2); }
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
-  .add-form {
-    padding: 1rem 1.25rem;
-    background: var(--bg);
-    border-bottom: 1px solid var(--border);
-    display: none;
-  }
+.section-title svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
 
-  .add-form.open { display: block; }
+.header-actions { display: flex; gap: 6px; }
 
-  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.pill-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border-mid);
+  background: var(--surface2);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
 
-  label {
-    display: block;
-    font-size: 11px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-    margin-bottom: 4px;
-  }
+.pill-btn:hover { background: var(--surface3); color: var(--text); border-color: var(--text-faint); }
+.pill-btn.danger:hover { color: var(--red); border-color: var(--red); background: var(--red-pale); }
 
-  input, select {
-    width: 100%;
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    padding: 7px 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--surface);
-    color: var(--text);
-    outline: none;
-    transition: border-color 0.15s;
-  }
+.add-form {
+  padding: 1.1rem 1.25rem;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  display: none;
+}
 
-  input:focus, select:focus { border-color: var(--accent); }
+.add-form.open { display: block; }
 
-  .form-actions { margin-top: 12px; display: flex; gap: 8px; align-items: center; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
 
-  .btn {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 7px 18px;
-    border-radius: var(--radius-sm);
-    border: none;
-    cursor: pointer;
-    transition: opacity 0.15s, transform 0.1s;
-  }
+label {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+  margin-bottom: 5px;
+}
 
-  .btn:active { transform: scale(0.98); }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { opacity: 0.88; }
-  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
-  .btn-ghost:hover { background: var(--surface2); }
+input, select {
+  width: 100%;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+}
 
-  table { width: 100%; border-collapse: collapse; }
+input:focus, select:focus { border-color: var(--accent); }
+input::placeholder { color: var(--text-faint); }
 
-  th {
-    font-size: 11px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-faint);
-    padding: 8px 1.25rem;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg);
-  }
+select option { background: var(--surface); }
 
-  td {
-    font-size: 13px;
-    padding: 9px 1.25rem;
-    border-bottom: 1px solid var(--border);
-    vertical-align: middle;
-    color: var(--text);
-  }
+.form-actions { margin-top: 12px; display: flex; gap: 8px; }
 
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: var(--bg); }
+.btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
 
-  .mono { font-family: 'DM Mono', monospace; }
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent); color: #000; }
+.btn-primary:hover { opacity: 0.85; }
+.btn-ghost { background: var(--surface3); color: var(--text-muted); border: 1px solid var(--border-mid); }
+.btn-ghost:hover { color: var(--text); }
 
-  .badge {
-    display: inline-block;
-    font-size: 10px;
-    font-family: 'DM Mono', monospace;
-    font-weight: 500;
-    padding: 3px 9px;
-    border-radius: 20px;
-    letter-spacing: 0.03em;
-  }
+table { width: 100%; border-collapse: collapse; }
 
-  .badge-unpaid { background: var(--amber-pale); color: var(--amber); }
-  .badge-check { background: var(--blue-pale); color: var(--blue); }
-  .badge-paid { background: var(--green-pale); color: var(--green); }
-  .badge-gift { background: #F0EBF8; color: #5B3A8A; }
-  .badge-expense { background: var(--red-pale); color: var(--red); }
-  .badge-income { background: var(--green-pale); color: var(--green); }
+th {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  padding: 8px 1.25rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
 
-  .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+td {
+  font-size: 13px;
+  padding: 10px 1.25rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  color: var(--text);
+}
 
-  .act-btn {
-    font-size: 11px;
-    font-family: 'DM Mono', monospace;
-    padding: 3px 9px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
-    background: transparent;
-    cursor: pointer;
-    color: var(--text-muted);
-    transition: background 0.12s;
-  }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
 
-  .act-btn:hover { background: var(--surface2); }
-  .act-btn.danger { color: var(--red); border-color: #F5C0BB; }
-  .act-btn.danger:hover { background: var(--red-pale); }
-  .act-btn.success { color: var(--green); border-color: var(--accent-pale); }
-  .act-btn.success:hover { background: var(--green-pale); }
+.mono { font-family: 'JetBrains Mono', monospace; }
 
-  .empty-state {
-    padding: 2rem;
-    text-align: center;
-    color: var(--text-faint);
-    font-size: 13px;
-    font-style: italic;
-  }
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+}
 
-  .table-wrap { overflow-x: auto; }
+.badge-unpaid { background: var(--amber-pale); color: var(--amber); border: 1px solid #3D2800; }
+.badge-check { background: var(--blue-pale); color: var(--blue); border: 1px solid #0F2040; }
+.badge-paid { background: var(--accent-pale); color: var(--accent); border: 1px solid #0A3D1A; }
+.badge-gift { background: var(--purple-pale); color: var(--purple); border: 1px solid #2A1040; }
+.badge-expense { background: var(--red-pale); color: var(--red); border: 1px solid #3D0A0A; }
+.badge-income { background: var(--accent-pale); color: var(--accent); border: 1px solid #0A3D1A; }
 
-  .toast {
-    position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
-    background: var(--accent);
-    color: #fff;
-    font-size: 13px;
-    padding: 10px 18px;
-    border-radius: var(--radius);
-    opacity: 0;
-    transform: translateY(8px);
-    transition: opacity 0.2s, transform 0.2s;
-    pointer-events: none;
-    font-family: 'DM Mono', monospace;
-  }
+.row-actions { display: flex; gap: 5px; justify-content: flex-end; }
 
-  .toast.show { opacity: 1; transform: translateY(0); }
+.act-btn {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-mid);
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.12s;
+}
 
-  .history-entry {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 9px 1.25rem;
-    border-bottom: 1px solid var(--border);
-    font-size: 13px;
-  }
-  .history-entry:last-child { border-bottom: none; }
-  .history-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
-  .dot-add { background: var(--accent); }
-  .dot-paid { background: #2E6DB4; }
-  .dot-delete { background: var(--red); }
-  .dot-other { background: #7B3FA0; }
-  .history-action { color: var(--text); flex: 1; }
-  .history-time { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-faint); white-space: nowrap; margin-top: 2px; }
-  #history-body { max-height: 320px; overflow-y: auto; }
+.act-btn:hover { background: var(--surface3); color: var(--text); }
+.act-btn.danger { color: var(--red); border-color: #3D0A0A; }
+.act-btn.danger:hover { background: var(--red-pale); }
+.act-btn.success { color: var(--accent); border-color: #0A3D1A; }
+.act-btn.success:hover { background: var(--accent-pale); }
 
-  @media (max-width: 600px) {
-    header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
-    header p { text-align: left; }
-    th:nth-child(4), td:nth-child(4) { display: none; }
-  }
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.table-wrap { overflow-x: auto; }
+
+.history-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 9px 1.25rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.history-entry:last-child { border-bottom: none; }
+.history-entry:hover { background: var(--surface2); }
+
+.history-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+.dot-add { background: var(--accent); }
+.dot-paid { background: var(--blue); }
+.dot-delete { background: var(--red); }
+.dot-other { background: var(--purple); }
+.dot-client { background: var(--amber); }
+
+.history-action { color: var(--text-muted); flex: 1; line-height: 1.5; }
+.history-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); white-space: nowrap; margin-top: 3px; }
+
+#history-body { max-height: 340px; overflow-y: auto; }
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.5rem 0;
+}
+
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  background: var(--surface3);
+  border: 1px solid var(--border-mid);
+  color: var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+
+.toast.show { opacity: 1; transform: translateY(0); }
+
+.amount-pos { color: var(--accent); }
+.amount-neg { color: var(--red); }
+
+@media (max-width: 600px) {
+  header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  th:nth-child(4), td:nth-child(4) { display: none; }
+}
 </style>
 </head>
 <body>
 
 <header>
-  <div>
-    <h1>Lawn Ledger</h1>
-    <div style="font-size:12px;color:var(--text-muted);margin-top:4px;font-family:'DM Mono',monospace">Nathaniel's business tracker</div>
+  <div class="logo">
+    <h1>Finance Manager</h1>
+    <span>Nathaniel's personal ledger</span>
   </div>
-  <p id="last-updated">Loading...</p>
+  <div id="last-updated"></div>
 </header>
 
 <div class="container">
@@ -353,22 +393,15 @@
         <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
         Clients
       </div>
-      <button class="toggle-btn" tabindex="-1">+ Add client</button>
+      <div class="header-actions">
+        <button class="pill-btn" tabindex="-1">+ Add client</button>
+      </div>
     </div>
     <div class="add-form" id="client-form">
       <div class="form-grid">
-        <div>
-          <label>Name / nickname</label>
-          <input type="text" id="cl-name" placeholder="e.g. Mr. Johnson" />
-        </div>
-        <div>
-          <label>Note (optional)</label>
-          <input type="text" id="cl-note" placeholder="e.g. Corner of Oak St." />
-        </div>
-        <div>
-          <label>Rate per mow ($)</label>
-          <input type="number" id="cl-rate" placeholder="0.00" min="0" step="0.01" />
-        </div>
+        <div><label>Name / nickname</label><input type="text" id="cl-name" placeholder="e.g. Mr. Johnson" /></div>
+        <div><label>Note (optional)</label><input type="text" id="cl-note" placeholder="e.g. Oak St." /></div>
+        <div><label>Rate per job ($)</label><input type="number" id="cl-rate" placeholder="0.00" min="0" step="0.01" /></div>
       </div>
       <div class="form-actions">
         <button class="btn btn-primary" onclick="addClient()">Add client</button>
@@ -378,28 +411,22 @@
     <div id="clients-wrap"><div class="empty-state">No clients yet.</div></div>
   </section>
 
-  <!-- Lawn Jobs -->
+  <!-- Jobs -->
   <section>
     <div class="section-header" onclick="toggleForm('lawn-form', this)">
       <div class="section-title">
-        <svg viewBox="0 0 24 24"><path d="M3 18h18M3 6h18M3 12h18"/></svg>
-        Lawn jobs
+        <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+        Jobs
       </div>
-      <button class="toggle-btn" tabindex="-1">+ Add job</button>
+      <div class="header-actions">
+        <button class="pill-btn" tabindex="-1">+ Add job</button>
+      </div>
     </div>
     <div class="add-form" id="lawn-form">
       <div class="form-grid">
-        <div>
-          <label>Client</label>
-          <select id="lj-client">
-          </select>
-        </div>
-        <div>
-          <label>Date</label>
-          <input type="date" id="lj-date" />
-        </div>
-        <div>
-          <label>Status</label>
+        <div><label>Client</label><select id="lj-client"></select></div>
+        <div><label>Date</label><input type="date" id="lj-date" /></div>
+        <div><label>Status</label>
           <select id="lj-status">
             <option value="unpaid">Unpaid</option>
             <option value="check">Check coming</option>
@@ -414,70 +441,54 @@
     </div>
     <div class="table-wrap">
       <table>
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Client</th>
-            <th>Amount</th>
-            <th>Status</th>
-            <th style="text-align:right">Actions</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Date</th><th>Client</th><th>Amount</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead>
         <tbody id="lawn-tbody"></tbody>
       </table>
     </div>
   </section>
 
-  <!-- Other Money -->
+  <!-- Income & Expenses -->
   <section>
     <div class="section-header" onclick="toggleForm('other-form', this)">
       <div class="section-title">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-        Other money
+        <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Income &amp; Expenses
       </div>
-      <button class="toggle-btn" tabindex="-1">+ Add entry</button>
+      <div class="header-actions">
+        <button class="pill-btn" tabindex="-1">+ Add entry</button>
+      </div>
     </div>
     <div class="add-form" id="other-form">
       <div class="form-grid">
-        <div>
-          <label>Description</label>
-          <input type="text" id="om-desc" placeholder="e.g. Birthday money" />
-        </div>
-        <div>
-          <label>Date</label>
-          <input type="date" id="om-date" />
-        </div>
-        <div>
-          <label>Type</label>
+        <div><label>Description</label><input type="text" id="om-desc" placeholder="e.g. Birthday money" /></div>
+        <div><label>Date</label><input type="date" id="om-date" /></div>
+        <div><label>Category</label>
           <select id="om-type">
             <option value="gift">Gift / birthday</option>
             <option value="income">Other income</option>
             <option value="expense">Expense</option>
           </select>
         </div>
-        <div>
-          <label>Amount ($)</label>
-          <input type="number" id="om-amount" placeholder="0.00" min="0" step="0.01" />
-        </div>
+        <div><label>Amount ($)</label><input type="number" id="om-amount" placeholder="0.00" min="0" step="0.01" /></div>
       </div>
       <div class="form-actions">
         <button class="btn btn-primary" onclick="addOtherMoney()">Add entry</button>
         <button class="btn btn-ghost" onclick="toggleForm('other-form')">Cancel</button>
       </div>
     </div>
-    <div id="other-wrap">
-      <div class="empty-state">No entries yet.</div>
-    </div>
+    <div id="other-wrap"><div class="empty-state">No entries yet.</div></div>
   </section>
 
-  <!-- History Log -->
+  <!-- History -->
   <section>
     <div class="section-header" onclick="toggleSection('history-body')">
       <div class="section-title">
         <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         Full history
       </div>
-      <button class="toggle-btn" tabindex="-1" onclick="event.stopPropagation(); clearHistory()">Clear</button>
+      <div class="header-actions">
+        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearHistory()">Clear</button>
+      </div>
     </div>
     <div id="history-body">
       <div id="history-wrap"><div class="empty-state">No history yet.</div></div>
@@ -495,63 +506,7 @@ const SEED_CLIENTS = [
   {id:'c3', name:'Miss Joey', note:'', rate:35},
 ];
 
-let clients = JSON.parse(localStorage.getItem('ll_clients') || 'null') || SEED_CLIENTS;
-
-function getRate(name) {
-  const c = clients.find(c => c.name === name);
-  return c ? c.rate : 0;
-}
-
-function refreshClientDropdown() {
-  const sel = document.getElementById('lj-client');
-  sel.innerHTML = clients.map(c =>
-    `<option value="${c.name}">${c.name}${c.note ? ' ('+c.note+')' : ''} — $${c.rate}</option>`
-  ).join('');
-}
-
-function renderClients() {
-  const wrap = document.getElementById('clients-wrap');
-  if (!clients.length) { wrap.innerHTML = '<div class="empty-state">No clients yet.</div>'; return; }
-  wrap.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr><th>Name</th><th>Note</th><th>Rate</th><th style="text-align:right">Actions</th></tr></thead>
-    <tbody>${clients.map(c => `
-      <tr>
-        <td style="font-weight:500">${c.name}</td>
-        <td style="color:var(--text-muted)">${c.note || '—'}</td>
-        <td class="mono">$${c.rate}</td>
-        <td><div class="row-actions"><button class="act-btn danger" onclick="deleteClient('${c.id}')">remove</button></div></td>
-      </tr>`).join('')}
-    </tbody></table></div>`;
-  refreshClientDropdown();
-}
-
-function addClient() {
-  const name = document.getElementById('cl-name').value.trim();
-  const note = document.getElementById('cl-note').value.trim();
-  const rate = parseFloat(document.getElementById('cl-rate').value);
-  if (!name || isNaN(rate) || rate <= 0) { alert('Please enter a name and rate.'); return; }
-  if (clients.find(c => c.name.toLowerCase() === name.toLowerCase())) { alert('A client with that name already exists.'); return; }
-  clients.push({id:'c'+Date.now(), name, note, rate});
-  localStorage.setItem('ll_clients', JSON.stringify(clients));
-  logHistory('add', `Added client — ${name}${note ? ' ('+note+')' : ''} at $${rate}/lawn`);
-  renderClients();
-  document.getElementById('cl-name').value = '';
-  document.getElementById('cl-note').value = '';
-  document.getElementById('cl-rate').value = '';
-  toast('Client added ✓');
-}
-
-function deleteClient(id) {
-  const c = clients.find(c => c.id===id);
-  if (!confirm(`Remove ${c.name} from your client list?`)) return;
-  clients = clients.filter(c => c.id!==id);
-  localStorage.setItem('ll_clients', JSON.stringify(clients));
-  logHistory('delete', `Removed client — ${c.name}`);
-  renderClients(); render();
-  toast('Client removed');
-}
-
-const SEED = [
+const SEED_JOBS = [
   {id:'l1',client:'Miss Joey',date:'2026-05-10',status:'unpaid'},
   {id:'l2',client:'G',date:'2026-05-15',status:'unpaid'},
   {id:'l3',client:'GG',date:'2026-05-15',status:'unpaid'},
@@ -571,198 +526,210 @@ const SEED = [
   {id:'l17',client:'G',date:'2026-05-08',status:'unpaid'},
 ];
 
-let lawnJobs = JSON.parse(localStorage.getItem('ll_lawn') || 'null') || SEED;
-let otherMoney = JSON.parse(localStorage.getItem('ll_other') || '[]');
+let clients    = JSON.parse(localStorage.getItem('ll_clients') || 'null') || SEED_CLIENTS;
+let lawnJobs   = JSON.parse(localStorage.getItem('ll_lawn')    || 'null') || SEED_JOBS;
+let otherMoney = JSON.parse(localStorage.getItem('ll_other')   || '[]');
 let historyLog = JSON.parse(localStorage.getItem('ll_history') || '[]');
 
 function save() {
-  localStorage.setItem('ll_lawn', JSON.stringify(lawnJobs));
-  localStorage.setItem('ll_other', JSON.stringify(otherMoney));
-  localStorage.setItem('ll_history', JSON.stringify(historyLog));
   localStorage.setItem('ll_clients', JSON.stringify(clients));
+  localStorage.setItem('ll_lawn',    JSON.stringify(lawnJobs));
+  localStorage.setItem('ll_other',   JSON.stringify(otherMoney));
+  localStorage.setItem('ll_history', JSON.stringify(historyLog));
 }
+
+function getRate(name) { const c = clients.find(c => c.name===name); return c ? c.rate : 0; }
+
+function fmt(d) { const [y,m,dy] = d.split('-'); return `${parseInt(m)}/${parseInt(dy)}/${y.slice(2)}`; }
 
 function logHistory(type, message) {
-  historyLog.unshift({
-    id: 'h' + Date.now(),
-    type,
-    message,
-    ts: new Date().toISOString()
-  });
-  if (historyLog.length > 200) historyLog = historyLog.slice(0, 200);
-}
-
-function renderHistory() {
-  const wrap = document.getElementById('history-wrap');
-  if (!historyLog.length) {
-    wrap.innerHTML = '<div class="empty-state">No history yet.</div>';
-    return;
-  }
-  wrap.innerHTML = historyLog.map(h => {
-    const dotClass = { add:'dot-add', paid:'dot-paid', delete:'dot-delete', other:'dot-other' }[h.type] || 'dot-add';
-    const d = new Date(h.ts);
-    const dateStr = d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-    const timeStr = d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-    return `<div class="history-entry">
-      <div class="history-dot ${dotClass}"></div>
-      <div class="history-action">${h.message}</div>
-      <div class="history-time">${dateStr} ${timeStr}</div>
-    </div>`;
-  }).join('');
-}
-
-function clearHistory() {
-  if (!confirm('Clear all history?')) return;
-  historyLog = [];
-  save(); renderHistory(); toast('History cleared');
-}
-
-function toggleSection(id) {
-  const el = document.getElementById(id);
-  el.style.display = el.style.display === 'none' ? 'block' : '';
-}
-
-function fmt(d) {
-  const [y,m,dy] = d.split('-');
-  return `${parseInt(m)}/${parseInt(dy)}/${y.slice(2)}`;
+  historyLog.unshift({ id:'h'+Date.now(), type, message, ts: new Date().toISOString() });
+  if (historyLog.length > 300) historyLog = historyLog.slice(0, 300);
 }
 
 function statusBadge(s) {
-  const map = {
-    unpaid: ['badge-unpaid','Unpaid'],
-    check: ['badge-check','Check coming'],
-    paid: ['badge-paid','Paid']
-  };
-  const [cls, label] = map[s] || ['',''];
-  return `<span class="badge ${cls}">${label}</span>`;
+  return { unpaid:'<span class="badge badge-unpaid">Unpaid</span>', check:'<span class="badge badge-check">Check coming</span>', paid:'<span class="badge badge-paid">Paid</span>' }[s] || '';
+}
+
+function refreshClientDropdown() {
+  const sel = document.getElementById('lj-client');
+  sel.innerHTML = clients.map(c => `<option value="${c.name}">${c.name}${c.note?' ('+c.note+')':''} — $${c.rate}</option>`).join('');
+}
+
+function renderClients() {
+  const wrap = document.getElementById('clients-wrap');
+  if (!clients.length) { wrap.innerHTML = '<div class="empty-state">No clients yet.</div>'; refreshClientDropdown(); return; }
+  wrap.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Note</th><th>Rate / job</th><th style="text-align:right">Actions</th></tr></thead>
+    <tbody>${clients.map(c=>`
+      <tr>
+        <td style="font-weight:500">${c.name}</td>
+        <td style="color:var(--text-muted)">${c.note||'—'}</td>
+        <td class="mono amount-pos">$${c.rate}</td>
+        <td><div class="row-actions"><button class="act-btn danger" onclick="deleteClient('${c.id}')">remove</button></div></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+  refreshClientDropdown();
 }
 
 function render() {
   const sorted = [...lawnJobs].sort((a,b) => b.date.localeCompare(a.date));
   const tbody = document.getElementById('lawn-tbody');
-  if (!sorted.length) {
-    tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state">No lawn jobs yet.</div></td></tr>';
-  } else {
-    tbody.innerHTML = sorted.map(j => `
-      <tr>
+  tbody.innerHTML = !sorted.length
+    ? '<tr><td colspan="5"><div class="empty-state">No jobs yet.</div></td></tr>'
+    : sorted.map(j => `<tr>
         <td class="mono">${fmt(j.date)}</td>
         <td>${j.client}</td>
-        <td class="mono">$${getRate(j.client)}</td>
+        <td class="mono amount-pos">$${getRate(j.client)}</td>
         <td>${statusBadge(j.status)}</td>
-        <td>
-          <div class="row-actions">
-            ${j.status !== 'paid' ? `<button class="act-btn success" onclick="markPaid('${j.id}')">mark paid</button>` : ''}
-            <button class="act-btn danger" onclick="deleteJob('${j.id}')">delete</button>
-          </div>
-        </td>
+        <td><div class="row-actions">
+          ${j.status!=='paid'?`<button class="act-btn success" onclick="markPaid('${j.id}')">mark paid</button>`:''}
+          <button class="act-btn danger" onclick="deleteJob('${j.id}')">delete</button>
+        </div></td>
       </tr>`).join('');
-  }
 
   const omSorted = [...otherMoney].sort((a,b) => b.date.localeCompare(a.date));
   const omWrap = document.getElementById('other-wrap');
   if (!omSorted.length) {
     omWrap.innerHTML = '<div class="empty-state">No entries yet.</div>';
   } else {
-    const rows = omSorted.map(e => {
-      const isExp = e.type === 'expense';
-      const amtStr = (isExp ? '-' : '+') + '$' + parseFloat(e.amount).toFixed(2);
-      const badgeCls = e.type === 'gift' ? 'badge-gift' : isExp ? 'badge-expense' : 'badge-income';
-      const badgeLbl = e.type === 'gift' ? 'Gift / birthday' : isExp ? 'Expense' : 'Income';
-      return `<tr>
-        <td class="mono">${fmt(e.date)}</td>
-        <td>${e.desc}</td>
-        <td class="mono" style="color:${isExp ? 'var(--red)' : 'var(--green)'}">${amtStr}</td>
-        <td><span class="badge ${badgeCls}">${badgeLbl}</span></td>
-        <td><div class="row-actions"><button class="act-btn danger" onclick="deleteOther('${e.id}')">delete</button></div></td>
-      </tr>`;
-    }).join('');
     omWrap.innerHTML = `<div class="table-wrap"><table>
-      <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Type</th><th style="text-align:right">Actions</th></tr></thead>
-      <tbody>${rows}</tbody></table></div>`;
+      <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Category</th><th style="text-align:right">Actions</th></tr></thead>
+      <tbody>${omSorted.map(e => {
+        const isExp = e.type==='expense';
+        const cls = e.type==='gift'?'badge-gift': isExp?'badge-expense':'badge-income';
+        const lbl = e.type==='gift'?'Gift / birthday': isExp?'Expense':'Income';
+        return `<tr>
+          <td class="mono">${fmt(e.date)}</td>
+          <td>${e.desc}</td>
+          <td class="mono ${isExp?'amount-neg':'amount-pos'}">${isExp?'-':'+'}$${parseFloat(e.amount).toFixed(2)}</td>
+          <td><span class="badge ${cls}">${lbl}</span></td>
+          <td><div class="row-actions"><button class="act-btn danger" onclick="deleteOther('${e.id}')">delete</button></div></td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
   }
 
-  const unpaid = lawnJobs.filter(j => j.status==='unpaid').reduce((s,j)=>s+getRate(j.client),0);
-  const check = lawnJobs.filter(j => j.status==='check').reduce((s,j)=>s+getRate(j.client),0);
-  const paid = lawnJobs.filter(j => j.status==='paid').reduce((s,j)=>s+getRate(j.client),0);
-  const gifts = otherMoney.filter(e=>e.type!=='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
+  const unpaid   = lawnJobs.filter(j=>j.status==='unpaid').reduce((s,j)=>s+getRate(j.client),0);
+  const check    = lawnJobs.filter(j=>j.status==='check').reduce((s,j)=>s+getRate(j.client),0);
+  const paidJobs = lawnJobs.filter(j=>j.status==='paid').reduce((s,j)=>s+getRate(j.client),0);
+  const income   = otherMoney.filter(e=>e.type!=='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
   const expenses = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
-  const cash = paid + gifts - expenses;
+  const netCash  = paidJobs + income - expenses;
 
   document.getElementById('summary').innerHTML = `
-    <div class="metric amber"><div class="metric-label">Unpaid (lawn)</div><div class="metric-value">$${unpaid}</div></div>
-    <div class="metric blue"><div class="metric-label">Check incoming</div><div class="metric-value">$${check}</div></div>
-    <div class="metric amber"><div class="metric-label">Total owed to you</div><div class="metric-value">$${unpaid+check}</div></div>
-    <div class="metric green"><div class="metric-label">Cash in hand</div><div class="metric-value">$${cash.toFixed(2)}</div></div>
+    <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${netCash.toFixed(2)}</div><div class="metric-sub">paid + income − expenses</div></div>
+    <div class="metric amber"><div class="metric-label">Owed to you</div><div class="metric-value">$${unpaid+check}</div><div class="metric-sub">${unpaid>0?'$'+unpaid+' unpaid':''}${unpaid>0&&check>0?' · ':''}${check>0?'$'+check+' by check':''}</div></div>
+    <div class="metric blue"><div class="metric-label">Total earned</div><div class="metric-value">$${(paidJobs+income).toFixed(2)}</div><div class="metric-sub">jobs + other income</div></div>
+    <div class="metric red"><div class="metric-label">Expenses</div><div class="metric-value">$${expenses.toFixed(2)}</div><div class="metric-sub">&nbsp;</div></div>
   `;
 
   document.getElementById('last-updated').innerHTML =
-    `Last updated<br>${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}<br>${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`;
+    `${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}<br>${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`;
 
   renderHistory();
 }
 
-function toggleForm(id) {
-  const el = document.getElementById(id);
-  el.classList.toggle('open');
+function renderHistory() {
+  const wrap = document.getElementById('history-wrap');
+  if (!historyLog.length) { wrap.innerHTML='<div class="empty-state">No history yet.</div>'; return; }
+  wrap.innerHTML = historyLog.map(h => {
+    const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client'}[h.type]||'dot-add';
+    const d = new Date(h.ts);
+    return `<div class="history-entry">
+      <div class="history-dot ${dc}"></div>
+      <div class="history-action">${h.message}</div>
+      <div class="history-time">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}<br>${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+    </div>`;
+  }).join('');
+}
+
+function clearHistory() {
+  if (!confirm('Clear all history?')) return;
+  historyLog=[]; save(); renderHistory(); toast('History cleared');
+}
+
+function toggleForm(id) { document.getElementById(id).classList.toggle('open'); }
+function toggleSection(id) { const el=document.getElementById(id); el.style.display=el.style.display==='none'?'':'none'; }
+
+function addClient() {
+  const name=document.getElementById('cl-name').value.trim();
+  const note=document.getElementById('cl-note').value.trim();
+  const rate=parseFloat(document.getElementById('cl-rate').value);
+  if (!name||isNaN(rate)||rate<=0) { alert('Please enter a name and rate.'); return; }
+  if (clients.find(c=>c.name.toLowerCase()===name.toLowerCase())) { alert('Client already exists.'); return; }
+  clients.push({id:'c'+Date.now(),name,note,rate});
+  logHistory('client',`Added client — ${name}${note?' ('+note+')':''} at $${rate}/job`);
+  save(); renderClients();
+  document.getElementById('cl-name').value='';
+  document.getElementById('cl-note').value='';
+  document.getElementById('cl-rate').value='';
+  toast('Client added ✓');
+}
+
+function deleteClient(id) {
+  const c=clients.find(c=>c.id===id);
+  if (!confirm(`Remove ${c.name}?`)) return;
+  clients=clients.filter(c=>c.id!==id);
+  logHistory('delete',`Removed client — ${c.name}`);
+  save(); renderClients(); render(); toast('Client removed');
 }
 
 function markPaid(id) {
-  const j = lawnJobs.find(j => j.id===id);
-  lawnJobs = lawnJobs.map(j => j.id===id ? {...j, status:'paid'} : j);
-  logHistory('paid', `Marked ${j.client} lawn (${fmt(j.date)}) as paid — $${getRate(j.client)}`);
+  const j=lawnJobs.find(j=>j.id===id);
+  lawnJobs=lawnJobs.map(j=>j.id===id?{...j,status:'paid'}:j);
+  logHistory('paid',`Marked ${j.client} job (${fmt(j.date)}) as paid — $${getRate(j.client)}`);
   save(); render(); toast('Marked as paid ✓');
 }
 
 function deleteJob(id) {
   if (!confirm('Delete this job?')) return;
-  const j = lawnJobs.find(j => j.id===id);
-  lawnJobs = lawnJobs.filter(j => j.id!==id);
-  logHistory('delete', `Deleted lawn job — ${j.client} on ${fmt(j.date)} ($${getRate(j.client)})`);
+  const j=lawnJobs.find(j=>j.id===id);
+  lawnJobs=lawnJobs.filter(j=>j.id!==id);
+  logHistory('delete',`Deleted job — ${j.client} on ${fmt(j.date)} ($${getRate(j.client)})`);
   save(); render(); toast('Job deleted');
 }
 
-function deleteOther(id) {
-  if (!confirm('Delete this entry?')) return;
-  const e = otherMoney.find(e => e.id===id);
-  otherMoney = otherMoney.filter(e => e.id!==id);
-  logHistory('delete', `Deleted entry — "${e.desc}" $${parseFloat(e.amount).toFixed(2)} (${e.type})`);
-  save(); render(); toast('Entry deleted');
-}
-
 function addLawnJob() {
-  const client = document.getElementById('lj-client').value;
-  const date = document.getElementById('lj-date').value;
-  const status = document.getElementById('lj-status').value;
+  const client=document.getElementById('lj-client').value;
+  const date=document.getElementById('lj-date').value;
+  const status=document.getElementById('lj-status').value;
   if (!date) { alert('Please select a date.'); return; }
-  lawnJobs.push({id:'l'+Date.now(), client, date, status});
-  logHistory('add', `Added lawn job — ${client} on ${fmt(date)}, status: ${status} ($${getRate(client)})`);
+  lawnJobs.push({id:'l'+Date.now(),client,date,status});
+  logHistory('add',`Added job — ${client} on ${fmt(date)}, ${status} ($${getRate(client)})`);
   save(); render();
-  document.getElementById('lj-date').value = '';
+  document.getElementById('lj-date').value='';
   toast('Job added ✓');
 }
 
 function addOtherMoney() {
-  const desc = document.getElementById('om-desc').value.trim();
-  const date = document.getElementById('om-date').value;
-  const type = document.getElementById('om-type').value;
-  const amount = parseFloat(document.getElementById('om-amount').value);
-  if (!desc || !date || isNaN(amount) || amount <= 0) { alert('Please fill in all fields.'); return; }
-  otherMoney.push({id:'o'+Date.now(), desc, date, type, amount});
-  logHistory('other', `Added ${type} entry — "${desc}" $${amount.toFixed(2)} on ${fmt(date)}`);
+  const desc=document.getElementById('om-desc').value.trim();
+  const date=document.getElementById('om-date').value;
+  const type=document.getElementById('om-type').value;
+  const amount=parseFloat(document.getElementById('om-amount').value);
+  if (!desc||!date||isNaN(amount)||amount<=0) { alert('Please fill in all fields.'); return; }
+  otherMoney.push({id:'o'+Date.now(),desc,date,type,amount});
+  logHistory('other',`Added ${type} — "${desc}" $${amount.toFixed(2)} on ${fmt(date)}`);
   save(); render();
-  document.getElementById('om-desc').value = '';
-  document.getElementById('om-date').value = '';
-  document.getElementById('om-amount').value = '';
+  document.getElementById('om-desc').value='';
+  document.getElementById('om-date').value='';
+  document.getElementById('om-amount').value='';
   toast('Entry added ✓');
+}
+
+function deleteOther(id) {
+  if (!confirm('Delete this entry?')) return;
+  const e=otherMoney.find(e=>e.id===id);
+  otherMoney=otherMoney.filter(e=>e.id!==id);
+  logHistory('delete',`Deleted entry — "${e.desc}" $${parseFloat(e.amount).toFixed(2)}`);
+  save(); render(); toast('Entry deleted');
 }
 
 let toastTimer;
 function toast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2200);
 }
 
 render();
