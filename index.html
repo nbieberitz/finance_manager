@@ -11,9 +11,9 @@
   --surface: #141714;
   --surface2: #1C201C;
   --surface3: #232823;
-  --accent: #4ADE80;
-  --accent-dim: #22C55E;
-  --accent-pale: #052E16;
+  --accent: #F59E0B;
+  --accent-dim: #D97706;
+  --accent-pale: #1C1000;
   --text: #E8EDE9;
   --text-muted: #7A8C7D;
   --text-faint: #3D4D3F;
@@ -57,7 +57,7 @@ header {
   font-family: 'Syne', sans-serif;
   font-size: 1.6rem;
   font-weight: 600;
-  color: var(--accent);
+  color: #4ADE80;
   letter-spacing: -0.02em;
   line-height: 1;
 }
@@ -279,10 +279,10 @@ tr:hover td { background: var(--surface2); }
 
 .badge-unpaid { background: var(--amber-pale); color: var(--amber); border: 1px solid #3D2800; }
 .badge-check { background: var(--blue-pale); color: var(--blue); border: 1px solid #0F2040; }
-.badge-paid { background: var(--accent-pale); color: var(--accent); border: 1px solid #0A3D1A; }
+.badge-paid { background: var(--accent-pale); color: var(--accent); border: 1px solid #3D2800; }
 .badge-gift { background: var(--purple-pale); color: var(--purple); border: 1px solid #2A1040; }
 .badge-expense { background: var(--red-pale); color: var(--red); border: 1px solid #3D0A0A; }
-.badge-income { background: var(--accent-pale); color: var(--accent); border: 1px solid #0A3D1A; }
+.badge-income { background: var(--accent-pale); color: var(--accent); border: 1px solid #3D2800; }
 
 .row-actions { display: flex; gap: 5px; justify-content: flex-end; }
 
@@ -301,8 +301,22 @@ tr:hover td { background: var(--surface2); }
 .act-btn:hover { background: var(--surface3); color: var(--text); }
 .act-btn.danger { color: var(--red); border-color: #3D0A0A; }
 .act-btn.danger:hover { background: var(--red-pale); }
-.act-btn.success { color: var(--accent); border-color: #0A3D1A; }
-.act-btn.success:hover { background: var(--accent-pale); }
+.act-btn.success { color: #4ADE80; border-color: #0A3D1A; }
+.act-btn.success:hover { background: #052E16; }
+.act-btn.edit { color: var(--blue); border-color: #0F2040; }
+.act-btn.edit:hover { background: var(--blue-pale); }
+.act-btn.save { color: var(--accent); border-color: #3D2800; }
+.act-btn.save:hover { background: var(--accent-pale); }
+
+/* Inline edit row */
+.edit-row td { padding: 8px 1.25rem; background: var(--surface2); }
+.edit-row input, .edit-row select {
+  font-size: 12px;
+  padding: 5px 8px;
+  width: 100%;
+  min-width: 60px;
+}
+.edit-row .row-actions { margin-top: 0; }
 
 .empty-state {
   padding: 2rem;
@@ -377,9 +391,9 @@ tr:hover td { background: var(--surface2); }
 <header>
   <div class="logo">
     <h1>Finance Manager</h1>
-    <span>Nathaniel's personal ledger</span>
+
   </div>
-  <div id="last-updated"></div>
+
 </header>
 
 <div class="container">
@@ -394,7 +408,7 @@ tr:hover td { background: var(--surface2); }
         Clients
       </div>
       <div class="header-actions">
-        <button class="pill-btn" tabindex="-1">+ Add client</button>
+        <button class="pill-btn" style="color:#4ADE80;border-color:#0A3D1A;background:#052E16" tabindex="-1">+ Add client</button>
       </div>
     </div>
     <div class="add-form" id="client-form">
@@ -419,7 +433,7 @@ tr:hover td { background: var(--surface2); }
         Jobs
       </div>
       <div class="header-actions">
-        <button class="pill-btn" tabindex="-1">+ Add job</button>
+        <button class="pill-btn" style="color:#4ADE80;border-color:#0A3D1A;background:#052E16" tabindex="-1">+ Add job</button>
       </div>
     </div>
     <div class="add-form" id="lawn-form">
@@ -530,12 +544,14 @@ let clients    = JSON.parse(localStorage.getItem('ll_clients') || 'null') || SEE
 let lawnJobs   = JSON.parse(localStorage.getItem('ll_lawn')    || 'null') || SEED_JOBS;
 let otherMoney = JSON.parse(localStorage.getItem('ll_other')   || '[]');
 let historyLog = JSON.parse(localStorage.getItem('ll_history') || '[]');
+let balances   = JSON.parse(localStorage.getItem('ll_balances')|| '{"bank":0,"cash":0}');
 
 function save() {
   localStorage.setItem('ll_clients', JSON.stringify(clients));
   localStorage.setItem('ll_lawn',    JSON.stringify(lawnJobs));
   localStorage.setItem('ll_other',   JSON.stringify(otherMoney));
   localStorage.setItem('ll_history', JSON.stringify(historyLog));
+  localStorage.setItem('ll_balances',JSON.stringify(balances));
 }
 
 function getRate(name) { const c = clients.find(c => c.name===name); return c ? c.rate : 0; }
@@ -561,28 +577,57 @@ function renderClients() {
   if (!clients.length) { wrap.innerHTML = '<div class="empty-state">No clients yet.</div>'; refreshClientDropdown(); return; }
   wrap.innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>Name</th><th>Note</th><th>Rate / job</th><th style="text-align:right">Actions</th></tr></thead>
-    <tbody>${clients.map(c=>`
-      <tr>
+    <tbody id="clients-tbody">${clients.map(c=>`
+      <tr id="crow-${c.id}">
         <td style="font-weight:500">${c.name}</td>
         <td style="color:var(--text-muted)">${c.note||'—'}</td>
         <td class="mono amount-pos">$${c.rate}</td>
-        <td><div class="row-actions"><button class="act-btn danger" onclick="deleteClient('${c.id}')">remove</button></div></td>
+        <td><div class="row-actions">
+          <button class="act-btn edit" onclick="editClient('${c.id}')">edit</button>
+          <button class="act-btn danger" onclick="deleteClient('${c.id}')">remove</button>
+        </div></td>
       </tr>`).join('')}
     </tbody></table></div>`;
   refreshClientDropdown();
 }
 
+function editClient(id) {
+  const c = clients.find(c=>c.id===id);
+  const row = document.getElementById('crow-'+id);
+  row.classList.add('edit-row');
+  row.innerHTML = `
+    <td><input id="ec-name-${id}" value="${c.name}" /></td>
+    <td><input id="ec-note-${id}" value="${c.note||''}" placeholder="optional" /></td>
+    <td><input id="ec-rate-${id}" type="number" value="${c.rate}" min="0" step="0.01" /></td>
+    <td><div class="row-actions">
+      <button class="act-btn save" onclick="saveClient('${id}')">save</button>
+      <button class="act-btn" onclick="renderClients()">cancel</button>
+    </div></td>`;
+}
+
+function saveClient(id) {
+  const name = document.getElementById('ec-name-'+id).value.trim();
+  const note = document.getElementById('ec-note-'+id).value.trim();
+  const rate = parseFloat(document.getElementById('ec-rate-'+id).value);
+  if (!name || isNaN(rate) || rate < 0) { alert('Name and valid rate required.'); return; }
+  const old = clients.find(c=>c.id===id);
+  clients = clients.map(c => c.id===id ? {...c, name, note, rate} : c);
+  logHistory('client', `Edited client — ${old.name} → ${name}, $${old.rate} → $${rate}/job`);
+  save(); renderClients(); render(); toast('Client updated ✓');
+}
+
 function render() {
-  const sorted = [...lawnJobs].sort((a,b) => b.date.localeCompare(a.date));
+  const sorted = [...lawnJobs].filter(j=>j.status!=='paid').sort((a,b) => b.date.localeCompare(a.date));
   const tbody = document.getElementById('lawn-tbody');
   tbody.innerHTML = !sorted.length
     ? '<tr><td colspan="5"><div class="empty-state">No jobs yet.</div></td></tr>'
-    : sorted.map(j => `<tr>
+    : sorted.map(j => `<tr id="jrow-${j.id}">
         <td class="mono">${fmt(j.date)}</td>
         <td>${j.client}</td>
         <td class="mono amount-pos">$${getRate(j.client)}</td>
         <td>${statusBadge(j.status)}</td>
         <td><div class="row-actions">
+          <button class="act-btn edit" onclick="editJob('${j.id}')">edit</button>
           ${j.status!=='paid'?`<button class="act-btn success" onclick="markPaid('${j.id}')">mark paid</button>`:''}
           <button class="act-btn danger" onclick="deleteJob('${j.id}')">delete</button>
         </div></td>
@@ -599,12 +644,15 @@ function render() {
         const isExp = e.type==='expense';
         const cls = e.type==='gift'?'badge-gift': isExp?'badge-expense':'badge-income';
         const lbl = e.type==='gift'?'Gift / birthday': isExp?'Expense':'Income';
-        return `<tr>
+        return `<tr id="orow-${e.id}">
           <td class="mono">${fmt(e.date)}</td>
           <td>${e.desc}</td>
           <td class="mono ${isExp?'amount-neg':'amount-pos'}">${isExp?'-':'+'}$${parseFloat(e.amount).toFixed(2)}</td>
           <td><span class="badge ${cls}">${lbl}</span></td>
-          <td><div class="row-actions"><button class="act-btn danger" onclick="deleteOther('${e.id}')">delete</button></div></td>
+          <td><div class="row-actions">
+            <button class="act-btn edit" onclick="editOther('${e.id}')">edit</button>
+            <button class="act-btn danger" onclick="deleteOther('${e.id}')">delete</button>
+          </div></td>
         </tr>`;
       }).join('')}</tbody></table></div>`;
   }
@@ -621,12 +669,19 @@ function render() {
     <div class="metric amber"><div class="metric-label">Owed to you</div><div class="metric-value">$${unpaid+check}</div><div class="metric-sub">${unpaid>0?'$'+unpaid+' unpaid':''}${unpaid>0&&check>0?' · ':''}${check>0?'$'+check+' by check':''}</div></div>
     <div class="metric blue"><div class="metric-label">Total earned</div><div class="metric-value">$${(paidJobs+income).toFixed(2)}</div><div class="metric-sub">jobs + other income</div></div>
     <div class="metric red"><div class="metric-label">Expenses</div><div class="metric-value">$${expenses.toFixed(2)}</div><div class="metric-sub">&nbsp;</div></div>
+    <div class="metric purple" id="bal-bank-card" title="Click to edit" style="cursor:pointer" onclick="editBalance('bank')">
+      <div class="metric-label">In bank</div>
+      <div class="metric-value" id="bal-bank-val">$${parseFloat(balances.bank).toFixed(2)}</div>
+      <div class="metric-sub">click to update</div>
+    </div>
+    <div class="metric" id="bal-cash-card" title="Click to edit" style="cursor:pointer;--mv-color:var(--amber)" onclick="editBalance('cash')">
+      <div class="metric-label">Cash on hand</div>
+      <div class="metric-value" id="bal-cash-val" style="color:var(--amber)">$${parseFloat(balances.cash).toFixed(2)}</div>
+      <div class="metric-sub">click to update</div>
+    </div>
   `;
 
-  document.getElementById('last-updated').innerHTML =
-    `${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}<br>${new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`;
-
-  renderHistory();
+renderHistory();
 }
 
 function renderHistory() {
@@ -635,12 +690,45 @@ function renderHistory() {
   wrap.innerHTML = historyLog.map(h => {
     const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client'}[h.type]||'dot-add';
     const d = new Date(h.ts);
-    return `<div class="history-entry">
+    return `<div class="history-entry" id="hrow-${h.id}">
       <div class="history-dot ${dc}"></div>
       <div class="history-action">${h.message}</div>
       <div class="history-time">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}<br>${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+      <div class="row-actions" style="flex-shrink:0;margin-left:8px">
+        ${h.type==='paid' && h.jobId ? `<button class="act-btn" style="color:var(--amber);border-color:#3D2800" onclick="undoPaid('${h.id}')">undo</button>` : ''}
+        <button class="act-btn edit" onclick="editHistory('${h.id}')">edit</button>
+        <button class="act-btn danger" onclick="deleteHistory('${h.id}')">delete</button>
+      </div>
     </div>`;
   }).join('');
+}
+
+function editHistory(id) {
+  const h = historyLog.find(h=>h.id===id);
+  const row = document.getElementById('hrow-'+id);
+  const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client'}[h.type]||'dot-add';
+  const d = new Date(h.ts);
+  row.innerHTML = `
+    <div class="history-dot ${dc}"></div>
+    <div style="flex:1"><input id="hmsg-${id}" value="${h.message.replace(/"/g,'&quot;')}" style="width:100%;font-size:12px;padding:5px 8px" /></div>
+    <div class="history-time">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}<br>${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+    <div class="row-actions" style="flex-shrink:0;margin-left:8px">
+      <button class="act-btn save" onclick="saveHistory('${id}')">save</button>
+      <button class="act-btn" onclick="renderHistory()">cancel</button>
+    </div>`;
+}
+
+function saveHistory(id) {
+  const msg = document.getElementById('hmsg-'+id).value.trim();
+  if (!msg) { alert('Message cannot be empty.'); return; }
+  historyLog = historyLog.map(h => h.id===id ? {...h, message: msg} : h);
+  save(); renderHistory(); toast('Log entry updated ✓');
+}
+
+function deleteHistory(id) {
+  if (!confirm('Delete this log entry?')) return;
+  historyLog = historyLog.filter(h=>h.id!==id);
+  save(); renderHistory(); toast('Log entry deleted');
 }
 
 function clearHistory() {
@@ -676,9 +764,23 @@ function deleteClient(id) {
 
 function markPaid(id) {
   const j=lawnJobs.find(j=>j.id===id);
+  const prev=j.status;
   lawnJobs=lawnJobs.map(j=>j.id===id?{...j,status:'paid'}:j);
-  logHistory('paid',`Marked ${j.client} job (${fmt(j.date)}) as paid — $${getRate(j.client)}`);
+  historyLog.unshift({ id:'h'+Date.now(), type:'paid', message:`Marked ${j.client} job (${fmt(j.date)}) as paid — $${getRate(j.client)}`, ts: new Date().toISOString(), jobId:id, prevStatus:prev });
+  if (historyLog.length > 300) historyLog = historyLog.slice(0, 300);
   save(); render(); toast('Marked as paid ✓');
+}
+
+function undoPaid(hid) {
+  const h = historyLog.find(h=>h.id===hid);
+  if (!h || !h.jobId) return;
+  const job = lawnJobs.find(j=>j.id===h.jobId);
+  if (!job) { toast('Job no longer exists'); return; }
+  const restore = h.prevStatus || 'unpaid';
+  lawnJobs = lawnJobs.map(j=>j.id===h.jobId ? {...j, status:restore} : j);
+  historyLog = historyLog.filter(h=>h.id!==hid);
+  logHistory('add', `Undid payment — ${job.client} job (${fmt(job.date)}) restored to ${restore}`);
+  save(); render(); toast('Payment undone ✓');
 }
 
 function deleteJob(id) {
@@ -722,6 +824,100 @@ function deleteOther(id) {
   otherMoney=otherMoney.filter(e=>e.id!==id);
   logHistory('delete',`Deleted entry — "${e.desc}" $${parseFloat(e.amount).toFixed(2)}`);
   save(); render(); toast('Entry deleted');
+}
+
+function editJob(id) {
+  const j = lawnJobs.find(j=>j.id===id);
+  const row = document.getElementById('jrow-'+id);
+  row.classList.add('edit-row');
+  const clientOpts = clients.map(c=>`<option value="${c.name}"${c.name===j.client?' selected':''}>${c.name}</option>`).join('');
+  row.innerHTML = `
+    <td><input id="ej-date-${id}" type="date" value="${j.date}" /></td>
+    <td><select id="ej-client-${id}">${clientOpts}</select></td>
+    <td class="mono amount-pos">$${getRate(j.client)}</td>
+    <td><select id="ej-status-${id}">
+      <option value="unpaid"${j.status==='unpaid'?' selected':''}>Unpaid</option>
+      <option value="check"${j.status==='check'?' selected':''}>Check coming</option>
+      <option value="paid"${j.status==='paid'?' selected':''}>Paid</option>
+    </select></td>
+    <td><div class="row-actions">
+      <button class="act-btn save" onclick="saveJob('${id}')">save</button>
+      <button class="act-btn" onclick="render()">cancel</button>
+    </div></td>`;
+}
+
+function saveJob(id) {
+  const date   = document.getElementById('ej-date-'+id).value;
+  const client = document.getElementById('ej-client-'+id).value;
+  const status = document.getElementById('ej-status-'+id).value;
+  if (!date) { alert('Date required.'); return; }
+  const old = lawnJobs.find(j=>j.id===id);
+  lawnJobs = lawnJobs.map(j => j.id===id ? {...j, date, client, status} : j);
+  logHistory('add', `Edited job — ${old.client} ${fmt(old.date)} → ${client} ${fmt(date)}, ${status}`);
+  save(); render(); toast('Job updated ✓');
+}
+
+function editOther(id) {
+  const e = otherMoney.find(e=>e.id===id);
+  const row = document.getElementById('orow-'+id);
+  row.classList.add('edit-row');
+  row.innerHTML = `
+    <td><input id="eo-date-${id}" type="date" value="${e.date}" /></td>
+    <td><input id="eo-desc-${id}" value="${e.desc}" /></td>
+    <td><input id="eo-amount-${id}" type="number" value="${e.amount}" min="0" step="0.01" style="width:90px" /></td>
+    <td><select id="eo-type-${id}">
+      <option value="gift"${e.type==='gift'?' selected':''}>Gift / birthday</option>
+      <option value="income"${e.type==='income'?' selected':''}>Other income</option>
+      <option value="expense"${e.type==='expense'?' selected':''}>Expense</option>
+    </select></td>
+    <td><div class="row-actions">
+      <button class="act-btn save" onclick="saveOther('${id}')">save</button>
+      <button class="act-btn" onclick="render()">cancel</button>
+    </div></td>`;
+}
+
+function saveOther(id) {
+  const date   = document.getElementById('eo-date-'+id).value;
+  const desc   = document.getElementById('eo-desc-'+id).value.trim();
+  const amount = parseFloat(document.getElementById('eo-amount-'+id).value);
+  const type   = document.getElementById('eo-type-'+id).value;
+  if (!date || !desc || isNaN(amount) || amount < 0) { alert('All fields required.'); return; }
+  const old = otherMoney.find(e=>e.id===id);
+  otherMoney = otherMoney.map(e => e.id===id ? {...e, date, desc, amount, type} : e);
+  logHistory('other', `Edited entry — "${old.desc}" → "${desc}" $${amount.toFixed(2)}`);
+  save(); render(); toast('Entry updated ✓');
+}
+
+function editBalance(key) {
+  const label = key === 'bank' ? 'In bank' : 'Cash on hand';
+  const cardId = key === 'bank' ? 'bal-bank-card' : 'bal-cash-card';
+  const color  = key === 'bank' ? 'var(--purple)' : 'var(--amber)';
+  const card   = document.getElementById(cardId);
+  const prev   = parseFloat(balances[key]) || 0;
+  card.onclick = null;
+  card.innerHTML = `
+    <div class="metric-label">${label}</div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+      <span style="font-family:'JetBrains Mono',monospace;font-size:1rem;color:${color}">$</span>
+      <input id="bal-input-${key}" type="number" min="0" step="0.01" value="${prev.toFixed(2)}"
+        style="font-family:'JetBrains Mono',monospace;font-size:1.1rem;width:100%;padding:3px 6px;color:${color};background:var(--surface3);border:1px solid ${color};border-radius:6px"
+        onkeydown="if(event.key==='Enter')saveBalance('${key}');if(event.key==='Escape')render();"
+        autofocus />
+    </div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="act-btn save" style="font-size:10px;padding:2px 8px" onclick="saveBalance('${key}')">save</button>
+      <button class="act-btn" style="font-size:10px;padding:2px 8px" onclick="render()">cancel</button>
+    </div>`;
+  setTimeout(()=>{ const inp=document.getElementById('bal-input-'+key); if(inp){inp.focus();inp.select();} }, 50);
+}
+
+function saveBalance(key) {
+  const val = parseFloat(document.getElementById('bal-input-'+key).value);
+  if (isNaN(val) || val < 0) { alert('Enter a valid amount.'); return; }
+  const label = key === 'bank' ? 'bank' : 'cash';
+  logHistory('other', `Updated ${label} balance — $${val.toFixed(2)}`);
+  balances[key] = val;
+  save(); render(); toast(`${key==='bank'?'Bank':'Cash'} updated ✓`);
 }
 
 let toastTimer;
