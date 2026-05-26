@@ -533,32 +533,6 @@ tr:hover td { background: var(--surface2); }
 <div class="toast" id="toast"></div>
 
 <script>
-const SEED_CLIENTS = [
-  {id:'c1', name:'G', note:'Grandma', rate:25},
-  {id:'c2', name:'GG', note:'Great-Grandfather', rate:25},
-  {id:'c3', name:'Miss Joey', note:'', rate:35},
-];
-
-const SEED_JOBS = [
-  {id:'l1',client:'Miss Joey',date:'2026-05-10',status:'unpaid'},
-  {id:'l2',client:'G',date:'2026-05-15',status:'unpaid'},
-  {id:'l3',client:'GG',date:'2026-05-15',status:'unpaid'},
-  {id:'l4',client:'GG',date:'2026-04-24',status:'unpaid'},
-  {id:'l5',client:'GG',date:'2026-05-01',status:'unpaid'},
-  {id:'l6',client:'GG',date:'2026-05-08',status:'unpaid'},
-  {id:'l7',client:'GG',date:'2026-03-20',status:'check'},
-  {id:'l8',client:'GG',date:'2026-04-05',status:'check'},
-  {id:'l9',client:'GG',date:'2026-04-10',status:'check'},
-  {id:'l10',client:'GG',date:'2026-04-17',status:'check'},
-  {id:'l11',client:'G',date:'2026-03-20',status:'unpaid'},
-  {id:'l12',client:'G',date:'2026-04-05',status:'unpaid'},
-  {id:'l13',client:'G',date:'2026-04-10',status:'unpaid'},
-  {id:'l14',client:'G',date:'2026-04-17',status:'unpaid'},
-  {id:'l15',client:'G',date:'2026-04-24',status:'unpaid'},
-  {id:'l16',client:'G',date:'2026-05-01',status:'unpaid'},
-  {id:'l17',client:'G',date:'2026-05-08',status:'unpaid'},
-];
-
 // ── Firebase ──────────────────────────────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyCbN_krdSpUY3fB6lXYwK7dwyo4HiXY_Ks",
@@ -579,15 +553,13 @@ async function loadFromFirestore() {
   const snap = await userDoc().get();
   if (snap.exists) {
     const d = snap.data();
-    clients    = d.clients    || SEED_CLIENTS;
-    lawnJobs   = d.lawnJobs   || SEED_JOBS;
+    clients    = d.clients    || [];
+    lawnJobs   = d.lawnJobs   || [];
     otherMoney = d.otherMoney || [];
     historyLog = d.historyLog || [];
     balances   = d.balances   || { bank: 0, cash: 0 };
   } else {
-    // First sign-in — seed defaults
-    clients = SEED_CLIENTS; lawnJobs = SEED_JOBS;
-    otherMoney = []; historyLog = []; balances = { bank: 0, cash: 0 };
+    clients = []; lawnJobs = []; otherMoney = []; historyLog = []; balances = { bank: 0, cash: 0 };
     await saveToFirestore();
   }
   render(); renderClients(); renderHistory();
@@ -635,8 +607,8 @@ function signOut() {
 }
 
 // ── App data ──────────────────────────────────────────────
-let clients    = SEED_CLIENTS;
-let lawnJobs   = SEED_JOBS;
+let clients    = [];
+let lawnJobs   = [];
 let otherMoney = [];
 let historyLog = [];
 let balances   = { bank: 0, cash: 0 };
