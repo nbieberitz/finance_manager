@@ -1320,7 +1320,8 @@ function saveBalance(key) {
   const val = parseFloat(document.getElementById('bal-input-'+key).value);
   if (isNaN(val) || val < 0) { alert('Enter a valid amount.'); return; }
   const label = key === 'bank' ? 'bank' : 'cash';
-  logHistory('other', `Updated ${label} balance — $${val.toFixed(2)}`);
+  const prev = parseFloat(balances[key]) || 0;
+  logHistory('other', `Updated ${label} balance — $${prev.toFixed(2)} → $${val.toFixed(2)}`);
   balances[key] = val;
   save(); render(); toast(`${key==='bank'?'Bank':'Cash'} updated ✓`);
 }
