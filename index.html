@@ -892,6 +892,7 @@ function addClient() {
   if (clients.find(c=>c.name.toLowerCase()===name.toLowerCase())) { alert('Client already exists.'); return; }
   clients.push({id:'c'+Date.now(),name,note,rate});
   logHistory('client',`Added client — ${name}${note?' ('+note+')':''} at $${rate}/job`);
+  document.getElementById('client-form').classList.remove('open');
   save(); renderClients();
   document.getElementById('cl-name').value='';
   document.getElementById('cl-note').value='';
