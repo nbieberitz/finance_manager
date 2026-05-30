@@ -1211,7 +1211,9 @@ function addOtherMoney() {
   const date=document.getElementById('om-date').value;
   const type=document.getElementById('om-type').value;
   const amount=parseFloat(document.getElementById('om-amount').value);
-  if (!desc||!date||isNaN(amount)||amount<=0) { alert('Please fill in all fields.'); return; }
+  if (!desc) { alert('Please enter a description.'); return; }
+  if (!date) { alert('Please enter a valid date.'); return; }
+  if (isNaN(amount) || amount <= 0) { alert('Please enter a valid amount greater than 0.'); return; }
   otherMoney.push({id:'o'+Date.now(),desc,date,type,amount});
   logHistory('other',`Added ${type} — "${desc}" $${amount.toFixed(2)} on ${fmt(date)}`);
   save(); render();
