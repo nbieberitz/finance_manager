@@ -605,6 +605,7 @@ tr:hover td { background: var(--surface2); }
 
 <div id="payment-modal" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.88);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:var(--surface2);border:1px solid var(--border-mid);border-radius:var(--radius);padding:1.75rem 1.5rem;min-width:260px;display:flex;flex-direction:column;gap:1.25rem;">
+    <div id="pm-job-info" style="display:none;background:var(--surface3);border:1px solid var(--border-mid);border-radius:var(--radius-sm);padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);line-height:1.8;"></div>
     <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:var(--text);letter-spacing:0.04em">How was this paid?</div>
     <div style="display:flex;gap:8px;">
       <button id="pm-cash" class="btn btn-ghost" style="flex:1;color:#4ADE80;border-color:#0A3D1A">Cash</button>
@@ -993,7 +994,7 @@ async function bulkMarkPaid() {
   if (method === 'individual') {
     // Prompt cash/bank for each job one at a time
     for (const j of jobs) {
-      const m = await promptPaymentMethod(false);
+      const m = await promptPaymentMethod(false, j);
       if (!m) continue; // skip this job if cancelled
       const amount = jobAmount(j);
       const prev = j.status;
@@ -1053,11 +1054,21 @@ function bulkDelete() {
   save(); render(); updateBulkBar(); toast(`${jobs.length} job${jobs.length > 1 ? 's' : ''} deleted`);
 }
 
-function promptPaymentMethod(showIndividual = false) {
+function promptPaymentMethod(showIndividual = false, job = null) {
   return new Promise(resolve => {
     const modal = document.getElementById('payment-modal');
     const indBtn = document.getElementById('pm-individual');
+    const jobInfo = document.getElementById('pm-job-info');
     indBtn.style.display = showIndividual ? 'block' : 'none';
+    if (job) {
+      const statusLabel = {unpaid:'Unpaid', check:'Check coming', paid:'Paid'}[job.status] || job.status;
+      jobInfo.style.display = 'block';
+      jobInfo.innerHTML =
+        `<span style="color:var(--text)">${job.client}</span><br>` +
+        `${fmt(job.date)} &nbsp;·&nbsp; ${statusLabel} &nbsp;·&nbsp; <span style="color:#4ADE80">$${jobAmount(job)}</span>`;
+    } else {
+      jobInfo.style.display = 'none';
+    }
     modal.style.display = 'flex';
     const close = (val) => { modal.style.display = 'none'; resolve(val); };
     document.getElementById('pm-cash').onclick     = () => close('cash');
