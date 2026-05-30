@@ -681,8 +681,9 @@ function renderClients() {
 
     const jobRows = clientJobs.map(j => `
       <tr id="jrow-${j.id}">
-        <td style="width:32px"><input type="checkbox" class="job-cb" data-id="${j.id}" onclick="updateBulkBar()" style="cursor:pointer;width:13px;height:13px;accent-color:#4ADE80" /></td>
+        <td style="width:32px"><input type="checkbox" class="job-cb" data-id="${j.id}" onclick="updateBulkBar()" /></td>
         <td class="mono">${fmt(j.date)}</td>
+        <td style="color:var(--text-muted);font-size:12px">${j.client}</td>
         <td class="mono amount-pos">$${jobAmount(j)}</td>
         <td>${statusBadge(j.status)}</td>
         <td><div class="row-actions">
@@ -718,7 +719,7 @@ function renderClients() {
                   <span style="font-size:10px;color:var(--text-muted);font-weight:500;letter-spacing:.05em;cursor:pointer" onclick="document.getElementById('select-all-${c.id}').click()">SELECT ALL</span>
                 </div>
               </th>
-              <th>AMOUNT</th><th>STATUS</th><th style="text-align:right">ACTIONS</th>
+              <th>CLIENT</th><th>AMOUNT</th><th>STATUS</th><th style="text-align:right">ACTIONS</th>
             </tr></thead>
             <tbody>${jobRows}</tbody>
           </table>
@@ -1054,9 +1055,11 @@ function editJob(id) {
   const j = lawnJobs.find(j=>j.id===id);
   const row = document.getElementById('jrow-'+id);
   row.classList.add('edit-row');
+  const clientOpts = clients.map(c=>`<option value="${c.name}"${c.name===j.client?' selected':''}>${c.name}</option>`).join('');
   row.innerHTML = `
     <td></td>
     <td><input id="ej-date-${id}" type="date" value="${j.date}" /></td>
+    <td><select id="ej-client-${id}">${clientOpts}</select></td>
     <td><input id="ej-amount-${id}" type="number" value="${jobAmount(j)}" min="0" step="0.01" /></td>
     <td><select id="ej-status-${id}">
       <option value="unpaid"${j.status==='unpaid'?' selected':''}>Unpaid</option>
@@ -1071,16 +1074,17 @@ function editJob(id) {
 
 function saveJob(id) {
   const date   = document.getElementById('ej-date-'+id).value;
+  const client = document.getElementById('ej-client-'+id).value;
   const status = document.getElementById('ej-status-'+id).value;
   const amount = parseFloat(document.getElementById('ej-amount-'+id).value);
   if (!date) { alert('Date required.'); return; }
   if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
   const old = lawnJobs.find(j=>j.id===id);
-  lawnJobs = lawnJobs.map(j => j.id===id ? {...j, date, status, amount} : j);
-  logHistory('add', `Edited job — ${old.client} ${fmt(old.date)} → ${fmt(date)}, $${amount}, ${status}`);
+  lawnJobs = lawnJobs.map(j => j.id===id ? {...j, date, client, status, amount} : j);
+  logHistory('add', `Edited job — ${old.client} ${fmt(old.date)} → ${client} ${fmt(date)}, $${amount}, ${status}`);
   save();
   renderClients();
-  const c = clients.find(c => c.name === old.client);
+  const c = clients.find(c => c.name === client) || clients.find(c => c.name === old.client);
   if (c) { const p = document.getElementById('jobs-panel-'+c.id); if (p) p.classList.add('open'); }
   toast('Job updated ✓');
 }
