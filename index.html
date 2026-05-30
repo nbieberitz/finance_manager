@@ -418,6 +418,7 @@ tr:hover td { background: var(--surface2); }
 .history-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); white-space: nowrap; margin-top: 3px; }
 
 #history-body { max-height: 340px; overflow-y: auto; }
+#other-wrap { max-height: 210px; overflow-y: auto; }
 
 .divider {
   height: 1px;
@@ -601,6 +602,21 @@ tr:hover td { background: var(--surface2); }
 <div id="loading-overlay">
   <div class="loading-spinner"></div>
   <div class="loading-text">LOADING…</div>
+</div>
+
+<div id="full-other-modal" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.88);backdrop-filter:blur(4px);z-index:9998;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;">
+  <div style="background:var(--surface);border:1px solid var(--border-mid);border-radius:var(--radius);width:100%;max-width:860px;display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0.9rem 1.25rem;border-bottom:1px solid var(--border);background:var(--surface2);">
+      <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:500;letter-spacing:0.06em;color:var(--text-muted);text-transform:uppercase">Income &amp; Expenses — Full History</div>
+      <button class="pill-btn" onclick="closeFullOther()">✕ Close</button>
+    </div>
+    <div id="fo-entries" style="max-height:70vh;overflow-y:auto;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 1.25rem;border-top:1px solid var(--border);background:var(--surface2);">
+      <button class="pill-btn" id="fo-prev" onclick="showFullOther(fullOtherPage-1)">← Prev</button>
+      <span id="fo-page-info" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
+      <button class="pill-btn" id="fo-next" onclick="showFullOther(fullOtherPage+1)">Next →</button>
+    </div>
+  </div>
 </div>
 
 <div id="full-history-modal" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.88);backdrop-filter:blur(4px);z-index:9998;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;">
@@ -859,24 +875,19 @@ function render() {
   if (!omSorted.length) {
     omWrap.innerHTML = '<div class="empty-state">No entries yet.</div>';
   } else {
+    const displayed = omSorted.slice(0, 30);
     omWrap.innerHTML = `<div class="table-wrap"><table>
       <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Category</th><th style="text-align:right">Actions</th></tr></thead>
-      <tbody>${omSorted.map(e => {
-        const isExp = e.type==='expense';
-        const cls = e.type==='gift'?'badge-gift': isExp?'badge-expense':'badge-income';
-        const lbl = e.type==='gift'?'Gift / birthday': isExp?'Expense':'Income';
-        return `<tr id="orow-${e.id}">
-          <td class="mono">${fmt(e.date)}</td>
-          <td>${e.desc}</td>
-          <td class="mono ${isExp?'amount-neg':'amount-pos'}">${isExp?'-':'+'}$${parseFloat(e.amount).toFixed(2)}</td>
-          <td><span class="badge ${cls}">${lbl}</span></td>
-          <td><div class="row-actions">
-            <button class="act-btn edit" onclick="editOther('${e.id}')">edit</button>
-            <button class="act-btn danger" onclick="deleteOther('${e.id}')">delete</button>
-          </div></td>
-        </tr>`;
-      }).join('')}</tbody></table></div>`;
+      <tbody>${displayed.map(otherEntryHTML).join('')}</tbody></table></div>`;
+    if (omSorted.length > 30) {
+      omWrap.innerHTML += `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center">
+        <button class="pill-btn" onclick="showFullOther(1)">Full history — ${omSorted.length} entries</button>
+      </div>`;
+    }
   }
+  // Refresh full other modal if open
+  const otherModal = document.getElementById('full-other-modal');
+  if (otherModal && otherModal.style.display !== 'none') showFullOther(fullOtherPage);
 
   const unpaid   = lawnJobs.filter(j=>j.status==='unpaid').reduce((s,j)=>s+jobAmount(j),0);
   const check    = lawnJobs.filter(j=>j.status==='check').reduce((s,j)=>s+jobAmount(j),0);
@@ -937,6 +948,25 @@ function renderHistory() {
 let fullHistoryPage = 1;
 const FH_PAGE_SIZE = 50;
 
+let fullOtherPage = 1;
+const FO_PAGE_SIZE = 50;
+
+function otherEntryHTML(e) {
+  const isExp = e.type==='expense';
+  const cls = e.type==='gift'?'badge-gift': isExp?'badge-expense':'badge-income';
+  const lbl = e.type==='gift'?'Gift / birthday': isExp?'Expense':'Income';
+  return `<tr id="orow-${e.id}">
+    <td class="mono">${fmt(e.date)}</td>
+    <td>${e.desc}</td>
+    <td class="mono ${isExp?'amount-neg':'amount-pos'}">${isExp?'-':'+'}$${parseFloat(e.amount).toFixed(2)}</td>
+    <td><span class="badge ${cls}">${lbl}</span></td>
+    <td><div class="row-actions">
+      <button class="act-btn edit" onclick="editOther('${e.id}')">edit</button>
+      <button class="act-btn danger" onclick="deleteOther('${e.id}')">delete</button>
+    </div></td>
+  </tr>`;
+}
+
 function showFullHistory(page) {
   const totalPages = Math.ceil(historyLog.length / FH_PAGE_SIZE);
   fullHistoryPage = Math.max(1, Math.min(page, totalPages));
@@ -953,6 +983,28 @@ function showFullHistory(page) {
 
 function closeFullHistory() {
   document.getElementById('full-history-modal').style.display = 'none';
+}
+
+function showFullOther(page) {
+  const omSorted = [...otherMoney].sort((a,b) => b.date.localeCompare(a.date));
+  const totalPages = Math.ceil(omSorted.length / FO_PAGE_SIZE);
+  fullOtherPage = Math.max(1, Math.min(page, totalPages));
+  const start = (fullOtherPage - 1) * FO_PAGE_SIZE;
+  const entries = omSorted.slice(start, start + FO_PAGE_SIZE);
+  document.getElementById('fo-entries').innerHTML = entries.length
+    ? `<div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Category</th><th style="text-align:right">Actions</th></tr></thead>
+        <tbody>${entries.map(otherEntryHTML).join('')}</tbody>
+      </table></div>`
+    : '<div class="empty-state">No entries.</div>';
+  document.getElementById('fo-page-info').textContent = `Page ${fullOtherPage} of ${totalPages}`;
+  document.getElementById('fo-prev').disabled = fullOtherPage <= 1;
+  document.getElementById('fo-next').disabled = fullOtherPage >= totalPages;
+  document.getElementById('full-other-modal').style.display = 'flex';
+}
+
+function closeFullOther() {
+  document.getElementById('full-other-modal').style.display = 'none';
 }
 
 function editHistory(id) {
