@@ -610,6 +610,7 @@ tr:hover td { background: var(--surface2); }
       <button id="pm-cash" class="btn btn-ghost" style="flex:1;color:#4ADE80;border-color:#0A3D1A">Cash</button>
       <button id="pm-bank" class="btn btn-ghost" style="flex:1;color:var(--purple);border-color:#2A1040">Bank</button>
     </div>
+    <button id="pm-individual" class="btn btn-ghost" style="display:none;color:var(--blue);border-color:#0F2040;width:100%">Prompt each individually</button>
     <button id="pm-cancel" style="background:none;border:none;color:var(--text-faint);font-size:11px;cursor:pointer;font-family:'JetBrains Mono',monospace;text-align:center;">cancel</button>
   </div>
 </div>
@@ -984,10 +985,27 @@ function updateBulkBar() {
 async function bulkMarkPaid() {
   const checked = [...document.querySelectorAll('.job-cb:checked')];
   if (!checked.length) return;
-  const method = await promptPaymentMethod();
+  const method = await promptPaymentMethod(true);
   if (!method) return;
   const ids = checked.map(c => c.dataset.id);
   const jobs = ids.map(id => lawnJobs.find(j => j.id===id)).filter(Boolean);
+
+  if (method === 'individual') {
+    // Prompt cash/bank for each job one at a time
+    for (const j of jobs) {
+      const m = await promptPaymentMethod(false);
+      if (!m) continue; // skip this job if cancelled
+      const amount = jobAmount(j);
+      const prev = j.status;
+      lawnJobs = lawnJobs.map(jb => jb.id===j.id ? {...jb, status:'paid'} : jb);
+      balances[m] = (parseFloat(balances[m]) || 0) + amount;
+      historyLog.unshift({ id:'h'+Date.now(), type:'paid', message:`Marked ${j.client} job (${fmt(j.date)}) as paid — $${amount} (${m})`, ts: new Date().toISOString(), jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount });
+      if (historyLog.length > 300) historyLog = historyLog.slice(0, 300);
+    }
+    save(); render(); updateBulkBar(); toast(`Jobs marked as paid ✓`);
+    return;
+  }
+
   const totalAmount = jobs.reduce((s, j) => s + jobAmount(j), 0);
 
   // Group by client
@@ -1035,14 +1053,17 @@ function bulkDelete() {
   save(); render(); updateBulkBar(); toast(`${jobs.length} job${jobs.length > 1 ? 's' : ''} deleted`);
 }
 
-function promptPaymentMethod() {
+function promptPaymentMethod(showIndividual = false) {
   return new Promise(resolve => {
     const modal = document.getElementById('payment-modal');
+    const indBtn = document.getElementById('pm-individual');
+    indBtn.style.display = showIndividual ? 'block' : 'none';
     modal.style.display = 'flex';
     const close = (val) => { modal.style.display = 'none'; resolve(val); };
-    document.getElementById('pm-cash').onclick   = () => close('cash');
-    document.getElementById('pm-bank').onclick   = () => close('bank');
-    document.getElementById('pm-cancel').onclick = () => close(null);
+    document.getElementById('pm-cash').onclick     = () => close('cash');
+    document.getElementById('pm-bank').onclick     = () => close('bank');
+    document.getElementById('pm-cancel').onclick   = () => close(null);
+    indBtn.onclick                                 = () => close('individual');
   });
 }
 
