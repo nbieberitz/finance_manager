@@ -909,14 +909,14 @@ function render() {
   const paidJobs = lawnJobs.filter(j=>j.status==='paid').reduce((s,j)=>s+jobAmount(j),0);
   const income   = otherMoney.filter(e=>e.type!=='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
   const expenses = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
-  const netCash  = paidJobs + income - expenses;
+  const netCash  = paidJobs + income - expenses - titheOwed;
 
   const titheBank = parseFloat(balances.titheBank) || 0;
   const titheCash = parseFloat(balances.titheCash) || 0;
   const titheOwed = Math.round((titheBank + titheCash) * 100) / 100;
 
   document.getElementById('summary').innerHTML = `
-    <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${netCash.toFixed(2)}</div><div class="metric-sub">paid + income − expenses</div></div>
+    <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${netCash.toFixed(2)}</div><div class="metric-sub">paid + income − expenses − tithe</div></div>
     <div class="metric amber"><div class="metric-label">Owed to you</div><div class="metric-value">$${unpaid+check}</div><div class="metric-sub">${unpaid>0?'$'+unpaid+' unpaid':''}${unpaid>0&&check>0?' · ':''}${check>0?'$'+check+' by check':''}</div></div>
     <div class="metric blue"><div class="metric-label">Total earned</div><div class="metric-value">$${(paidJobs+income).toFixed(2)}</div><div class="metric-sub">jobs + other income</div></div>
     <div class="metric red"><div class="metric-label">Expenses</div><div class="metric-value">$${expenses.toFixed(2)}</div><div class="metric-sub">&nbsp;</div></div>
