@@ -689,15 +689,27 @@ async function loadFromFirestore() {
     clients    = d.clients    || [];
     lawnJobs   = d.lawnJobs   || [];
     otherMoney = d.otherMoney || [];
-    historyLog = d.historyLog || [];
     balances   = d.balances   || { bank: 0, cash: 0, tithe_bank: 0, tithe_cash: 0 };
-    // Migrate: ensure tithe fields exist for existing users
     if (balances.tithe_bank === undefined) balances.tithe_bank = 0;
     if (balances.tithe_cash === undefined) balances.tithe_cash = 0;
+    // Migrate legacy historyLog from main doc to subcollection
+    if (d.historyLog && d.historyLog.length) {
+      const legacy = d.historyLog;
+      for (let i = 0; i < legacy.length; i += 50) {
+        const batch = db.batch();
+        legacy.slice(i, i + 50).forEach(entry => batch.set(historyCol().doc(entry.id), entry));
+        await batch.commit();
+      }
+      await userDoc().update({ historyLog: firebase.firestore.FieldValue.delete() });
+    }
   } else {
-    clients = []; lawnJobs = []; otherMoney = []; historyLog = []; balances = { bank: 0, cash: 0, tithe_bank: 0, tithe_cash: 0 };
+    clients = []; lawnJobs = []; otherMoney = []; balances = { bank: 0, cash: 0, tithe_bank: 0, tithe_cash: 0 };
     await saveToFirestore();
   }
+  // Reset pagination and load first page of history
+  historyLog = []; lastHistoryDoc = null; allHistoryLoaded = false;
+  pendingHistoryEntries = [];
+  await loadMoreHistory();
   if (overlay) overlay.style.display = 'none';
   render();
 }
@@ -708,9 +720,30 @@ function save() {
   saveTimer = setTimeout(saveToFirestore, 800);
 }
 
-async function saveToFirestore() {
+async function loadMoreHistory() {
+  if (allHistoryLoaded) return;
+  let query = historyCol().orderBy('ts', 'desc').limit(50);
+  if (lastHistoryDoc) query = query.startAfter(lastHistoryDoc);
+  const snap = await query.get();
+  if (snap.empty || snap.docs.length < 50) allHistoryLoaded = true;
+  if (!snap.empty) {
+    lastHistoryDoc = snap.docs[snap.docs.length - 1];
+    snap.docs.forEach(d => historyLog.push(d.data()));
+    historyLog.sort((a, b) => b.ts.localeCompare(a.ts));
+  }
+  renderHistory();
+}
+
+
   if (!currentUser) return;
-  await userDoc().set({ clients, lawnJobs, otherMoney, historyLog, balances });
+  await userDoc().set({ clients, lawnJobs, otherMoney, balances });
+  // Batch-write pending history entries 50 at a time
+  while (pendingHistoryEntries.length > 0) {
+    const chunk = pendingHistoryEntries.splice(0, 50);
+    const batch = db.batch();
+    chunk.forEach(entry => batch.set(historyCol().doc(entry.id), entry));
+    await batch.commit();
+  }
 }
 
 auth.onAuthStateChanged(user => {
@@ -748,17 +781,24 @@ function signOut() {
 let clients    = [];
 let lawnJobs   = [];
 let otherMoney = [];
-let historyLog = [];
+let historyLog = [];          // in-memory loaded entries
 let balances   = { bank: 0, cash: 0 };
+
+let pendingHistoryEntries = []; // new entries not yet written to Firestore
+let lastHistoryDoc        = null;  // Firestore pagination cursor
+let allHistoryLoaded      = false; // true when no more entries on server
+
+function historyCol() { return db.collection('users').doc(currentUser.uid).collection('history'); }
 
 function getRate(name) { const c = clients.find(c => c.name===name); return c ? c.rate : 0; }
 function jobAmount(j) { return j.amount !== undefined ? j.amount : getRate(j.client); }
 
 function fmt(d) { const [y,m,dy] = d.split('-'); return `${parseInt(m)}/${parseInt(dy)}/${y.slice(2)}`; }
 
-function logHistory(type, message) {
-  historyLog.unshift({ id:'h'+Date.now(), type, message, ts: new Date().toISOString() });
-  if (historyLog.length > 300) historyLog = historyLog.slice(0, 300);
+function logHistory(type, message, extra = {}) {
+  const entry = { id: extra.id || ('h'+Date.now()), type, message, ts: new Date().toISOString(), ...extra };
+  historyLog.unshift(entry);
+  pendingHistoryEntries.push(entry);
 }
 
 function statusBadge(s) {
@@ -1028,13 +1068,17 @@ function renderPaidJobs() {
 
 function renderHistory() {
   const wrap = document.getElementById('history-wrap');
-  if (!historyLog.length) { wrap.innerHTML='<div class="empty-state">No history yet.</div>'; return; }
-  wrap.innerHTML = historyLog.slice(0, 30).map(historyEntryHTML).join('');
-  if (historyLog.length > 30) {
-    wrap.innerHTML += `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center">
-      <button class="pill-btn" onclick="showFullHistory(1)">Full history — ${historyLog.length} entries</button>
-    </div>`;
+  if (!historyLog.length) {
+    wrap.innerHTML = allHistoryLoaded
+      ? '<div class="empty-state">No history yet.</div>'
+      : '<div class="empty-state" style="cursor:pointer" onclick="loadMoreHistory()">Loading history…</div>';
+    return;
   }
+  wrap.innerHTML = historyLog.slice(0, 30).map(historyEntryHTML).join('');
+  const extras = [];
+  if (historyLog.length > 30) extras.push(`<button class="pill-btn" onclick="showFullHistory(1)">Full history — ${historyLog.length}${allHistoryLoaded?'':'+' } entries</button>`);
+  if (!allHistoryLoaded) extras.push(`<button class="pill-btn" onclick="loadMoreHistory()">Load more…</button>`);
+  if (extras.length) wrap.innerHTML += `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center;display:flex;gap:8px;justify-content:center">${extras.join('')}</div>`;
   // Refresh full history modal if open
   const modal = document.getElementById('full-history-modal');
   if (modal && modal.style.display !== 'none') showFullHistory(fullHistoryPage);
@@ -1045,13 +1089,15 @@ const FH_PAGE_SIZE = 50;
 
 function showFullHistory(page) {
   const totalPages = Math.ceil(historyLog.length / FH_PAGE_SIZE);
-  fullHistoryPage = Math.max(1, Math.min(page, totalPages));
+  fullHistoryPage = Math.max(1, Math.min(page, Math.max(1, totalPages)));
   const start = (fullHistoryPage - 1) * FH_PAGE_SIZE;
   const entries = historyLog.slice(start, start + FH_PAGE_SIZE);
-  document.getElementById('fh-entries').innerHTML = entries.length
+  const loadMoreBtn = !allHistoryLoaded
+    ? `<button class="pill-btn" style="margin-top:8px" onclick="loadMoreHistory()">Load more from server…</button>` : '';
+  document.getElementById('fh-entries').innerHTML = (entries.length
     ? entries.map(historyEntryHTML).join('')
-    : '<div class="empty-state">No entries.</div>';
-  document.getElementById('fh-page-info').textContent = `Page ${fullHistoryPage} of ${totalPages}`;
+    : '<div class="empty-state">No entries.</div>') + loadMoreBtn;
+  document.getElementById('fh-page-info').textContent = `Page ${fullHistoryPage} of ${Math.max(1,totalPages)}`;
   document.getElementById('fh-prev').disabled = fullHistoryPage <= 1;
   document.getElementById('fh-next').disabled = fullHistoryPage >= totalPages;
   document.getElementById('full-history-modal').style.display = 'flex';
@@ -1076,22 +1122,34 @@ function editHistory(id) {
     </div>`;
 }
 
-function saveHistory(id) {
+async function saveHistory(id) {
   const msg = document.getElementById('hmsg-'+id).value.trim();
   if (!msg) { alert('Message cannot be empty.'); return; }
   historyLog = historyLog.map(h => h.id===id ? {...h, message: msg} : h);
-  save(); renderHistory(); toast('Log entry updated ✓');
+  if (currentUser) await historyCol().doc(id).update({ message: msg });
+  renderHistory(); toast('Log entry updated ✓');
 }
 
-function deleteHistory(id) {
+async function deleteHistory(id) {
   if (!confirm('Delete this log entry?')) return;
   historyLog = historyLog.filter(h=>h.id!==id);
-  save(); renderHistory(); toast('Log entry deleted');
+  if (currentUser) await historyCol().doc(id).delete();
+  renderHistory(); toast('Log entry deleted');
 }
 
-function clearHistory() {
-  if (!confirm('Clear all history?')) return;
-  historyLog=[]; save(); renderHistory(); toast('History cleared');
+async function clearHistory() {
+  if (!confirm('Clear all history? This cannot be undone.')) return;
+  historyLog = []; pendingHistoryEntries = []; lastHistoryDoc = null; allHistoryLoaded = true;
+  if (currentUser) {
+    let snap = await historyCol().limit(50).get();
+    while (!snap.empty) {
+      const batch = db.batch();
+      snap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+      snap = await historyCol().limit(50).get();
+    }
+  }
+  renderHistory(); toast('History cleared');
 }
 
 function toggleForm(id) { document.getElementById(id).classList.toggle('open'); }
@@ -1156,8 +1214,7 @@ async function bulkMarkPaid() {
       lawnJobs = lawnJobs.map(jb => jb.id===j.id ? {...jb, status:'paid', paymentMethod:m, paymentAmount:amount} : jb);
       balances[m] = (parseFloat(balances[m]) || 0) + amount;
       balances['tithe_'+m] = Math.round(((parseFloat(balances['tithe_'+m])||0)+(amount*0.1))*100)/100;
-      historyLog.unshift({ id:'h'+Date.now(), type:'paid', message:`Marked ${j.client} job (${fmt(j.date)}) as paid — $${amount} (${m})`, ts: new Date().toISOString(), jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount });
-      if (historyLog.length > 300) historyLog = historyLog.slice(0, 300);
+      logHistory('paid', `Marked ${j.client} job (${fmt(j.date)}) as paid — $${amount} (${m})`, { jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount });
     }
     save(); render(); updateBulkBar(); toast(`Jobs marked as paid ✓`);
     return;
@@ -1172,7 +1229,6 @@ async function bulkMarkPaid() {
     byClient[j.client].push(j);
   });
 
-  // Mark all as paid and log one entry per client
   const hid = Date.now();
   Object.entries(byClient).forEach(([client, cJobs], i) => {
     const total = cJobs.reduce((s, j) => s + jobAmount(j), 0);
@@ -1181,11 +1237,8 @@ async function bulkMarkPaid() {
       ? fmt(dates[0])
       : `${fmt(dates[0])} – ${fmt(dates[dates.length-1])}`;
     const jobIds = cJobs.map(j => j.id);
-    historyLog.unshift({
+    logHistory('paid', `Marked ${client} paid — ${cJobs.length} job${cJobs.length>1?'s':''} (${dateRange}) — $${total} (${method})`, {
       id: 'h'+(hid+i),
-      type: 'paid',
-      message: `Marked ${client} paid — ${cJobs.length} job${cJobs.length>1?'s':''} (${dateRange}) — $${total} (${method})`,
-      ts: new Date().toISOString(),
       bulkJobIds: jobIds,
       prevStatuses: Object.fromEntries(cJobs.map(j=>[j.id, j.status])),
       paymentMethod: method,
@@ -1196,7 +1249,6 @@ async function bulkMarkPaid() {
   balances[method] = (parseFloat(balances[method]) || 0) + totalAmount;
   balances['tithe_'+method] = Math.round(((parseFloat(balances['tithe_'+method])||0)+(totalAmount*0.1))*100)/100;
   lawnJobs = lawnJobs.map(j => ids.includes(j.id) ? {...j, status:'paid', paymentMethod:method} : j);
-  if (historyLog.length > 300) historyLog = historyLog.slice(0, 300);
   save(); render(); updateBulkBar(); toast(`${jobs.length} jobs marked as paid ✓`);
 }
 
@@ -1244,12 +1296,11 @@ async function markPaid(id) {
   lawnJobs=lawnJobs.map(j=>j.id===id?{...j,status:'paid',paymentMethod:method,paymentAmount:amount}:j);
   balances[method]=(parseFloat(balances[method])||0)+amount;
   balances['tithe_'+method]=Math.round(((parseFloat(balances['tithe_'+method])||0)+(amount*0.1))*100)/100;
-  historyLog.unshift({ id:'h'+Date.now(), type:'paid', message:`Marked ${j.client} job (${fmt(j.date)}) as paid — $${amount} (${method})`, ts: new Date().toISOString(), jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount });
-  if (historyLog.length > 300) historyLog = historyLog.slice(0, 300);
+  logHistory('paid', `Marked ${j.client} job (${fmt(j.date)}) as paid — $${amount} (${method})`, { jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount });
   save(); render(); reopenPanel(j.client); toast('Marked as paid ✓');
 }
 
-function undoPaid(hid) {
+async function undoPaid(hid) {
   const h = historyLog.find(h=>h.id===hid);
   if (!h) return;
 
@@ -1265,8 +1316,9 @@ function undoPaid(hid) {
     const job = lawnJobs.find(j=>j.id===h.jobId);
     if (!job) { toast('Job no longer exists'); return; }
     const restore = h.prevStatus || 'unpaid';
-    lawnJobs = lawnJobs.map(j=>j.id===h.jobId ? {...j, status:restore} : j);
+    lawnJobs = lawnJobs.map(j=>j.id===h.jobId ? {...j, status:restore, paymentMethod:null, paymentAmount:null} : j);
     historyLog = historyLog.filter(h=>h.id!==hid);
+    if (currentUser) await historyCol().doc(hid).delete();
     logHistory('add', `Undid payment — ${job.client} job (${fmt(job.date)}) restored to ${restore}`);
   }
 
@@ -1274,9 +1326,10 @@ function undoPaid(hid) {
   if (h.bulkJobIds) {
     h.bulkJobIds.forEach(jid => {
       const prev = h.prevStatuses?.[jid] || 'unpaid';
-      lawnJobs = lawnJobs.map(j=>j.id===jid ? {...j, status:prev} : j);
+      lawnJobs = lawnJobs.map(j=>j.id===jid ? {...j, status:prev, paymentMethod:null, paymentAmount:null} : j);
     });
     historyLog = historyLog.filter(h=>h.id!==hid);
+    if (currentUser) await historyCol().doc(hid).delete();
     logHistory('add', `Undid bulk payment — ${h.bulkJobIds.length} jobs restored`);
   }
 
