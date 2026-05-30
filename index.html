@@ -101,6 +101,11 @@ header {
 }
 
 .metric:hover { border-color: var(--border-mid); }
+.metric.editable { cursor: pointer; }
+.metric.editable:hover { border-color: var(--text-faint); background: var(--surface2); }
+.edit-pencil { position: absolute; top: 9px; right: 10px; opacity: 0; transition: opacity 0.15s; line-height: 1; }
+.edit-pencil svg { width: 12px; height: 12px; stroke: var(--text-faint); fill: none; stroke-width: 2; display: block; }
+.metric.editable:hover .edit-pencil { opacity: 1; }
 
 .metric-label {
   font-size: 10px;
@@ -890,15 +895,17 @@ function render() {
     <div class="metric amber"><div class="metric-label">Owed to you</div><div class="metric-value">$${unpaid+check}</div><div class="metric-sub">${unpaid>0?'$'+unpaid+' unpaid':''}${unpaid>0&&check>0?' · ':''}${check>0?'$'+check+' by check':''}</div></div>
     <div class="metric blue"><div class="metric-label">Total earned</div><div class="metric-value">$${(paidJobs+income).toFixed(2)}</div><div class="metric-sub">jobs + other income</div></div>
     <div class="metric red"><div class="metric-label">Expenses</div><div class="metric-value">$${expenses.toFixed(2)}</div><div class="metric-sub">&nbsp;</div></div>
-    <div class="metric purple" id="bal-bank-card" title="Click to edit" style="cursor:pointer" onclick="editBalance('bank')">
+    <div class="metric purple editable" id="bal-bank-card" onclick="editBalance('bank')">
+      <span class="edit-pencil"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
       <div class="metric-label">In bank</div>
       <div class="metric-value" id="bal-bank-val">$${parseFloat(balances.bank).toFixed(2)}</div>
-      <div class="metric-sub">click to update</div>
+      <div class="metric-sub">click to edit</div>
     </div>
-    <div class="metric" id="bal-cash-card" title="Click to edit" style="cursor:pointer;--mv-color:var(--amber)" onclick="editBalance('cash')">
+    <div class="metric editable" id="bal-cash-card" onclick="editBalance('cash')">
+      <span class="edit-pencil"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
       <div class="metric-label">Cash on hand</div>
       <div class="metric-value" id="bal-cash-val" style="color:var(--amber)">$${parseFloat(balances.cash).toFixed(2)}</div>
-      <div class="metric-sub">click to update</div>
+      <div class="metric-sub">click to edit</div>
     </div>
   `;
 
