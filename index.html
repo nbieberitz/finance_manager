@@ -669,7 +669,7 @@ async function loadFromFirestore() {
     await saveToFirestore();
   }
   if (overlay) overlay.style.display = 'none';
-  render(); renderClients(); renderHistory();
+  render();
 }
 
 let saveTimer;
@@ -843,7 +843,7 @@ function saveClient(id) {
   if (old.rate !== rate) changes.push(`rate: $${old.rate} → $${rate}/job`);
   const changeStr = changes.length ? changes.join(', ') : 'no changes';
   logHistory('client', `Edited client — ${name} (${changeStr})`);
-  save(); renderClients(); render(); toast('Client updated ✓');
+  save(); render(); toast('Client updated ✓');
 }
 
 function reopenPanel(clientName) {
@@ -883,10 +883,10 @@ function render() {
   const paidJobs = lawnJobs.filter(j=>j.status==='paid').reduce((s,j)=>s+jobAmount(j),0);
   const income   = otherMoney.filter(e=>e.type!=='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
   const expenses = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
-  const netCash  = paidJobs + income - expenses - (parseFloat(balances.tithe) || 0);
+  const netCash  = paidJobs + income - expenses;
 
   document.getElementById('summary').innerHTML = `
-    <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${netCash.toFixed(2)}</div><div class="metric-sub">paid + income − expenses − tithe</div></div>
+    <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${netCash.toFixed(2)}</div><div class="metric-sub">paid + income − expenses</div></div>
     <div class="metric amber"><div class="metric-label">Owed to you</div><div class="metric-value">$${unpaid+check}</div><div class="metric-sub">${unpaid>0?'$'+unpaid+' unpaid':''}${unpaid>0&&check>0?' · ':''}${check>0?'$'+check+' by check':''}</div></div>
     <div class="metric blue"><div class="metric-label">Total earned</div><div class="metric-value">$${(paidJobs+income).toFixed(2)}</div><div class="metric-sub">jobs + other income</div></div>
     <div class="metric red"><div class="metric-label">Expenses</div><div class="metric-value">$${expenses.toFixed(2)}</div><div class="metric-sub">&nbsp;</div></div>
@@ -1012,7 +1012,7 @@ function deleteClient(id) {
   if (!confirm(`Remove ${c.name}?`)) return;
   clients=clients.filter(c=>c.id!==id);
   logHistory('delete',`Removed client — ${c.name}`);
-  save(); renderClients(); render(); toast('Client removed');
+  save(); render(); toast('Client removed');
 }
 
 function toggleSelectAll(cb) {
@@ -1024,15 +1024,12 @@ function updateBulkBar() {
   const checked = document.querySelectorAll('.job-cb:checked');
   const bar = document.getElementById('bulk-bar');
   const countEl = document.getElementById('bulk-count');
-  const allCb = document.getElementById('select-all-jobs');
-  const all = document.querySelectorAll('.job-cb');
   if (checked.length > 0) {
     bar.style.display = 'flex';
     countEl.textContent = `${checked.length} job${checked.length>1?'s':''} selected`;
   } else {
     bar.style.display = 'none';
   }
-  if (allCb) allCb.checked = all.length > 0 && checked.length === all.length;
 }
 
 async function bulkMarkPaid() {
@@ -1140,7 +1137,7 @@ async function markPaid(id) {
   balances[method]=(parseFloat(balances[method])||0)+amount;
   historyLog.unshift({ id:'h'+Date.now(), type:'paid', message:`Marked ${j.client} job (${fmt(j.date)}) as paid — $${amount} (${method})`, ts: new Date().toISOString(), jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount });
   if (historyLog.length > 300) historyLog = historyLog.slice(0, 300);
-  save(); renderClients(); reopenPanel(j.client); toast('Marked as paid ✓');
+  save(); render(); reopenPanel(j.client); toast('Marked as paid ✓');
 }
 
 function undoPaid(hid) {
@@ -1180,7 +1177,7 @@ function deleteJob(id) {
   const j=lawnJobs.find(j=>j.id===id);
   lawnJobs=lawnJobs.filter(j=>j.id!==id);
   logHistory('delete',`Deleted job — ${j.client} on ${fmt(j.date)} ($${jobAmount(j)})`);
-  save(); renderClients(); reopenPanel(j.client); toast('Job deleted');
+  save(); render(); reopenPanel(j.client); toast('Job deleted');
 }
 
 function prefillJobAmount() {
@@ -1220,6 +1217,7 @@ function addOtherMoney() {
   document.getElementById('om-desc').value='';
   document.getElementById('om-date').value='';
   document.getElementById('om-amount').value='';
+  document.getElementById('om-type').value='gift';
   toast('Entry added ✓');
 }
 
@@ -1263,7 +1261,7 @@ function saveJob(id) {
   lawnJobs = lawnJobs.map(j => j.id===id ? {...j, date, client, status, amount} : j);
   logHistory('add', `Edited job — ${old.client} ${fmt(old.date)} → ${client} ${fmt(date)}, $${amount}, ${status}`);
   save();
-  renderClients();
+  render();
   const c = clients.find(c => c.name === client) || clients.find(c => c.name === old.client);
   if (c) { const p = document.getElementById('jobs-panel-'+c.id); if (p) p.classList.add('open'); }
   toast('Job updated ✓');
