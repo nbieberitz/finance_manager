@@ -653,36 +653,6 @@ tr:hover td { background: var(--surface2); }
   </div>
 </div>
 
-<div id="tithe-modal" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.88);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;">
-  <div style="background:var(--surface2);border:1px solid var(--border-mid);border-radius:var(--radius);padding:1.75rem 1.5rem;min-width:290px;display:flex;flex-direction:column;gap:1.1rem;">
-    <div>
-      <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:var(--text);letter-spacing:0.04em">Pay Tithe</div>
-      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);margin-top:4px">Total owed: <span id="tm-total" style="color:var(--accent)"></span></div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      <div>
-        <label style="font-size:10px;color:var(--text-faint);letter-spacing:.07em;text-transform:uppercase;margin-bottom:4px;display:block">From bank</label>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--purple)">$</span>
-          <input id="tm-bank-input" type="number" min="0" step="0.01" oninput="updateTitheRemaining()" style="color:var(--purple);border-color:var(--purple);background:var(--surface3)" />
-        </div>
-      </div>
-      <div>
-        <label style="font-size:10px;color:var(--text-faint);letter-spacing:.07em;text-transform:uppercase;margin-bottom:4px;display:block">From cash</label>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--amber)">$</span>
-          <input id="tm-cash-input" type="number" min="0" step="0.01" oninput="updateTitheRemaining()" style="color:var(--amber);border-color:var(--amber-pale);background:var(--surface3)" />
-        </div>
-      </div>
-    </div>
-    <div id="tm-remaining" style="font-family:'JetBrains Mono',monospace;font-size:11px;text-align:center"></div>
-    <div style="display:flex;gap:8px;">
-      <button class="btn btn-primary" style="flex:1" onclick="confirmPayTithe()">Confirm</button>
-      <button class="btn btn-ghost" onclick="document.getElementById('tithe-modal').style.display='none'">Cancel</button>
-    </div>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1467,46 +1437,14 @@ function payTithe() {
   const tC = Math.round((parseFloat(balances.titheCash)||0) * 100) / 100;
   const total = Math.round((tB + tC) * 100) / 100;
   if (total <= 0) { toast('No tithe owed'); return; }
-
-  const modal = document.getElementById('tithe-modal');
-  document.getElementById('tm-total').textContent = `$${total.toFixed(2)}`;
-  document.getElementById('tm-bank-input').value  = tB.toFixed(2);
-  document.getElementById('tm-cash-input').value  = tC.toFixed(2);
-  updateTitheRemaining();
-  modal.style.display = 'flex';
-}
-
-function updateTitheRemaining() {
-  const tB = Math.round((parseFloat(balances.titheBank)||0) * 100) / 100;
-  const tC = Math.round((parseFloat(balances.titheCash)||0) * 100) / 100;
-  const total = tB + tC;
-  const fromBank = parseFloat(document.getElementById('tm-bank-input').value) || 0;
-  const fromCash = parseFloat(document.getElementById('tm-cash-input').value) || 0;
-  const remaining = Math.round((total - fromBank - fromCash) * 100) / 100;
-  const el = document.getElementById('tm-remaining');
-  el.textContent = remaining === 0 ? '✓ balanced' : `${remaining > 0 ? 'short' : 'over'} by $${Math.abs(remaining).toFixed(2)}`;
-  el.style.color = remaining === 0 ? '#4ADE80' : 'var(--red)';
-}
-
-function confirmPayTithe() {
-  const tB = Math.round((parseFloat(balances.titheBank)||0) * 100) / 100;
-  const tC = Math.round((parseFloat(balances.titheCash)||0) * 100) / 100;
-  const total = Math.round((tB + tC) * 100) / 100;
-  const fromBank = Math.round((parseFloat(document.getElementById('tm-bank-input').value) || 0) * 100) / 100;
-  const fromCash = Math.round((parseFloat(document.getElementById('tm-cash-input').value) || 0) * 100) / 100;
-  if (Math.round((fromBank + fromCash) * 100) !== Math.round(total * 100)) {
-    document.getElementById('tm-remaining').style.color = 'var(--red)';
-    document.getElementById('tm-remaining').textContent = `Must equal $${total.toFixed(2)} total`;
-    return;
-  }
-  document.getElementById('tithe-modal').style.display = 'none';
-  balances.bank      = Math.max(0, (parseFloat(balances.bank)||0) - fromBank);
-  balances.cash      = Math.max(0, (parseFloat(balances.cash)||0) - fromCash);
+  const parts = [];
+  if (tB > 0) parts.push(`$${tB.toFixed(2)} from bank`);
+  if (tC > 0) parts.push(`$${tC.toFixed(2)} from cash`);
+  if (!confirm(`Pay tithe of $${total.toFixed(2)}?\n\n${parts.join('\n')}`)) return;
+  balances.bank      = Math.max(0, (parseFloat(balances.bank)||0) - tB);
+  balances.cash      = Math.max(0, (parseFloat(balances.cash)||0) - tC);
   balances.titheBank = 0;
   balances.titheCash = 0;
-  const parts = [];
-  if (fromBank > 0) parts.push(`$${fromBank.toFixed(2)} from bank`);
-  if (fromCash > 0) parts.push(`$${fromCash.toFixed(2)} from cash`);
   logHistory('other', `Paid tithe — $${total.toFixed(2)} (${parts.join(', ')})`);
   save(); render(); toast('Tithe paid ✓');
 }
