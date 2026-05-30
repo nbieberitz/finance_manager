@@ -1445,6 +1445,8 @@ function payTithe() {
   balances.cash      = Math.max(0, (parseFloat(balances.cash)||0) - tC);
   balances.titheBank = 0;
   balances.titheCash = 0;
+  const today = new Date().toISOString().slice(0, 10);
+  otherMoney.push({ id:'o'+Date.now(), desc:'Tithe', date: today, type:'expense', amount: total });
   logHistory('other', `Paid tithe — $${total.toFixed(2)} (${parts.join(', ')})`);
   save(); render(); toast('Tithe paid ✓');
 }
