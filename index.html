@@ -970,6 +970,8 @@ function payTithe() {
   balances.cash = Math.round(((parseFloat(balances.cash)||0)-tc)*100)/100;
   balances.tithe_bank = 0;
   balances.tithe_cash = 0;
+  const today = new Date().toISOString().slice(0,10);
+  otherMoney.push({ id:'o'+Date.now(), desc:'Tithe', date:today, type:'expense', amount:total });
   const parts = [];
   if (tb>0) parts.push(`$${tb.toFixed(2)} from bank`);
   if (tc>0) parts.push(`$${tc.toFixed(2)} from cash`);
