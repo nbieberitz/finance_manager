@@ -481,6 +481,7 @@ tr:hover td { background: var(--surface2); }
     <div id="bulk-bar" style="display:none;padding:8px 1.25rem;background:var(--surface2);border-top:1px solid var(--border);align-items:center;gap:10px">
       <span id="bulk-count" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted)"></span>
       <button class="act-btn success" onclick="bulkMarkPaid()" style="font-size:12px;padding:4px 14px">mark selected as paid</button>
+      <button class="act-btn danger" onclick="bulkDelete()" style="font-size:12px;padding:4px 14px">delete selected</button>
     </div>
   </section>
 
@@ -960,6 +961,17 @@ function bulkMarkPaid() {
   lawnJobs = lawnJobs.map(j => ids.includes(j.id) ? {...j, status:'paid'} : j);
   if (historyLog.length > 300) historyLog = historyLog.slice(0, 300);
   save(); render(); toast(`${jobs.length} jobs marked as paid ✓`);
+}
+
+function bulkDelete() {
+  const checked = [...document.querySelectorAll('.job-cb:checked')];
+  if (!checked.length) return;
+  const ids = checked.map(c => c.dataset.id);
+  const jobs = ids.map(id => lawnJobs.find(j => j.id === id)).filter(Boolean);
+  if (!confirm(`Delete ${jobs.length} selected job${jobs.length > 1 ? 's' : ''}?`)) return;
+  jobs.forEach(j => logHistory('delete', `Deleted job — ${j.client} on ${fmt(j.date)} ($${jobAmount(j)})`));
+  lawnJobs = lawnJobs.filter(j => !ids.includes(j.id));
+  save(); render(); toast(`${jobs.length} job${jobs.length > 1 ? 's' : ''} deleted`);
 }
 
 function markPaid(id) {
