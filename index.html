@@ -150,7 +150,8 @@ section {
   gap: 12px;
 }
 
-.section-header:hover { background: var(--surface2); }
+.section-header.static { cursor: default; }
+.section-header.static:hover { background: transparent; }
 
 .section-title {
   font-family: 'Syne', sans-serif;
@@ -487,13 +488,13 @@ tr:hover td { background: var(--surface2); }
 
   <!-- Add Job -->
   <section>
-    <div class="section-header" onclick="toggleForm('lawn-form', this)">
+    <div class="section-header static">
       <div class="section-title">
         <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
         Jobs
       </div>
       <div class="header-actions">
-        <button class="pill-btn" style="color:#4ADE80;border-color:#0A3D1A;background:#052E16" tabindex="-1">+ Add job</button>
+        <button class="pill-btn" style="color:#4ADE80;border-color:#0A3D1A;background:#052E16" onclick="toggleForm('lawn-form')">+ Add job</button>
       </div>
     </div>
     <div class="add-form" id="lawn-form">
