@@ -1036,6 +1036,7 @@ function addLawnJob() {
   lawnJobs.push({id:'l'+Date.now(), client, date, status, amount});
   logHistory('add', `Added job — ${client} on ${fmt(date)}, ${status} ($${amount})`);
   save(); render();
+  document.getElementById('lawn-form').classList.remove('open');
   document.getElementById('lj-date').value = '';
   prefillJobAmount();
   toast('Job added ✓');
