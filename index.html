@@ -1054,12 +1054,10 @@ function editJob(id) {
   const j = lawnJobs.find(j=>j.id===id);
   const row = document.getElementById('jrow-'+id);
   row.classList.add('edit-row');
-  const clientOpts = clients.map(c=>`<option value="${c.name}"${c.name===j.client?' selected':''}>${c.name}</option>`).join('');
   row.innerHTML = `
     <td></td>
     <td><input id="ej-date-${id}" type="date" value="${j.date}" /></td>
-    <td><select id="ej-client-${id}">${clientOpts}</select></td>
-    <td><input id="ej-amount-${id}" type="number" value="${jobAmount(j)}" min="0" step="0.01" style="width:80px" /></td>
+    <td><input id="ej-amount-${id}" type="number" value="${jobAmount(j)}" min="0" step="0.01" /></td>
     <td><select id="ej-status-${id}">
       <option value="unpaid"${j.status==='unpaid'?' selected':''}>Unpaid</option>
       <option value="check"${j.status==='check'?' selected':''}>Check coming</option>
@@ -1067,25 +1065,22 @@ function editJob(id) {
     </select></td>
     <td><div class="row-actions">
       <button class="act-btn save" onclick="saveJob('${id}')">save</button>
-      <button class="act-btn" onclick="render()">cancel</button>
+      <button class="act-btn" onclick="renderClients()">cancel</button>
     </div></td>`;
 }
 
 function saveJob(id) {
   const date   = document.getElementById('ej-date-'+id).value;
-  const client = document.getElementById('ej-client-'+id).value;
   const status = document.getElementById('ej-status-'+id).value;
   const amount = parseFloat(document.getElementById('ej-amount-'+id).value);
   if (!date) { alert('Date required.'); return; }
   if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
   const old = lawnJobs.find(j=>j.id===id);
-  const oldClient = old.client;
-  lawnJobs = lawnJobs.map(j => j.id===id ? {...j, date, client, status, amount} : j);
-  logHistory('add', `Edited job — ${old.client} ${fmt(old.date)} → ${client} ${fmt(date)}, $${amount}, ${status}`);
+  lawnJobs = lawnJobs.map(j => j.id===id ? {...j, date, status, amount} : j);
+  logHistory('add', `Edited job — ${old.client} ${fmt(old.date)} → ${fmt(date)}, $${amount}, ${status}`);
   save();
   renderClients();
-  // Re-open the panel for the client this job belongs to
-  const c = clients.find(c => c.name === client) || clients.find(c => c.name === oldClient);
+  const c = clients.find(c => c.name === old.client);
   if (c) { const p = document.getElementById('jobs-panel-'+c.id); if (p) p.classList.add('open'); }
   toast('Job updated ✓');
 }
