@@ -680,33 +680,57 @@ function userDoc() { return db.collection('users').doc(currentUser.uid); }
 async function loadFromFirestore() {
   const overlay = document.getElementById('loading-overlay');
   if (overlay) overlay.style.display = 'flex';
-  const [snap] = await Promise.all([
+
+  const [mainSnap, clientsSnap, jobsSnap, otherSnap] = await Promise.all([
     userDoc().get(),
-    new Promise(r => setTimeout(r, 500))
+    userDoc().collection('clients').get(),
+    userDoc().collection('jobs').get(),
+    userDoc().collection('other').get()
   ]);
-  if (snap.exists) {
-    const d = snap.data();
-    clients    = d.clients    || [];
-    lawnJobs   = d.lawnJobs   || [];
-    otherMoney = d.otherMoney || [];
-    balances   = d.balances   || { bank: 0, cash: 0, tithe_bank: 0, tithe_cash: 0 };
+  await new Promise(r => setTimeout(r, 500));
+
+  if (mainSnap.exists) {
+    const d = mainSnap.data();
+    balances = d.balances || { bank: 0, cash: 0, tithe_bank: 0, tithe_cash: 0 };
     if (balances.tithe_bank === undefined) balances.tithe_bank = 0;
     if (balances.tithe_cash === undefined) balances.tithe_cash = 0;
+
+    // Migrate legacy arrays from main doc to subcollections (one-time)
+    const needsMigration = d.clients || d.lawnJobs || d.otherMoney;
+    if (needsMigration) {
+      clients    = d.clients    || [];
+      lawnJobs   = d.lawnJobs   || [];
+      otherMoney = d.otherMoney || [];
+      clients.forEach(c => pendingClientWrites.add(c.id));
+      lawnJobs.forEach(j => pendingJobWrites.add(j.id));
+      otherMoney.forEach(e => pendingOtherWrites.add(e.id));
+      await saveToFirestore();
+      const delFields = {};
+      if (d.clients)    delFields.clients    = firebase.firestore.FieldValue.delete();
+      if (d.lawnJobs)   delFields.lawnJobs   = firebase.firestore.FieldValue.delete();
+      if (d.otherMoney) delFields.otherMoney = firebase.firestore.FieldValue.delete();
+      await userDoc().update(delFields);
+    } else {
+      clients    = clientsSnap.docs.map(d => d.data());
+      lawnJobs   = jobsSnap.docs.map(d => d.data());
+      otherMoney = otherSnap.docs.map(d => d.data());
+    }
+
     // Migrate legacy historyLog from main doc to subcollection
     if (d.historyLog && d.historyLog.length) {
-      const legacy = d.historyLog;
-      for (let i = 0; i < legacy.length; i += 50) {
+      for (let i = 0; i < d.historyLog.length; i += 50) {
         const batch = db.batch();
-        legacy.slice(i, i + 50).forEach(entry => batch.set(historyCol().doc(entry.id), entry));
+        d.historyLog.slice(i, i + 50).forEach(e => batch.set(historyCol().doc(e.id), e));
         await batch.commit();
       }
       await userDoc().update({ historyLog: firebase.firestore.FieldValue.delete() });
     }
   } else {
-    clients = []; lawnJobs = []; otherMoney = []; balances = { bank: 0, cash: 0, tithe_bank: 0, tithe_cash: 0 };
-    await saveToFirestore();
+    clients = []; lawnJobs = []; otherMoney = [];
+    balances = { bank: 0, cash: 0, tithe_bank: 0, tithe_cash: 0 };
+    await userDoc().set({ balances });
   }
-  // Reset pagination and load first page of history
+
   historyLog = []; lastHistoryDoc = null; allHistoryLoaded = false;
   pendingHistoryEntries = [];
   await loadMoreHistory();
@@ -736,8 +760,44 @@ async function loadMoreHistory() {
 
 async function saveToFirestore() {
   if (!currentUser) return;
-  await userDoc().set({ clients, lawnJobs, otherMoney, balances });
-  // Batch-write pending history entries 50 at a time
+
+  // Main doc holds only balances now
+  await userDoc().set({ balances });
+
+  // Upsert only changed records into their subcollection
+  const upsertItems = async (colName, ids, dataArr) => {
+    if (!ids.size) return;
+    const items = dataArr.filter(i => ids.has(i.id));
+    ids.clear();
+    for (let i = 0; i < items.length; i += 50) {
+      const batch = db.batch();
+      items.slice(i, i + 50).forEach(item =>
+        batch.set(userDoc().collection(colName).doc(item.id), item));
+      await batch.commit();
+    }
+  };
+
+  // Delete removed records from their subcollection
+  const deleteItems = async (colName, ids) => {
+    if (!ids.size) return;
+    const arr = [...ids];
+    ids.clear();
+    for (let i = 0; i < arr.length; i += 50) {
+      const batch = db.batch();
+      arr.slice(i, i + 50).forEach(id =>
+        batch.delete(userDoc().collection(colName).doc(id)));
+      await batch.commit();
+    }
+  };
+
+  await upsertItems('clients', pendingClientWrites, clients);
+  await upsertItems('jobs',    pendingJobWrites,    lawnJobs);
+  await upsertItems('other',   pendingOtherWrites,  otherMoney);
+  await deleteItems('clients', pendingClientDeletes);
+  await deleteItems('jobs',    pendingJobDeletes);
+  await deleteItems('other',   pendingOtherDeletes);
+
+  // History entries (unchanged)
   while (pendingHistoryEntries.length > 0) {
     const chunk = pendingHistoryEntries.splice(0, 50);
     const batch = db.batch();
@@ -787,6 +847,14 @@ let balances   = { bank: 0, cash: 0 };
 let pendingHistoryEntries = []; // new entries not yet written to Firestore
 let lastHistoryDoc        = null;  // Firestore pagination cursor
 let allHistoryLoaded      = false; // true when no more entries on server
+
+// Pending subcollection writes/deletes (only changed records get written)
+let pendingClientWrites  = new Set();
+let pendingClientDeletes = new Set();
+let pendingJobWrites     = new Set();
+let pendingJobDeletes    = new Set();
+let pendingOtherWrites   = new Set();
+let pendingOtherDeletes  = new Set();
 
 function historyCol() { return db.collection('users').doc(currentUser.uid).collection('history'); }
 
@@ -907,6 +975,7 @@ function saveClient(id) {
   if (!name || isNaN(rate) || rate < 0) { alert('Name and valid rate required.'); return; }
   const old = clients.find(c=>c.id===id);
   clients = clients.map(c => c.id===id ? {...c, name, note, rate} : c);
+  pendingClientWrites.add(id);
   const changes = [];
   if (old.name !== name) changes.push(`name: ${old.name} → ${name}`);
   if ((old.note||'') !== note) changes.push(`note: "${old.note||''}" → "${note}"`);
@@ -1011,7 +1080,9 @@ function payTithe() {
   balances.tithe_bank = 0;
   balances.tithe_cash = 0;
   const today = new Date().toISOString().slice(0,10);
-  otherMoney.push({ id:'o'+Date.now(), desc:'Tithe', date:today, type:'expense', amount:total });
+  const titheEntry = { id:'o'+Date.now(), desc:'Tithe', date:today, type:'expense', amount:total };
+  otherMoney.push(titheEntry);
+  pendingOtherWrites.add(titheEntry.id);
   const parts = [];
   if (tb>0) parts.push(`$${tb.toFixed(2)} from bank`);
   if (tc>0) parts.push(`$${tc.toFixed(2)} from cash`);
@@ -1028,6 +1099,7 @@ function unpayJob(id) {
     balances[tk] = Math.max(0, Math.round(((parseFloat(balances[tk])||0)-(jobAmount(j)*0.1))*100)/100);
   }
   lawnJobs = lawnJobs.map(jb => jb.id === id ? {...jb, status: 'unpaid', paymentMethod: null, paymentAmount: null} : jb);
+  pendingJobWrites.add(id);
   logHistory('add', `Restored job to unpaid — ${j.client} on ${fmt(j.date)} ($${jobAmount(j)})`);
   save(); render(); reopenPanel(j.client); toast('Job moved back to unpaid ✓');
 }
@@ -1038,7 +1110,9 @@ function clearPaidJobs() {
   if (!confirm(`Delete all ${count} paid job${count>1?'s':''}? This cannot be undone.`)) return;
   balances.tithe_bank = 0;
   balances.tithe_cash = 0;
+  const paidIds = lawnJobs.filter(j => j.status === 'paid').map(j => j.id);
   lawnJobs = lawnJobs.filter(j => j.status !== 'paid');
+  paidIds.forEach(id => { pendingJobDeletes.add(id); pendingJobWrites.delete(id); });
   logHistory('delete', `Cleared ${count} paid job${count>1?'s':''}`);
   save(); render(); toast(`${count} paid job${count>1?'s':''} cleared`);
 }
@@ -1161,7 +1235,9 @@ function addClient() {
   const rate=parseFloat(document.getElementById('cl-rate').value);
   if (!name||isNaN(rate)||rate<=0) { alert('Please enter a name and rate.'); return; }
   if (clients.find(c=>c.name.toLowerCase()===name.toLowerCase())) { alert('Client already exists.'); return; }
-  clients.push({id:'c'+Date.now(),name,note,rate});
+  const newClient = {id:'c'+Date.now(),name,note,rate};
+  clients.push(newClient);
+  pendingClientWrites.add(newClient.id);
   logHistory('client',`Added client — ${name}${note?' ('+note+')':''} at $${rate}/job`);
   document.getElementById('client-form').classList.remove('open');
   save(); renderClients();
@@ -1175,6 +1251,7 @@ function deleteClient(id) {
   const c=clients.find(c=>c.id===id);
   if (!confirm(`Remove ${c.name}?`)) return;
   clients=clients.filter(c=>c.id!==id);
+  pendingClientDeletes.add(id);
   logHistory('delete',`Removed client — ${c.name}`);
   save(); render(); toast('Client removed');
 }
@@ -1212,6 +1289,7 @@ async function bulkMarkPaid() {
       const amount = jobAmount(j);
       const prev = j.status;
       lawnJobs = lawnJobs.map(jb => jb.id===j.id ? {...jb, status:'paid', paymentMethod:m, paymentAmount:amount} : jb);
+      pendingJobWrites.add(j.id);
       balances[m] = (parseFloat(balances[m]) || 0) + amount;
       balances['tithe_'+m] = Math.round(((parseFloat(balances['tithe_'+m])||0)+(amount*0.1))*100)/100;
       logHistory('paid', `Marked ${j.client} job (${fmt(j.date)}) as paid — $${amount} (${m})`, { jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount });
@@ -1249,6 +1327,7 @@ async function bulkMarkPaid() {
   balances[method] = (parseFloat(balances[method]) || 0) + totalAmount;
   balances['tithe_'+method] = Math.round(((parseFloat(balances['tithe_'+method])||0)+(totalAmount*0.1))*100)/100;
   lawnJobs = lawnJobs.map(j => ids.includes(j.id) ? {...j, status:'paid', paymentMethod:method} : j);
+  ids.forEach(id => pendingJobWrites.add(id));
   save(); render(); updateBulkBar(); toast(`${jobs.length} jobs marked as paid ✓`);
 }
 
@@ -1260,6 +1339,7 @@ function bulkDelete() {
   if (!confirm(`Delete ${jobs.length} selected job${jobs.length > 1 ? 's' : ''}?`)) return;
   jobs.forEach(j => logHistory('delete', `Deleted job — ${j.client} on ${fmt(j.date)} ($${jobAmount(j)})`));
   lawnJobs = lawnJobs.filter(j => !ids.includes(j.id));
+  ids.forEach(id => { pendingJobDeletes.add(id); pendingJobWrites.delete(id); });
   save(); render(); updateBulkBar(); toast(`${jobs.length} job${jobs.length > 1 ? 's' : ''} deleted`);
 }
 
@@ -1294,6 +1374,7 @@ async function markPaid(id) {
   const prev=j.status;
   const amount=jobAmount(j);
   lawnJobs=lawnJobs.map(j=>j.id===id?{...j,status:'paid',paymentMethod:method,paymentAmount:amount}:j);
+  pendingJobWrites.add(id);
   balances[method]=(parseFloat(balances[method])||0)+amount;
   balances['tithe_'+method]=Math.round(((parseFloat(balances['tithe_'+method])||0)+(amount*0.1))*100)/100;
   logHistory('paid', `Marked ${j.client} job (${fmt(j.date)}) as paid — $${amount} (${method})`, { jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount });
@@ -1317,6 +1398,7 @@ async function undoPaid(hid) {
     if (!job) { toast('Job no longer exists'); return; }
     const restore = h.prevStatus || 'unpaid';
     lawnJobs = lawnJobs.map(j=>j.id===h.jobId ? {...j, status:restore, paymentMethod:null, paymentAmount:null} : j);
+    pendingJobWrites.add(h.jobId);
     historyLog = historyLog.filter(h=>h.id!==hid);
     if (currentUser) await historyCol().doc(hid).delete();
     logHistory('add', `Undid payment — ${job.client} job (${fmt(job.date)}) restored to ${restore}`);
@@ -1327,6 +1409,7 @@ async function undoPaid(hid) {
     h.bulkJobIds.forEach(jid => {
       const prev = h.prevStatuses?.[jid] || 'unpaid';
       lawnJobs = lawnJobs.map(j=>j.id===jid ? {...j, status:prev, paymentMethod:null, paymentAmount:null} : j);
+      pendingJobWrites.add(jid);
     });
     historyLog = historyLog.filter(h=>h.id!==hid);
     if (currentUser) await historyCol().doc(hid).delete();
@@ -1345,6 +1428,7 @@ function deleteJob(id) {
     balances[tk] = Math.max(0, Math.round(((parseFloat(balances[tk])||0)-(jobAmount(j)*0.1))*100)/100);
   }
   lawnJobs=lawnJobs.filter(j=>j.id!==id);
+  pendingJobDeletes.add(id); pendingJobWrites.delete(id);
   logHistory('delete',`Deleted job — ${j.client} on ${fmt(j.date)} ($${jobAmount(j)})`);
   save(); render(); reopenPanel(j.client); toast('Job deleted');
 }
@@ -1363,7 +1447,9 @@ function addLawnJob() {
   const raw    = document.getElementById('lj-amount').value;
   const amount = raw !== '' ? parseFloat(raw) : getRate(client);
   if (!date) { alert('Please select a date.'); return; }
-  lawnJobs.push({id:'l'+Date.now(), client, date, status, amount});
+  const newJob = {id:'l'+Date.now(), client, date, status, amount};
+  lawnJobs.push(newJob);
+  pendingJobWrites.add(newJob.id);
   logHistory('add', `Added job — ${client} on ${fmt(date)}, ${status} ($${amount})`);
   save(); render();
   document.getElementById('lawn-form').classList.remove('open');
@@ -1380,7 +1466,9 @@ function addOtherMoney() {
   if (!desc) { alert('Please enter a description.'); return; }
   if (!date) { alert('Please enter a valid date.'); return; }
   if (isNaN(amount) || amount <= 0) { alert('Please enter a valid amount greater than 0.'); return; }
-  otherMoney.push({id:'o'+Date.now(),desc,date,type,amount});
+  const newEntry = {id:'o'+Date.now(),desc,date,type,amount};
+  otherMoney.push(newEntry);
+  pendingOtherWrites.add(newEntry.id);
   logHistory('other',`Added ${type} — "${desc}" $${amount.toFixed(2)} on ${fmt(date)}`);
   save(); render();
   document.getElementById('om-desc').value='';
@@ -1394,6 +1482,7 @@ function deleteOther(id) {
   if (!confirm('Delete this entry?')) return;
   const e=otherMoney.find(e=>e.id===id);
   otherMoney=otherMoney.filter(e=>e.id!==id);
+  pendingOtherDeletes.add(id); pendingOtherWrites.delete(id);
   logHistory('delete',`Deleted entry — "${e.desc}" $${parseFloat(e.amount).toFixed(2)}`);
   save(); render(); toast('Entry deleted');
 }
@@ -1428,6 +1517,7 @@ function saveJob(id) {
   if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
   const old = lawnJobs.find(j=>j.id===id);
   lawnJobs = lawnJobs.map(j => j.id===id ? {...j, date, client, status, amount} : j);
+  pendingJobWrites.add(id);
   logHistory('add', `Edited job — ${old.client} ${fmt(old.date)} → ${client} ${fmt(date)}, $${amount}, ${status}`);
   save();
   render();
@@ -1463,6 +1553,7 @@ function saveOther(id) {
   if (!date || !desc || isNaN(amount) || amount < 0) { alert('All fields required.'); return; }
   const old = otherMoney.find(e=>e.id===id);
   otherMoney = otherMoney.map(e => e.id===id ? {...e, date, desc, amount, type} : e);
+  pendingOtherWrites.add(id);
   logHistory('other', `Edited entry — "${old.desc}" → "${desc}" $${amount.toFixed(2)}`);
   save(); render(); toast('Entry updated ✓');
 }
