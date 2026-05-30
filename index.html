@@ -205,7 +205,7 @@ label {
   margin-bottom: 5px;
 }
 
-input, select {
+input:not([type="checkbox"]), select {
   width: 100%;
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
@@ -219,8 +219,17 @@ input, select {
   -webkit-appearance: none;
 }
 
-input:focus, select:focus { border-color: var(--accent); }
-input::placeholder { color: var(--text-faint); }
+input[type="checkbox"] {
+  appearance: auto;
+  -webkit-appearance: checkbox;
+  width: 13px !important;
+  height: 13px !important;
+  cursor: pointer;
+  accent-color: #4ADE80;
+}
+
+input:not([type="checkbox"]):focus, select:focus { border-color: var(--accent); }
+input:not([type="checkbox"])::placeholder { color: var(--text-faint); }
 
 select option { background: var(--surface); }
 
