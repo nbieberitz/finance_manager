@@ -478,6 +478,10 @@ tr:hover td { background: var(--surface2); }
       </div>
     </div>
     <div id="clients-wrap"><div class="empty-state">No clients yet.</div></div>
+    <div id="bulk-bar" style="display:none;padding:8px 1.25rem;background:var(--surface2);border-top:1px solid var(--border);align-items:center;gap:10px">
+      <span id="bulk-count" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted)"></span>
+      <button class="act-btn success" onclick="bulkMarkPaid()" style="font-size:12px;padding:4px 14px">mark selected as paid</button>
+    </div>
   </section>
 
   <!-- Add Job -->
@@ -508,10 +512,6 @@ tr:hover td { background: var(--surface2); }
         <button class="btn btn-primary" onclick="addLawnJob()">Add job</button>
         <button class="btn btn-ghost" onclick="toggleForm('lawn-form')">Cancel</button>
       </div>
-    </div>
-    <div id="bulk-bar" style="display:none;padding:8px 1.25rem;background:var(--surface2);border-bottom:1px solid var(--border);align-items:center;gap:10px">
-      <span id="bulk-count" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted)"></span>
-      <button class="act-btn success" onclick="bulkMarkPaid()" style="font-size:12px;padding:4px 14px">mark selected as paid</button>
     </div>
   </section>
 
