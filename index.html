@@ -560,7 +560,10 @@ tr:hover td { background: var(--surface2); }
         <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
         Paid Jobs
       </div>
-      <span id="paid-jobs-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
+      <div class="header-actions">
+        <span id="paid-jobs-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
+        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearPaidJobs()">Clear all</button>
+      </div>
     </div>
     <div id="paid-jobs-body" style="display:none">
       <div id="paid-jobs-wrap"><div class="empty-state">No paid jobs yet.</div></div>
@@ -942,6 +945,23 @@ function historyEntryHTML(h) {
   </div>`;
 }
 
+function unpayJob(id) {
+  const j = lawnJobs.find(j => j.id === id);
+  if (!j) return;
+  lawnJobs = lawnJobs.map(jb => jb.id === id ? {...jb, status: 'unpaid'} : jb);
+  logHistory('add', `Restored job to unpaid — ${j.client} on ${fmt(j.date)} ($${jobAmount(j)})`);
+  save(); render(); reopenPanel(j.client); toast('Job moved back to unpaid ✓');
+}
+
+function clearPaidJobs() {
+  const count = lawnJobs.filter(j => j.status === 'paid').length;
+  if (!count) return;
+  if (!confirm(`Delete all ${count} paid job${count>1?'s':''}? This cannot be undone.`)) return;
+  lawnJobs = lawnJobs.filter(j => j.status !== 'paid');
+  logHistory('delete', `Cleared ${count} paid job${count>1?'s':''}`);
+  save(); render(); toast(`${count} paid job${count>1?'s':''} cleared`);
+}
+
 function renderPaidJobs() {
   const paid = lawnJobs.filter(j => j.status === 'paid').sort((a,b) => b.date.localeCompare(a.date));
   const total = paid.reduce((s,j) => s + jobAmount(j), 0);
@@ -951,12 +971,16 @@ function renderPaidJobs() {
   if (!wrap) return;
   if (!paid.length) { wrap.innerHTML = '<div class="empty-state">No paid jobs yet.</div>'; return; }
   wrap.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr><th>Date</th><th>Client</th><th>Amount</th></tr></thead>
+    <thead><tr><th>Date</th><th>Client</th><th>Amount</th><th></th></tr></thead>
     <tbody>${paid.map(j => `
       <tr>
         <td class="mono">${fmt(j.date)}</td>
         <td>${j.client}</td>
         <td class="mono amount-pos">$${jobAmount(j).toFixed(2)}</td>
+        <td><div class="row-actions">
+          <button class="act-btn" style="color:#4ADE80;border-color:#0A3D1A" onclick="unpayJob('${j.id}')">undo</button>
+          <button class="act-btn danger" onclick="deleteJob('${j.id}')">delete</button>
+        </div></td>
       </tr>`).join('')}
     </tbody></table></div>`;
 }
