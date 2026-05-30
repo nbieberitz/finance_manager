@@ -837,7 +837,12 @@ function saveClient(id) {
   if (!name || isNaN(rate) || rate < 0) { alert('Name and valid rate required.'); return; }
   const old = clients.find(c=>c.id===id);
   clients = clients.map(c => c.id===id ? {...c, name, note, rate} : c);
-  logHistory('client', `Edited client — ${old.name} → ${name}, $${old.rate} → $${rate}/job`);
+  const changes = [];
+  if (old.name !== name) changes.push(`name: ${old.name} → ${name}`);
+  if ((old.note||'') !== note) changes.push(`note: "${old.note||''}" → "${note}"`);
+  if (old.rate !== rate) changes.push(`rate: $${old.rate} → $${rate}/job`);
+  const changeStr = changes.length ? changes.join(', ') : 'no changes';
+  logHistory('client', `Edited client — ${name} (${changeStr})`);
   save(); renderClients(); render(); toast('Client updated ✓');
 }
 
