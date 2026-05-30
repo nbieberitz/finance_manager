@@ -734,7 +734,7 @@ async function loadMoreHistory() {
   renderHistory();
 }
 
-
+async function saveToFirestore() {
   if (!currentUser) return;
   await userDoc().set({ clients, lawnJobs, otherMoney, balances });
   // Batch-write pending history entries 50 at a time
