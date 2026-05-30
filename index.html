@@ -681,10 +681,10 @@ function renderClients() {
           <table>
             <thead><tr>
               <th colspan="2" style="width:auto">
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;color:var(--text-muted);font-weight:500;letter-spacing:.05em">
-                  <input type="checkbox" onclick="toggleClientSelectAll(this,'${c.id}')" style="cursor:pointer;width:13px;height:13px;accent-color:#4ADE80" />
-                  SELECT ALL
-                </label>
+                <div style="display:flex;align-items:center;gap:6px">
+                  <input type="checkbox" id="select-all-${c.id}" onchange="toggleClientSelectAll(this,'${c.id}')" style="cursor:pointer;width:13px;height:13px;accent-color:#4ADE80" />
+                  <span style="font-size:10px;color:var(--text-muted);font-weight:500;letter-spacing:.05em;cursor:pointer" onclick="document.getElementById('select-all-${c.id}').click()">SELECT ALL</span>
+                </div>
               </th>
               <th>AMOUNT</th><th>STATUS</th><th style="text-align:right">ACTIONS</th>
             </tr></thead>
