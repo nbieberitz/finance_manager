@@ -960,7 +960,7 @@ function bulkMarkPaid() {
 
   lawnJobs = lawnJobs.map(j => ids.includes(j.id) ? {...j, status:'paid'} : j);
   if (historyLog.length > 300) historyLog = historyLog.slice(0, 300);
-  save(); render(); toast(`${jobs.length} jobs marked as paid ✓`);
+  save(); render(); updateBulkBar(); toast(`${jobs.length} jobs marked as paid ✓`);
 }
 
 function bulkDelete() {
@@ -971,7 +971,7 @@ function bulkDelete() {
   if (!confirm(`Delete ${jobs.length} selected job${jobs.length > 1 ? 's' : ''}?`)) return;
   jobs.forEach(j => logHistory('delete', `Deleted job — ${j.client} on ${fmt(j.date)} ($${jobAmount(j)})`));
   lawnJobs = lawnJobs.filter(j => !ids.includes(j.id));
-  save(); render(); toast(`${jobs.length} job${jobs.length > 1 ? 's' : ''} deleted`);
+  save(); render(); updateBulkBar(); toast(`${jobs.length} job${jobs.length > 1 ? 's' : ''} deleted`);
 }
 
 function markPaid(id) {
