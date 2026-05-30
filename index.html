@@ -33,9 +33,9 @@
   --radius: 12px;
   --radius-sm: 7px;
 }
-
+ 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-
+ 
 body {
   font-family: 'Inter', sans-serif;
   background: var(--bg);
@@ -43,7 +43,7 @@ body {
   min-height: 100vh;
   padding: 2rem 1rem 4rem;
 }
-
+ 
 header {
   max-width: 900px;
   margin: 0 auto 2.5rem;
@@ -53,9 +53,9 @@ header {
   padding-bottom: 1.25rem;
   border-bottom: 1px solid var(--border-mid);
 }
-
+ 
 .logo { display: flex; flex-direction: column; gap: 4px; }
-
+ 
 .logo h1 {
   font-family: 'Syne', sans-serif;
   font-size: 1.6rem;
@@ -64,7 +64,7 @@ header {
   letter-spacing: -0.02em;
   line-height: 1;
 }
-
+ 
 .logo span {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
@@ -72,7 +72,7 @@ header {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-
+ 
 #last-updated {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
@@ -80,16 +80,16 @@ header {
   text-align: right;
   line-height: 1.7;
 }
-
+ 
 .container { max-width: 900px; margin: 0 auto; }
-
+ 
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
   gap: 10px;
   margin-bottom: 2rem;
 }
-
+ 
 .metric {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -99,9 +99,9 @@ header {
   overflow: hidden;
   transition: border-color 0.2s;
 }
-
+ 
 .metric:hover { border-color: var(--border-mid); }
-
+ 
 .metric-label {
   font-size: 10px;
   font-weight: 500;
@@ -110,27 +110,27 @@ header {
   color: var(--text-faint);
   margin-bottom: 8px;
 }
-
+ 
 .metric-value {
   font-family: 'JetBrains Mono', monospace;
   font-size: 1.6rem;
   font-weight: 500;
   line-height: 1;
 }
-
+ 
 .metric.green .metric-value { color: var(--accent); }
 .metric.amber .metric-value { color: var(--amber); }
 .metric.blue .metric-value { color: var(--blue); }
 .metric.red .metric-value { color: var(--red); }
 .metric.purple .metric-value { color: var(--purple); }
-
+ 
 .metric-sub {
   font-size: 11px;
   color: var(--text-faint);
   margin-top: 4px;
   font-family: 'JetBrains Mono', monospace;
 }
-
+ 
 section {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -138,7 +138,7 @@ section {
   margin-bottom: 1.25rem;
   overflow: hidden;
 }
-
+ 
 .section-header {
   display: flex;
   align-items: center;
@@ -149,7 +149,7 @@ section {
   user-select: none;
   gap: 12px;
 }
-
+ 
 #loading-overlay {
   display: none;
   position: fixed;
@@ -162,7 +162,7 @@ section {
   justify-content: center;
   gap: 16px;
 }
-
+ 
 .loading-spinner {
   width: 32px;
   height: 32px;
@@ -171,19 +171,19 @@ section {
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
-
+ 
 @keyframes spin { to { transform: rotate(360deg); } }
-
+ 
 .loading-text {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   color: var(--text-muted);
   letter-spacing: 0.08em;
 }
-
+ 
 .section-header.static { cursor: default; }
 .section-header.static:hover { background: transparent; }
-
+ 
 .section-title {
   font-family: 'Syne', sans-serif;
   font-size: 12px;
@@ -195,11 +195,11 @@ section {
   align-items: center;
   gap: 8px;
 }
-
+ 
 .section-title svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
-
+ 
 .header-actions { display: flex; gap: 6px; }
-
+ 
 .pill-btn {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
@@ -212,21 +212,21 @@ section {
   transition: all 0.15s;
   white-space: nowrap;
 }
-
+ 
 .pill-btn:hover { background: var(--surface3); color: var(--text); border-color: var(--text-faint); }
 .pill-btn.danger:hover { color: var(--red); border-color: var(--red); background: var(--red-pale); }
-
+ 
 .add-form {
   padding: 1.1rem 1.25rem;
   background: var(--surface2);
   border-bottom: 1px solid var(--border);
   display: none;
 }
-
+ 
 .add-form.open { display: block; }
-
+ 
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
-
+ 
 label {
   display: block;
   font-size: 10px;
@@ -236,7 +236,7 @@ label {
   color: var(--text-faint);
   margin-bottom: 5px;
 }
-
+ 
 input:not([type="checkbox"]), select {
   width: 100%;
   font-family: 'JetBrains Mono', monospace;
@@ -250,7 +250,7 @@ input:not([type="checkbox"]), select {
   transition: border-color 0.15s;
   -webkit-appearance: none;
 }
-
+ 
 input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
@@ -282,14 +282,14 @@ input[type="checkbox"]:checked::after {
   border-left: none;
   transform: rotate(45deg) translate(-1px, -1px);
 }
-
+ 
 input:not([type="checkbox"]):focus, select:focus { border-color: var(--accent); }
 input:not([type="checkbox"])::placeholder { color: var(--text-faint); }
-
+ 
 select option { background: var(--surface); }
-
+ 
 .form-actions { margin-top: 12px; display: flex; gap: 8px; }
-
+ 
 .btn {
   font-family: 'Inter', sans-serif;
   font-size: 13px;
@@ -300,15 +300,15 @@ select option { background: var(--surface); }
   cursor: pointer;
   transition: opacity 0.15s, transform 0.1s;
 }
-
+ 
 .btn:active { transform: scale(0.97); }
 .btn-primary { background: var(--accent); color: #000; }
 .btn-primary:hover { opacity: 0.85; }
 .btn-ghost { background: var(--surface3); color: var(--text-muted); border: 1px solid var(--border-mid); }
 .btn-ghost:hover { color: var(--text); }
-
+ 
 table { width: 100%; border-collapse: collapse; }
-
+ 
 th {
   font-size: 10px;
   font-weight: 500;
@@ -320,7 +320,7 @@ th {
   border-bottom: 1px solid var(--border);
   background: var(--surface2);
 }
-
+ 
 td {
   font-size: 13px;
   padding: 10px 1.25rem;
@@ -328,12 +328,12 @@ td {
   vertical-align: middle;
   color: var(--text);
 }
-
+ 
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--surface2); }
-
+ 
 .mono { font-family: 'JetBrains Mono', monospace; }
-
+ 
 .badge {
   display: inline-block;
   font-size: 10px;
@@ -343,16 +343,16 @@ tr:hover td { background: var(--surface2); }
   border-radius: 20px;
   letter-spacing: 0.02em;
 }
-
+ 
 .badge-unpaid { background: var(--amber-pale); color: var(--amber); border: 1px solid #3D2800; }
 .badge-check { background: var(--blue-pale); color: var(--blue); border: 1px solid #0F2040; }
 .badge-paid { background: var(--accent-pale); color: var(--accent); border: 1px solid #3D2800; }
 .badge-gift { background: var(--purple-pale); color: var(--purple); border: 1px solid #2A1040; }
 .badge-expense { background: var(--red-pale); color: var(--red); border: 1px solid #3D0A0A; }
 .badge-income { background: var(--accent-pale); color: var(--accent); border: 1px solid #3D2800; }
-
+ 
 .row-actions { display: flex; gap: 5px; justify-content: flex-end; }
-
+ 
 .act-btn {
   font-size: 11px;
   font-family: 'JetBrains Mono', monospace;
@@ -364,7 +364,7 @@ tr:hover td { background: var(--surface2); }
   color: var(--text-muted);
   transition: all 0.12s;
 }
-
+ 
 .act-btn:hover { background: var(--surface3); color: var(--text); }
 .act-btn.danger { color: var(--red); border-color: #3D0A0A; }
 .act-btn.danger:hover { background: var(--red-pale); }
@@ -374,7 +374,7 @@ tr:hover td { background: var(--surface2); }
 .act-btn.edit:hover { background: var(--blue-pale); }
 .act-btn.save { color: var(--accent); border-color: #3D2800; }
 .act-btn.save:hover { background: var(--accent-pale); }
-
+ 
 /* Inline edit row */
 .edit-row td { padding: 8px 1.25rem; background: var(--surface2); }
 .edit-row input, .edit-row select {
@@ -384,7 +384,7 @@ tr:hover td { background: var(--surface2); }
   min-width: 60px;
 }
 .edit-row .row-actions { margin-top: 0; }
-
+ 
 .empty-state {
   padding: 2rem;
   text-align: center;
@@ -392,9 +392,9 @@ tr:hover td { background: var(--surface2); }
   font-size: 13px;
   font-style: italic;
 }
-
+ 
 .table-wrap { overflow-x: auto; }
-
+ 
 .history-entry {
   display: flex;
   align-items: flex-start;
@@ -403,28 +403,28 @@ tr:hover td { background: var(--surface2); }
   border-bottom: 1px solid var(--border);
   font-size: 13px;
 }
-
+ 
 .history-entry:last-child { border-bottom: none; }
 .history-entry:hover { background: var(--surface2); }
-
+ 
 .history-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
 .dot-add { background: var(--accent); }
 .dot-paid { background: var(--blue); }
 .dot-delete { background: var(--red); }
 .dot-other { background: var(--purple); }
 .dot-client { background: var(--amber); }
-
+ 
 .history-action { color: var(--text-muted); flex: 1; line-height: 1.5; }
 .history-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); white-space: nowrap; margin-top: 3px; }
-
+ 
 #history-body { max-height: 340px; overflow-y: auto; }
-
+ 
 .divider {
   height: 1px;
   background: var(--border);
   margin: 0.5rem 0;
 }
-
+ 
 .toast {
   position: fixed;
   bottom: 1.5rem;
@@ -441,17 +441,17 @@ tr:hover td { background: var(--surface2); }
   transition: opacity 0.2s, transform 0.2s;
   pointer-events: none;
 }
-
+ 
 .toast.show { opacity: 1; transform: translateY(0); }
-
+ 
 .amount-pos { color: var(--accent); }
 .amount-neg { color: var(--red); }
-
+ 
 @media (max-width: 600px) {
   header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
   th:nth-child(4), td:nth-child(4) { display: none; }
 }
-
+ 
 /* Client job dropdown */
 .client-jobs-toggle { background:none; border:none; color:var(--text-muted); font-size:11px; cursor:pointer; padding:2px 8px; border-radius:4px; font-family:'JetBrains Mono',monospace; white-space:nowrap; }
 .client-jobs-toggle:hover { color:var(--text); background:var(--surface3); }
@@ -473,7 +473,7 @@ tr:hover td { background: var(--surface2); }
 </style>
 </head>
 <body>
-
+ 
 <header>
   <div class="logo">
     <h1>Finance Manager</h1>
@@ -482,11 +482,11 @@ tr:hover td { background: var(--surface2); }
     <span id="auth-loading">connecting…</span>
   </div>
 </header>
-
+ 
 <div class="container">
-
+ 
   <div class="summary-grid" id="summary"></div>
-
+ 
   <!-- Clients -->
   <section>
     <div class="section-header" onclick="toggleForm('client-form', this)">
@@ -516,7 +516,7 @@ tr:hover td { background: var(--surface2); }
       <button class="act-btn danger" onclick="bulkDelete()" style="font-size:12px;padding:4px 14px">delete selected</button>
     </div>
   </section>
-
+ 
   <!-- Add Job -->
   <section>
     <div class="section-header static">
@@ -547,7 +547,7 @@ tr:hover td { background: var(--surface2); }
       </div>
     </div>
   </section>
-
+ 
   <!-- Income & Expenses -->
   <section>
     <div class="section-header" onclick="toggleForm('other-form', this)">
@@ -579,7 +579,7 @@ tr:hover td { background: var(--surface2); }
     </div>
     <div id="other-wrap"><div class="empty-state">No entries yet.</div></div>
   </section>
-
+ 
   <!-- History -->
   <section>
     <div class="section-header" onclick="toggleSection('history-body')">
@@ -595,14 +595,14 @@ tr:hover td { background: var(--surface2); }
       <div id="history-wrap"><div class="empty-state">No history yet.</div></div>
     </div>
   </section>
-
+ 
 </div>
-
+ 
 <div id="loading-overlay">
   <div class="loading-spinner"></div>
   <div class="loading-text">LOADING…</div>
 </div>
-
+ 
 <div id="full-history-modal" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.88);backdrop-filter:blur(4px);z-index:9998;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;">
   <div style="background:var(--surface);border:1px solid var(--border-mid);border-radius:var(--radius);width:100%;max-width:860px;display:flex;flex-direction:column;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:0.9rem 1.25rem;border-bottom:1px solid var(--border);background:var(--surface2);">
@@ -617,7 +617,7 @@ tr:hover td { background: var(--surface2); }
     </div>
   </div>
 </div>
-
+ 
 <div id="payment-modal" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.88);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;">
   <div style="background:var(--surface2);border:1px solid var(--border-mid);border-radius:var(--radius);padding:1.75rem 1.5rem;min-width:260px;display:flex;flex-direction:column;gap:1.25rem;">
     <div id="pm-job-info" style="display:none;background:var(--surface3);border:1px solid var(--border-mid);border-radius:var(--radius-sm);padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);line-height:1.8;"></div>
@@ -630,9 +630,9 @@ tr:hover td { background: var(--surface2); }
     <button id="pm-cancel" style="background:none;border:none;color:var(--text-faint);font-size:11px;cursor:pointer;font-family:'JetBrains Mono',monospace;text-align:center;">cancel</button>
   </div>
 </div>
-
+ 
 <div class="toast" id="toast"></div>
-
+ 
 <script>
 // ── Firebase ──────────────────────────────────────────────
 const firebaseConfig = {
@@ -647,9 +647,9 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
 let currentUser = null;
-
+ 
 function userDoc() { return db.collection('users').doc(currentUser.uid); }
-
+ 
 async function loadFromFirestore() {
   const overlay = document.getElementById('loading-overlay');
   if (overlay) overlay.style.display = 'flex';
@@ -663,27 +663,26 @@ async function loadFromFirestore() {
     lawnJobs   = d.lawnJobs   || [];
     otherMoney = d.otherMoney || [];
     historyLog = d.historyLog || [];
-    balances   = d.balances   || { bank: 0, cash: 0, tithe: 0 };
-    if (!('tithe' in balances)) balances.tithe = 0;
+    balances   = d.balances   || { bank: 0, cash: 0 };
   } else {
-    clients = []; lawnJobs = []; otherMoney = []; historyLog = []; balances = { bank: 0, cash: 0, tithe: 0 };
+    clients = []; lawnJobs = []; otherMoney = []; historyLog = []; balances = { bank: 0, cash: 0 };
     await saveToFirestore();
   }
   if (overlay) overlay.style.display = 'none';
   render(); renderClients(); renderHistory();
 }
-
+ 
 let saveTimer;
 function save() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveToFirestore, 800);
 }
-
+ 
 async function saveToFirestore() {
   if (!currentUser) return;
   await userDoc().set({ clients, lawnJobs, otherMoney, historyLog, balances });
 }
-
+ 
 auth.onAuthStateChanged(user => {
   const area = document.getElementById('auth-area');
   if (user) {
@@ -706,7 +705,7 @@ auth.onAuthStateChanged(user => {
       </button>`;
   }
 });
-
+ 
 function signIn() {
   const provider = new firebase.auth.GoogleAuthProvider();
   auth.signInWithPopup(provider);
@@ -714,44 +713,44 @@ function signIn() {
 function signOut() {
   if (confirm('Sign out?')) auth.signOut();
 }
-
+ 
 // ── App data ──────────────────────────────────────────────
 let clients    = [];
 let lawnJobs   = [];
 let otherMoney = [];
 let historyLog = [];
-let balances   = { bank: 0, cash: 0, tithe: 0 };
-
+let balances   = { bank: 0, cash: 0 };
+ 
 function getRate(name) { const c = clients.find(c => c.name===name); return c ? c.rate : 0; }
 function jobAmount(j) { return j.amount !== undefined ? j.amount : getRate(j.client); }
-
+ 
 function fmt(d) { const [y,m,dy] = d.split('-'); return `${parseInt(m)}/${parseInt(dy)}/${y.slice(2)}`; }
-
+ 
 function logHistory(type, message) {
   historyLog.unshift({ id:'h'+Date.now(), type, message, ts: new Date().toISOString() });
   if (historyLog.length > 300) historyLog = historyLog.slice(0, 300);
 }
-
+ 
 function statusBadge(s) {
   return { unpaid:'<span class="badge badge-unpaid">Unpaid</span>', check:'<span class="badge badge-check">Check coming</span>', paid:'<span class="badge badge-paid">Paid</span>' }[s] || '';
 }
-
+ 
 function refreshClientDropdown() {
   const sel = document.getElementById('lj-client');
   sel.innerHTML = clients.map(c => `<option value="${c.name}">${c.name}${c.note?' ('+c.note+')':''} — $${c.rate}</option>`).join('');
   prefillJobAmount();
 }
-
+ 
 function renderClients() {
   const wrap = document.getElementById('clients-wrap');
   if (!clients.length) { wrap.innerHTML = '<div class="empty-state">No clients yet.</div>'; refreshClientDropdown(); return; }
-
+ 
   wrap.innerHTML = clients.map(c => {
     const clientJobs = lawnJobs.filter(j => j.client === c.name && j.status !== 'paid')
       .sort((a,b) => b.date.localeCompare(a.date));
     const jobCount = clientJobs.length;
     const owed = clientJobs.reduce((s,j) => s + jobAmount(j), 0);
-
+ 
     const jobRows = clientJobs.map(j => `
       <tr id="jrow-${j.id}">
         <td style="width:32px"><input type="checkbox" class="job-cb" data-id="${j.id}" onclick="updateBulkBar()" /></td>
@@ -765,7 +764,7 @@ function renderClients() {
           <button class="act-btn danger" onclick="deleteJob('${j.id}')">delete</button>
         </div></td>
       </tr>`).join('');
-
+ 
     return `
       <div id="crow-${c.id}">
         <div style="display:flex;align-items:center;padding:10px 1.25rem;gap:10px;border-bottom:1px solid var(--border)">
@@ -799,23 +798,23 @@ function renderClients() {
         </div>` : ''}
       </div>`;
   }).join('');
-
+ 
   refreshClientDropdown();
   updateBulkBar();
 }
-
+ 
 function toggleClientJobs(cid) {
   const panel = document.getElementById('jobs-panel-'+cid);
   if (panel) panel.classList.toggle('open');
 }
-
+ 
 function toggleClientSelectAll(cb, cid) {
   const panel = document.getElementById('jobs-panel-'+cid);
   if (!panel) return;
   panel.querySelectorAll('.job-cb').forEach(c => c.checked = cb.checked);
   updateBulkBar();
 }
-
+ 
 function editClient(id) {
   const c = clients.find(c=>c.id===id);
   const wrap = document.getElementById('crow-'+id);
@@ -830,7 +829,7 @@ function editClient(id) {
       <button class="act-btn" onclick="renderClients()">cancel</button>
     </div>`;
 }
-
+ 
 function saveClient(id) {
   const name = document.getElementById('ec-name-'+id).value.trim();
   const note = document.getElementById('ec-note-'+id).value.trim();
@@ -846,15 +845,15 @@ function saveClient(id) {
   logHistory('client', `Edited client — ${name} (${changeStr})`);
   save(); renderClients(); render(); toast('Client updated ✓');
 }
-
+ 
 function reopenPanel(clientName) {
   const c = clients.find(c => c.name === clientName);
   if (c) { const p = document.getElementById('jobs-panel-'+c.id); if (p) p.classList.add('open'); }
 }
-
+ 
 function render() {
   renderClients();
-
+ 
   const omSorted = [...otherMoney].sort((a,b) => b.date.localeCompare(a.date));
   const omWrap = document.getElementById('other-wrap');
   if (!omSorted.length) {
@@ -878,14 +877,14 @@ function render() {
         </tr>`;
       }).join('')}</tbody></table></div>`;
   }
-
+ 
   const unpaid   = lawnJobs.filter(j=>j.status==='unpaid').reduce((s,j)=>s+jobAmount(j),0);
   const check    = lawnJobs.filter(j=>j.status==='check').reduce((s,j)=>s+jobAmount(j),0);
   const paidJobs = lawnJobs.filter(j=>j.status==='paid').reduce((s,j)=>s+jobAmount(j),0);
   const income   = otherMoney.filter(e=>e.type!=='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
   const expenses = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
   const netCash  = paidJobs + income - expenses;
-
+ 
   document.getElementById('summary').innerHTML = `
     <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${netCash.toFixed(2)}</div><div class="metric-sub">paid + income − expenses</div></div>
     <div class="metric amber"><div class="metric-label">Owed to you</div><div class="metric-value">$${unpaid+check}</div><div class="metric-sub">${unpaid>0?'$'+unpaid+' unpaid':''}${unpaid>0&&check>0?' · ':''}${check>0?'$'+check+' by check':''}</div></div>
@@ -901,16 +900,11 @@ function render() {
       <div class="metric-value" id="bal-cash-val" style="color:var(--amber)">$${parseFloat(balances.cash).toFixed(2)}</div>
       <div class="metric-sub">click to update</div>
     </div>
-    <div class="metric" id="tithe-card" style="border-color:#3D2800">
-      <div class="metric-label">Tithe Owed</div>
-      <div class="metric-value" style="color:#FB923C">$${parseFloat(balances.tithe||0).toFixed(2)}</div>
-      <div style="margin-top:8px"><button onclick="payTithe()" class="act-btn success" style="font-size:10px;padding:2px 10px">mark paid</button></div>
-    </div>
   `;
-
+ 
 renderHistory();
 }
-
+ 
 function historyEntryHTML(h) {
   const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client'}[h.type]||'dot-add';
   const d = new Date(h.ts);
@@ -925,7 +919,7 @@ function historyEntryHTML(h) {
     </div>
   </div>`;
 }
-
+ 
 function renderHistory() {
   const wrap = document.getElementById('history-wrap');
   if (!historyLog.length) { wrap.innerHTML='<div class="empty-state">No history yet.</div>'; return; }
@@ -939,10 +933,10 @@ function renderHistory() {
   const modal = document.getElementById('full-history-modal');
   if (modal && modal.style.display !== 'none') showFullHistory(fullHistoryPage);
 }
-
+ 
 let fullHistoryPage = 1;
 const FH_PAGE_SIZE = 50;
-
+ 
 function showFullHistory(page) {
   const totalPages = Math.ceil(historyLog.length / FH_PAGE_SIZE);
   fullHistoryPage = Math.max(1, Math.min(page, totalPages));
@@ -956,11 +950,11 @@ function showFullHistory(page) {
   document.getElementById('fh-next').disabled = fullHistoryPage >= totalPages;
   document.getElementById('full-history-modal').style.display = 'flex';
 }
-
+ 
 function closeFullHistory() {
   document.getElementById('full-history-modal').style.display = 'none';
 }
-
+ 
 function editHistory(id) {
   const h = historyLog.find(h=>h.id===id);
   const row = document.getElementById('hrow-'+id);
@@ -975,28 +969,28 @@ function editHistory(id) {
       <button class="act-btn" onclick="renderHistory()">cancel</button>
     </div>`;
 }
-
+ 
 function saveHistory(id) {
   const msg = document.getElementById('hmsg-'+id).value.trim();
   if (!msg) { alert('Message cannot be empty.'); return; }
   historyLog = historyLog.map(h => h.id===id ? {...h, message: msg} : h);
   save(); renderHistory(); toast('Log entry updated ✓');
 }
-
+ 
 function deleteHistory(id) {
   if (!confirm('Delete this log entry?')) return;
   historyLog = historyLog.filter(h=>h.id!==id);
   save(); renderHistory(); toast('Log entry deleted');
 }
-
+ 
 function clearHistory() {
   if (!confirm('Clear all history?')) return;
   historyLog=[]; save(); renderHistory(); toast('History cleared');
 }
-
+ 
 function toggleForm(id) { document.getElementById(id).classList.toggle('open'); }
 function toggleSection(id) { const el=document.getElementById(id); el.style.display=el.style.display==='none'?'':'none'; }
-
+ 
 function addClient() {
   const name=document.getElementById('cl-name').value.trim();
   const note=document.getElementById('cl-note').value.trim();
@@ -1012,7 +1006,7 @@ function addClient() {
   document.getElementById('cl-rate').value='';
   toast('Client added ✓');
 }
-
+ 
 function deleteClient(id) {
   const c=clients.find(c=>c.id===id);
   if (!confirm(`Remove ${c.name}?`)) return;
@@ -1020,12 +1014,12 @@ function deleteClient(id) {
   logHistory('delete',`Removed client — ${c.name}`);
   save(); renderClients(); render(); toast('Client removed');
 }
-
+ 
 function toggleSelectAll(cb) {
   document.querySelectorAll('.job-cb').forEach(c => c.checked = cb.checked);
   updateBulkBar();
 }
-
+ 
 function updateBulkBar() {
   const checked = document.querySelectorAll('.job-cb:checked');
   const bar = document.getElementById('bulk-bar');
@@ -1040,7 +1034,7 @@ function updateBulkBar() {
   }
   if (allCb) allCb.checked = all.length > 0 && checked.length === all.length;
 }
-
+ 
 async function bulkMarkPaid() {
   const checked = [...document.querySelectorAll('.job-cb:checked')];
   if (!checked.length) return;
@@ -1048,7 +1042,7 @@ async function bulkMarkPaid() {
   if (!method) return;
   const ids = checked.map(c => c.dataset.id);
   const jobs = ids.map(id => lawnJobs.find(j => j.id===id)).filter(Boolean);
-
+ 
   if (method === 'individual') {
     // Prompt cash/bank for each job one at a time
     for (const j of jobs) {
@@ -1058,23 +1052,22 @@ async function bulkMarkPaid() {
       const prev = j.status;
       lawnJobs = lawnJobs.map(jb => jb.id===j.id ? {...jb, status:'paid'} : jb);
       balances[m] = (parseFloat(balances[m]) || 0) + amount;
-      balances.tithe = Math.round(((parseFloat(balances.tithe)||0) + amount * 0.1) * 100) / 100;
       historyLog.unshift({ id:'h'+Date.now(), type:'paid', message:`Marked ${j.client} job (${fmt(j.date)}) as paid — $${amount} (${m})`, ts: new Date().toISOString(), jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount });
       if (historyLog.length > 300) historyLog = historyLog.slice(0, 300);
     }
     save(); render(); updateBulkBar(); toast(`Jobs marked as paid ✓`);
     return;
   }
-
+ 
   const totalAmount = jobs.reduce((s, j) => s + jobAmount(j), 0);
-
+ 
   // Group by client
   const byClient = {};
   jobs.forEach(j => {
     if (!byClient[j.client]) byClient[j.client] = [];
     byClient[j.client].push(j);
   });
-
+ 
   // Mark all as paid and log one entry per client
   const hid = Date.now();
   Object.entries(byClient).forEach(([client, cJobs], i) => {
@@ -1095,14 +1088,13 @@ async function bulkMarkPaid() {
       paymentAmount: total
     });
   });
-
+ 
   balances[method] = (parseFloat(balances[method]) || 0) + totalAmount;
-  balances.tithe = Math.round(((parseFloat(balances.tithe)||0) + totalAmount * 0.1) * 100) / 100;
   lawnJobs = lawnJobs.map(j => ids.includes(j.id) ? {...j, status:'paid'} : j);
   if (historyLog.length > 300) historyLog = historyLog.slice(0, 300);
   save(); render(); updateBulkBar(); toast(`${jobs.length} jobs marked as paid ✓`);
 }
-
+ 
 function bulkDelete() {
   const checked = [...document.querySelectorAll('.job-cb:checked')];
   if (!checked.length) return;
@@ -1113,7 +1105,7 @@ function bulkDelete() {
   lawnJobs = lawnJobs.filter(j => !ids.includes(j.id));
   save(); render(); updateBulkBar(); toast(`${jobs.length} job${jobs.length > 1 ? 's' : ''} deleted`);
 }
-
+ 
 function promptPaymentMethod(showIndividual = false, job = null) {
   return new Promise(resolve => {
     const modal = document.getElementById('payment-modal');
@@ -1137,7 +1129,7 @@ function promptPaymentMethod(showIndividual = false, job = null) {
     indBtn.onclick                                 = () => close('individual');
   });
 }
-
+ 
 async function markPaid(id) {
   const method = await promptPaymentMethod();
   if (!method) return;
@@ -1146,21 +1138,20 @@ async function markPaid(id) {
   const amount=jobAmount(j);
   lawnJobs=lawnJobs.map(j=>j.id===id?{...j,status:'paid'}:j);
   balances[method]=(parseFloat(balances[method])||0)+amount;
-  balances.tithe = Math.round(((parseFloat(balances.tithe)||0) + amount * 0.1) * 100) / 100;
   historyLog.unshift({ id:'h'+Date.now(), type:'paid', message:`Marked ${j.client} job (${fmt(j.date)}) as paid — $${amount} (${method})`, ts: new Date().toISOString(), jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount });
   if (historyLog.length > 300) historyLog = historyLog.slice(0, 300);
   save(); renderClients(); reopenPanel(j.client); toast('Marked as paid ✓');
 }
-
+ 
 function undoPaid(hid) {
   const h = historyLog.find(h=>h.id===hid);
   if (!h) return;
-
+ 
   // Reverse balance if tracked
   if (h.paymentMethod && h.paymentAmount) {
     balances[h.paymentMethod] = Math.max(0, (parseFloat(balances[h.paymentMethod]) || 0) - h.paymentAmount);
   }
-
+ 
   // Single job undo
   if (h.jobId) {
     const job = lawnJobs.find(j=>j.id===h.jobId);
@@ -1170,7 +1161,7 @@ function undoPaid(hid) {
     historyLog = historyLog.filter(h=>h.id!==hid);
     logHistory('add', `Undid payment — ${job.client} job (${fmt(job.date)}) restored to ${restore}`);
   }
-
+ 
   // Bulk undo
   if (h.bulkJobIds) {
     h.bulkJobIds.forEach(jid => {
@@ -1180,10 +1171,10 @@ function undoPaid(hid) {
     historyLog = historyLog.filter(h=>h.id!==hid);
     logHistory('add', `Undid bulk payment — ${h.bulkJobIds.length} jobs restored`);
   }
-
+ 
   save(); render(); toast('Payment undone ✓');
 }
-
+ 
 function deleteJob(id) {
   if (!confirm('Delete this job?')) return;
   const j=lawnJobs.find(j=>j.id===id);
@@ -1191,14 +1182,14 @@ function deleteJob(id) {
   logHistory('delete',`Deleted job — ${j.client} on ${fmt(j.date)} ($${jobAmount(j)})`);
   save(); renderClients(); reopenPanel(j.client); toast('Job deleted');
 }
-
+ 
 function prefillJobAmount() {
   const client = document.getElementById('lj-client').value;
   const inp = document.getElementById('lj-amount');
   inp.value = getRate(client);
   inp.placeholder = '';
 }
-
+ 
 function addLawnJob() {
   const client = document.getElementById('lj-client').value;
   const date   = document.getElementById('lj-date').value;
@@ -1214,7 +1205,7 @@ function addLawnJob() {
   prefillJobAmount();
   toast('Job added ✓');
 }
-
+ 
 function addOtherMoney() {
   const desc=document.getElementById('om-desc').value.trim();
   const date=document.getElementById('om-date').value;
@@ -1224,9 +1215,6 @@ function addOtherMoney() {
   if (!date) { alert('Please enter a valid date.'); return; }
   if (isNaN(amount) || amount <= 0) { alert('Please enter a valid amount greater than 0.'); return; }
   otherMoney.push({id:'o'+Date.now(),desc,date,type,amount});
-  if (type === 'income') {
-    balances.tithe = Math.round(((parseFloat(balances.tithe)||0) + amount * 0.1) * 100) / 100;
-  }
   logHistory('other',`Added ${type} — "${desc}" $${amount.toFixed(2)} on ${fmt(date)}`);
   save(); render();
   document.getElementById('om-desc').value='';
@@ -1234,7 +1222,7 @@ function addOtherMoney() {
   document.getElementById('om-amount').value='';
   toast('Entry added ✓');
 }
-
+ 
 function deleteOther(id) {
   if (!confirm('Delete this entry?')) return;
   const e=otherMoney.find(e=>e.id===id);
@@ -1242,7 +1230,7 @@ function deleteOther(id) {
   logHistory('delete',`Deleted entry — "${e.desc}" $${parseFloat(e.amount).toFixed(2)}`);
   save(); render(); toast('Entry deleted');
 }
-
+ 
 function editJob(id) {
   const j = lawnJobs.find(j=>j.id===id);
   const row = document.getElementById('jrow-'+id);
@@ -1263,7 +1251,7 @@ function editJob(id) {
       <button class="act-btn" onclick="renderClients()">cancel</button>
     </div></td>`;
 }
-
+ 
 function saveJob(id) {
   const date   = document.getElementById('ej-date-'+id).value;
   const client = document.getElementById('ej-client-'+id).value;
@@ -1280,7 +1268,7 @@ function saveJob(id) {
   if (c) { const p = document.getElementById('jobs-panel-'+c.id); if (p) p.classList.add('open'); }
   toast('Job updated ✓');
 }
-
+ 
 function editOther(id) {
   const e = otherMoney.find(e=>e.id===id);
   const row = document.getElementById('orow-'+id);
@@ -1299,7 +1287,7 @@ function editOther(id) {
       <button class="act-btn" onclick="render()">cancel</button>
     </div></td>`;
 }
-
+ 
 function saveOther(id) {
   const date   = document.getElementById('eo-date-'+id).value;
   const desc   = document.getElementById('eo-desc-'+id).value.trim();
@@ -1311,7 +1299,7 @@ function saveOther(id) {
   logHistory('other', `Edited entry — "${old.desc}" → "${desc}" $${amount.toFixed(2)}`);
   save(); render(); toast('Entry updated ✓');
 }
-
+ 
 function editBalance(key) {
   const label = key === 'bank' ? 'In bank' : 'Cash on hand';
   const cardId = key === 'bank' ? 'bal-bank-card' : 'bal-cash-card';
@@ -1334,16 +1322,7 @@ function editBalance(key) {
     </div>`;
   setTimeout(()=>{ const inp=document.getElementById('bal-input-'+key); if(inp){inp.focus();inp.select();} }, 50);
 }
-
-function payTithe() {
-  const amount = parseFloat(balances.tithe) || 0;
-  if (!amount) { toast('No tithe owed'); return; }
-  if (!confirm(`Mark $${amount.toFixed(2)} tithe as paid?`)) return;
-  logHistory('other', `Paid tithe — $${amount.toFixed(2)}`);
-  balances.tithe = 0;
-  save(); render(); toast('Tithe paid ✓');
-}
-
+ 
 function saveBalance(key) {
   const val = parseFloat(document.getElementById('bal-input-'+key).value);
   if (isNaN(val) || val < 0) { alert('Enter a valid amount.'); return; }
@@ -1353,7 +1332,7 @@ function saveBalance(key) {
   balances[key] = val;
   save(); render(); toast(`${key==='bank'?'Bank':'Cash'} updated ✓`);
 }
-
+ 
 let toastTimer;
 function toast(msg) {
   const el=document.getElementById('toast');
@@ -1364,3 +1343,4 @@ function toast(msg) {
 </script>
 </body>
 </html>
+ 
