@@ -909,11 +909,10 @@ function render() {
   const paidJobs = lawnJobs.filter(j=>j.status==='paid').reduce((s,j)=>s+jobAmount(j),0);
   const income   = otherMoney.filter(e=>e.type!=='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
   const expenses = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
-  const netCash  = paidJobs + income - expenses - titheOwed;
-
   const titheBank = parseFloat(balances.titheBank) || 0;
   const titheCash = parseFloat(balances.titheCash) || 0;
   const titheOwed = Math.round((titheBank + titheCash) * 100) / 100;
+  const netCash  = paidJobs + income - expenses - titheOwed;
 
   document.getElementById('summary').innerHTML = `
     <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${netCash.toFixed(2)}</div><div class="metric-sub">paid + income − expenses − tithe</div></div>
