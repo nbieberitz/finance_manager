@@ -1021,8 +1021,8 @@ function deleteJob(id) {
 function prefillJobAmount() {
   const client = document.getElementById('lj-client').value;
   const inp = document.getElementById('lj-amount');
-  inp.placeholder = '$' + getRate(client);
-  inp.value = '';
+  inp.value = getRate(client);
+  inp.placeholder = '';
 }
 
 function addLawnJob() {
@@ -1036,7 +1036,7 @@ function addLawnJob() {
   logHistory('add', `Added job — ${client} on ${fmt(date)}, ${status} ($${amount})`);
   save(); render();
   document.getElementById('lj-date').value = '';
-  document.getElementById('lj-amount').value = '';
+  prefillJobAmount();
   toast('Job added ✓');
 }
 
