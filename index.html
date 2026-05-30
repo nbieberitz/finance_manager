@@ -585,7 +585,7 @@ tr:hover td { background: var(--surface2); }
     <div class="section-header" onclick="toggleSection('history-body')">
       <div class="section-title">
         <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        Full History
+        History
       </div>
       <div class="header-actions">
         <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearHistory()">Clear</button>
@@ -601,6 +601,21 @@ tr:hover td { background: var(--surface2); }
 <div id="loading-overlay">
   <div class="loading-spinner"></div>
   <div class="loading-text">LOADING…</div>
+</div>
+
+<div id="full-history-modal" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.88);backdrop-filter:blur(4px);z-index:9998;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;">
+  <div style="background:var(--surface);border:1px solid var(--border-mid);border-radius:var(--radius);width:100%;max-width:860px;display:flex;flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0.9rem 1.25rem;border-bottom:1px solid var(--border);background:var(--surface2);">
+      <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:500;letter-spacing:0.06em;color:var(--text-muted);text-transform:uppercase">Full History</div>
+      <button class="pill-btn" onclick="closeFullHistory()">✕ Close</button>
+    </div>
+    <div id="fh-entries" style="max-height:70vh;overflow-y:auto;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 1.25rem;border-top:1px solid var(--border);background:var(--surface2);">
+      <button class="pill-btn" id="fh-prev" onclick="showFullHistory(fullHistoryPage-1)">← Prev</button>
+      <span id="fh-page-info" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
+      <button class="pill-btn" id="fh-next" onclick="showFullHistory(fullHistoryPage+1)">Next →</button>
+    </div>
+  </div>
 </div>
 
 <div id="payment-modal" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.88);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;">
@@ -884,23 +899,54 @@ function render() {
 renderHistory();
 }
 
+function historyEntryHTML(h) {
+  const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client'}[h.type]||'dot-add';
+  const d = new Date(h.ts);
+  return `<div class="history-entry" id="hrow-${h.id}">
+    <div class="history-dot ${dc}"></div>
+    <div class="history-action">${h.message}</div>
+    <div class="history-time">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}<br>${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+    <div class="row-actions" style="flex-shrink:0;margin-left:8px">
+      ${h.type==='paid' && (h.jobId || h.bulkJobIds) ? `<button class="act-btn" style="color:#4ADE80;border-color:#0A3D1A" onclick="undoPaid('${h.id}')">undo</button>` : ''}
+      <button class="act-btn edit" onclick="editHistory('${h.id}')">edit</button>
+      <button class="act-btn danger" onclick="deleteHistory('${h.id}')">delete</button>
+    </div>
+  </div>`;
+}
+
 function renderHistory() {
   const wrap = document.getElementById('history-wrap');
   if (!historyLog.length) { wrap.innerHTML='<div class="empty-state">No history yet.</div>'; return; }
-  wrap.innerHTML = historyLog.map(h => {
-    const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client'}[h.type]||'dot-add';
-    const d = new Date(h.ts);
-    return `<div class="history-entry" id="hrow-${h.id}">
-      <div class="history-dot ${dc}"></div>
-      <div class="history-action">${h.message}</div>
-      <div class="history-time">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}<br>${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
-      <div class="row-actions" style="flex-shrink:0;margin-left:8px">
-        ${h.type==='paid' && (h.jobId || h.bulkJobIds) ? `<button class="act-btn" style="color:#4ADE80;border-color:#0A3D1A" onclick="undoPaid('${h.id}')">undo</button>` : ''}
-        <button class="act-btn edit" onclick="editHistory('${h.id}')">edit</button>
-        <button class="act-btn danger" onclick="deleteHistory('${h.id}')">delete</button>
-      </div>
+  wrap.innerHTML = historyLog.slice(0, 30).map(historyEntryHTML).join('');
+  if (historyLog.length > 30) {
+    wrap.innerHTML += `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center">
+      <button class="pill-btn" onclick="showFullHistory(1)">Full history — ${historyLog.length} entries</button>
     </div>`;
-  }).join('');
+  }
+  // Refresh full history modal if open
+  const modal = document.getElementById('full-history-modal');
+  if (modal && modal.style.display !== 'none') showFullHistory(fullHistoryPage);
+}
+
+let fullHistoryPage = 1;
+const FH_PAGE_SIZE = 50;
+
+function showFullHistory(page) {
+  const totalPages = Math.ceil(historyLog.length / FH_PAGE_SIZE);
+  fullHistoryPage = Math.max(1, Math.min(page, totalPages));
+  const start = (fullHistoryPage - 1) * FH_PAGE_SIZE;
+  const entries = historyLog.slice(start, start + FH_PAGE_SIZE);
+  document.getElementById('fh-entries').innerHTML = entries.length
+    ? entries.map(historyEntryHTML).join('')
+    : '<div class="empty-state">No entries.</div>';
+  document.getElementById('fh-page-info').textContent = `Page ${fullHistoryPage} of ${totalPages}`;
+  document.getElementById('fh-prev').disabled = fullHistoryPage <= 1;
+  document.getElementById('fh-next').disabled = fullHistoryPage >= totalPages;
+  document.getElementById('full-history-modal').style.display = 'flex';
+}
+
+function closeFullHistory() {
+  document.getElementById('full-history-modal').style.display = 'none';
 }
 
 function editHistory(id) {
