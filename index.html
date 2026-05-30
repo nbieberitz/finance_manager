@@ -220,12 +220,35 @@ input:not([type="checkbox"]), select {
 }
 
 input[type="checkbox"] {
-  appearance: auto;
-  -webkit-appearance: checkbox;
-  width: 13px !important;
-  height: 13px !important;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px;
   cursor: pointer;
-  accent-color: #4ADE80;
+  border: 1.5px solid var(--border-mid);
+  border-radius: 4px;
+  background: var(--surface2);
+  transition: background 0.15s, border-color 0.15s;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+input[type="checkbox"]:hover { border-color: #4ADE80; }
+input[type="checkbox"]:checked {
+  background: #4ADE80;
+  border-color: #4ADE80;
+}
+input[type="checkbox"]:checked::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 7px;
+  border: 2px solid #0a0a0a;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg) translate(-1px, -1px);
 }
 
 input:not([type="checkbox"]):focus, select:focus { border-color: var(--accent); }
