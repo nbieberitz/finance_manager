@@ -529,6 +529,7 @@ tr:hover td { background: var(--surface2); }
       </select>
       <button class="act-btn success" onclick="bulkSetStatus()" style="font-size:12px;padding:4px 14px">set status</button>
       <button class="act-btn danger" onclick="bulkDelete()" style="font-size:12px;padding:4px 14px">delete selected</button>
+      <button class="act-btn" onclick="deselectAll()" style="font-size:12px;padding:4px 14px;margin-left:4px">✕ deselect</button>
     </div>
   </section>
 
@@ -1274,6 +1275,12 @@ function deleteClient(id) {
 
 function toggleSelectAll(cb) {
   document.querySelectorAll('.job-cb').forEach(c => c.checked = cb.checked);
+  updateBulkBar();
+}
+
+function deselectAll() {
+  document.querySelectorAll('.job-cb').forEach(c => c.checked = false);
+  document.querySelectorAll('[id^="select-all-"]').forEach(c => c.checked = false);
   updateBulkBar();
 }
 
