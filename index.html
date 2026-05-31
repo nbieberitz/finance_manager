@@ -883,9 +883,11 @@ function computeTithe() {
   const cash = Math.round(
     lawnJobs.filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && !j.tithePaid)
             .reduce((s, j) => s + jobAmount(j), 0) * 0.1 * 100) / 100;
-  return { bank, cash, total: Math.round((bank + cash) * 100) / 100 };
+  const income = Math.round(
+    otherMoney.filter(e => (e.type === 'income' || e.type === 'gift') && !e.tithePaid)
+              .reduce((s, e) => s + parseFloat(e.amount), 0) * 0.1 * 100) / 100;
+  return { bank, cash, income, total: Math.round((bank + cash + income) * 100) / 100 };
 }
-
 function statusBadge(s) {
   return { unpaid:'<span class="badge badge-unpaid">Unpaid</span>', check:'<span class="badge badge-check">Check coming</span>', paid:'<span class="badge badge-paid">Paid</span>' }[s] || '';
 }
@@ -1051,7 +1053,7 @@ function render() {
     <div class="metric tithe${titheOwed>0?' tithe-active':''}">
       <div class="metric-label">Tithe owed</div>
       <div class="metric-value">$${titheOwed.toFixed(2)}</div>
-      <div class="metric-sub">${titheOwed>0?`$${tithe.bank.toFixed(2)} bank · $${tithe.cash.toFixed(2)} cash`:'10% of paid jobs'}</div>
+      <div class="metric-sub">${titheOwed>0?`$${tithe.bank.toFixed(2)} bank · $${tithe.cash.toFixed(2)} cash${tithe.income>0?` · $${tithe.income.toFixed(2)} income`:''}` :'10% of paid jobs + income'}</div>
       ${titheOwed>0?`<button class="tithe-pay-btn" onclick="payTithe()">Pay tithe</button>`:''}
     </div>
     <div class="metric purple editable" id="bal-bank-card" onclick="editBalance('bank')">
@@ -1088,25 +1090,34 @@ function historyEntryHTML(h) {
 }
 
 function payTithe() {
-  const { bank: tb, cash: tc, total } = computeTithe();
+  const { bank: tb, cash: tc, income: ti, total } = computeTithe();
   if (!total) return;
-  if (!confirm(`Pay tithe of $${total.toFixed(2)}?\n\n$${tb.toFixed(2)} from bank\n$${tc.toFixed(2)} from cash`)) return;
-  balances.bank = Math.round(((parseFloat(balances.bank)||0) - tb) * 100) / 100;
+  const parts = [];
+  if (tb>0) parts.push(`$${tb.toFixed(2)} from bank jobs`);
+  if (tc>0) parts.push(`$${tc.toFixed(2)} from cash jobs`);
+  if (ti>0) parts.push(`$${ti.toFixed(2)} from other income`);
+  if (!confirm(`Pay tithe of $${total.toFixed(2)}?\n\n${parts.join('\n')}`)) return;
+  // Deduct job tithe from respective balances; income tithe comes from bank
+  balances.bank = Math.round(((parseFloat(balances.bank)||0) - tb - ti) * 100) / 100;
   balances.cash = Math.round(((parseFloat(balances.cash)||0) - tc) * 100) / 100;
-  // Mark all untithed paid jobs so they no longer count toward tithe
-  const affectedIds = [];
+  // Mark all untithed paid jobs
+  const affectedJobIds = [];
   lawnJobs = lawnJobs.map(j => {
-    if (j.status === 'paid' && !j.tithePaid) { affectedIds.push(j.id); return {...j, tithePaid: true}; }
+    if (j.status === 'paid' && !j.tithePaid) { affectedJobIds.push(j.id); return {...j, tithePaid: true}; }
     return j;
   });
-  affectedIds.forEach(id => pendingJobWrites.add(id));
+  affectedJobIds.forEach(id => pendingJobWrites.add(id));
+  // Mark all untithed income/gift entries
+  const affectedOtherIds = [];
+  otherMoney = otherMoney.map(e => {
+    if ((e.type === 'income' || e.type === 'gift') && !e.tithePaid) { affectedOtherIds.push(e.id); return {...e, tithePaid: true}; }
+    return e;
+  });
+  affectedOtherIds.forEach(id => pendingOtherWrites.add(id));
   const today = new Date().toISOString().slice(0,10);
   const titheEntry = { id:'o'+Date.now(), desc:'Tithe', date:today, type:'expense', amount:total };
   otherMoney.push(titheEntry);
   pendingOtherWrites.add(titheEntry.id);
-  const parts = [];
-  if (tb>0) parts.push(`$${tb.toFixed(2)} from bank`);
-  if (tc>0) parts.push(`$${tc.toFixed(2)} from cash`);
   logHistory('add', `Tithe paid — $${total.toFixed(2)} (${parts.join(', ')})`);
   save(); render(); toast(`Tithe of $${total.toFixed(2)} paid ✓`);
 }
