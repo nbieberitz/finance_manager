@@ -1461,17 +1461,21 @@ async function undoPaid(hid) {
   const h = historyLog.find(h=>h.id===hid);
   if (!h) return;
 
-  // Reverse balance if tracked
+  // Reverse balance if tracked (no Math.max clamp — balance can go negative if tithe was already paid)
   if (h.paymentMethod && h.paymentAmount) {
-    balances[h.paymentMethod] = Math.max(0, (parseFloat(balances[h.paymentMethod]) || 0) - h.paymentAmount);
+    balances[h.paymentMethod] = Math.round(((parseFloat(balances[h.paymentMethod]) || 0) - h.paymentAmount) * 100) / 100;
   }
+
+  let titheAlreadyPaid = false;
 
   // Single job undo
   if (h.jobId) {
     const job = lawnJobs.find(j=>j.id===h.jobId);
     if (!job) { toast('Job no longer exists'); return; }
+    if (job.tithePaid) titheAlreadyPaid = true;
     const restore = h.prevStatus || 'unpaid';
-    lawnJobs = lawnJobs.map(j=>j.id===h.jobId ? {...j, status:restore, paymentMethod:null, paymentAmount:null} : j);
+    // Clear tithePaid so if marked paid again it will be included in the next tithe
+    lawnJobs = lawnJobs.map(j=>j.id===h.jobId ? {...j, status:restore, paymentMethod:null, paymentAmount:null, tithePaid:false} : j);
     pendingJobWrites.add(h.jobId);
     historyLog = historyLog.filter(h=>h.id!==hid);
     if (currentUser) await historyCol().doc(hid).delete();
@@ -1481,8 +1485,10 @@ async function undoPaid(hid) {
   // Bulk undo
   if (h.bulkJobIds) {
     h.bulkJobIds.forEach(jid => {
+      const job = lawnJobs.find(j=>j.id===jid);
+      if (job?.tithePaid) titheAlreadyPaid = true;
       const prev = h.prevStatuses?.[jid] || 'unpaid';
-      lawnJobs = lawnJobs.map(j=>j.id===jid ? {...j, status:prev, paymentMethod:null, paymentAmount:null} : j);
+      lawnJobs = lawnJobs.map(j=>j.id===jid ? {...j, status:prev, paymentMethod:null, paymentAmount:null, tithePaid:false} : j);
       pendingJobWrites.add(jid);
     });
     historyLog = historyLog.filter(h=>h.id!==hid);
@@ -1490,7 +1496,12 @@ async function undoPaid(hid) {
     logHistory('add', `Undid bulk payment — ${h.bulkJobIds.length} jobs restored`);
   }
 
-  save(); render(); toast('Payment undone ✓');
+  save(); render();
+  if (titheAlreadyPaid) {
+    toast('Payment undone ✓ — ⚠️ Tithe was already paid on this job. Delete the tithe expense if you want to reverse it.');
+  } else {
+    toast('Payment undone ✓');
+  }
 }
 
 function deleteJob(id) {
