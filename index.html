@@ -677,65 +677,62 @@ let currentUser = null;
 
 function userDoc() { return db.collection('users').doc(currentUser.uid); }
 
-async function loadFromFirestore() {
+function loadFromFirestore() {
   const overlay = document.getElementById('loading-overlay');
   if (overlay) overlay.style.display = 'flex';
 
-  const [mainSnap, clientsSnap, jobsSnap, otherSnap] = await Promise.all([
-    userDoc().get(),
-    userDoc().collection('clients').get(),
-    userDoc().collection('jobs').get(),
-    userDoc().collection('other').get()
-  ]);
-  await new Promise(r => setTimeout(r, 500));
-
-  if (mainSnap.exists) {
-    const d = mainSnap.data();
-    balances = d.balances || { bank: 0, cash: 0, tithe_bank: 0, tithe_cash: 0 };
-    if (balances.tithe_bank === undefined) balances.tithe_bank = 0;
-    if (balances.tithe_cash === undefined) balances.tithe_cash = 0;
-
-    // Migrate legacy arrays from main doc to subcollections (one-time)
-    const needsMigration = d.clients || d.lawnJobs || d.otherMoney;
-    if (needsMigration) {
-      clients    = d.clients    || [];
-      lawnJobs   = d.lawnJobs   || [];
-      otherMoney = d.otherMoney || [];
-      clients.forEach(c => pendingClientWrites.add(c.id));
-      lawnJobs.forEach(j => pendingJobWrites.add(j.id));
-      otherMoney.forEach(e => pendingOtherWrites.add(e.id));
-      await saveToFirestore();
-      const delFields = {};
-      if (d.clients)    delFields.clients    = firebase.firestore.FieldValue.delete();
-      if (d.lawnJobs)   delFields.lawnJobs   = firebase.firestore.FieldValue.delete();
-      if (d.otherMoney) delFields.otherMoney = firebase.firestore.FieldValue.delete();
-      await userDoc().update(delFields);
-    } else {
-      clients    = clientsSnap.docs.map(d => d.data());
-      lawnJobs   = jobsSnap.docs.map(d => d.data());
-      otherMoney = otherSnap.docs.map(d => d.data());
-    }
-
-    // Migrate legacy historyLog from main doc to subcollection
-    if (d.historyLog && d.historyLog.length) {
-      for (let i = 0; i < d.historyLog.length; i += 50) {
-        const batch = db.batch();
-        d.historyLog.slice(i, i + 50).forEach(e => batch.set(historyCol().doc(e.id), e));
-        await batch.commit();
-      }
-      await userDoc().update({ historyLog: firebase.firestore.FieldValue.delete() });
-    }
-  } else {
-    clients = []; lawnJobs = []; otherMoney = [];
-    balances = { bank: 0, cash: 0, tithe_bank: 0, tithe_cash: 0 };
-    await userDoc().set({ balances });
-  }
+  detachListeners();
 
   historyLog = []; lastHistoryDoc = null; allHistoryLoaded = false;
   pendingHistoryEntries = [];
-  await loadMoreHistory();
-  if (overlay) overlay.style.display = 'none';
-  render();
+
+  // Track first fire of all 4 listeners before doing initial render
+  const ready = { main: false, clients: false, jobs: false, other: false };
+  let initialRenderDone = false;
+
+  async function checkReady() {
+    if (initialRenderDone || !Object.values(ready).every(Boolean)) return;
+    initialRenderDone = true;
+    await loadMoreHistory();
+    if (overlay) overlay.style.display = 'none';
+    render();
+  }
+
+  // Main doc (balances)
+  unsubscribers.push(userDoc().onSnapshot(snap => {
+    if (snap.exists) {
+      const d = snap.data();
+      balances = d.balances || { bank: 0, cash: 0, tithe_bank: 0, tithe_cash: 0 };
+      if (balances.tithe_bank === undefined) balances.tithe_bank = 0;
+      if (balances.tithe_cash === undefined) balances.tithe_cash = 0;
+    } else {
+      balances = { bank: 0, cash: 0, tithe_bank: 0, tithe_cash: 0 };
+      userDoc().set({ balances });
+    }
+    if (!ready.main) { ready.main = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
+
+  // Clients
+  unsubscribers.push(userDoc().collection('clients').onSnapshot(snap => {
+    clients = snap.docs.map(d => d.data());
+    if (!ready.clients) { ready.clients = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
+
+  // Jobs
+  unsubscribers.push(userDoc().collection('jobs').onSnapshot(snap => {
+    lawnJobs = snap.docs.map(d => d.data());
+    if (!ready.jobs) { ready.jobs = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
+
+  // Other
+  unsubscribers.push(userDoc().collection('other').onSnapshot(snap => {
+    otherMoney = snap.docs.map(d => d.data());
+    if (!ready.other) { ready.other = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
 }
 
 let saveTimer;
@@ -834,8 +831,12 @@ function signIn() {
   auth.signInWithPopup(provider);
 }
 function signOut() {
-  if (confirm('Sign out?')) auth.signOut();
+  if (confirm('Sign out?')) { detachListeners(); auth.signOut(); }
 }
+
+// ── Realtime listeners ────────────────────────────────────
+let unsubscribers = [];
+function detachListeners() { unsubscribers.forEach(fn => fn()); unsubscribers = []; }
 
 // ── App data ──────────────────────────────────────────────
 let clients    = [];
