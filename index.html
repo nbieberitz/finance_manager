@@ -702,11 +702,11 @@ function loadFromFirestore() {
   unsubscribers.push(userDoc().onSnapshot(snap => {
     if (snap.exists) {
       const d = snap.data();
-      balances = d.balances || { bank: 0, cash: 0, tithe_bank: 0, tithe_cash: 0 };
-      if (balances.tithe_bank === undefined) balances.tithe_bank = 0;
-      if (balances.tithe_cash === undefined) balances.tithe_cash = 0;
+      balances = d.balances || { bank: 0, cash: 0 };
+      delete balances.tithe_bank;
+      delete balances.tithe_cash;
     } else {
-      balances = { bank: 0, cash: 0, tithe_bank: 0, tithe_cash: 0 };
+      balances = { bank: 0, cash: 0 };
       userDoc().set({ balances });
     }
     if (!ready.main) { ready.main = true; checkReady(); }
@@ -870,6 +870,16 @@ function logHistory(type, message, extra = {}) {
   pendingHistoryEntries.push(entry);
 }
 
+function computeTithe() {
+  const bank = Math.round(
+    lawnJobs.filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && !j.tithePaid)
+            .reduce((s, j) => s + jobAmount(j), 0) * 0.1 * 100) / 100;
+  const cash = Math.round(
+    lawnJobs.filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && !j.tithePaid)
+            .reduce((s, j) => s + jobAmount(j), 0) * 0.1 * 100) / 100;
+  return { bank, cash, total: Math.round((bank + cash) * 100) / 100 };
+}
+
 function statusBadge(s) {
   return { unpaid:'<span class="badge badge-unpaid">Unpaid</span>', check:'<span class="badge badge-check">Check coming</span>', paid:'<span class="badge badge-paid">Paid</span>' }[s] || '';
 }
@@ -1023,7 +1033,8 @@ function render() {
   const paidJobs = lawnJobs.filter(j=>j.status==='paid').reduce((s,j)=>s+jobAmount(j),0);
   const income   = otherMoney.filter(e=>e.type!=='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
   const expenses = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
-  const titheOwed = Math.round(((balances.tithe_bank||0)+(balances.tithe_cash||0))*100)/100;
+  const tithe     = computeTithe();
+  const titheOwed = tithe.total;
   const netCash  = paidJobs + income - expenses - titheOwed;
 
   document.getElementById('summary').innerHTML = `
@@ -1034,7 +1045,7 @@ function render() {
     <div class="metric tithe${titheOwed>0?' tithe-active':''}">
       <div class="metric-label">Tithe owed</div>
       <div class="metric-value">$${titheOwed.toFixed(2)}</div>
-      <div class="metric-sub">${titheOwed>0?`$${(balances.tithe_bank||0).toFixed(2)} bank · $${(balances.tithe_cash||0).toFixed(2)} cash`:'10% of paid jobs'}</div>
+      <div class="metric-sub">${titheOwed>0?`$${tithe.bank.toFixed(2)} bank · $${tithe.cash.toFixed(2)} cash`:'10% of paid jobs'}</div>
       ${titheOwed>0?`<button class="tithe-pay-btn" onclick="payTithe()">Pay tithe</button>`:''}
     </div>
     <div class="metric purple editable" id="bal-bank-card" onclick="editBalance('bank')">
@@ -1071,15 +1082,18 @@ function historyEntryHTML(h) {
 }
 
 function payTithe() {
-  const tb = Math.round((balances.tithe_bank||0)*100)/100;
-  const tc = Math.round((balances.tithe_cash||0)*100)/100;
-  const total = Math.round((tb+tc)*100)/100;
+  const { bank: tb, cash: tc, total } = computeTithe();
   if (!total) return;
   if (!confirm(`Pay tithe of $${total.toFixed(2)}?\n\n$${tb.toFixed(2)} from bank\n$${tc.toFixed(2)} from cash`)) return;
-  balances.bank = Math.round(((parseFloat(balances.bank)||0)-tb)*100)/100;
-  balances.cash = Math.round(((parseFloat(balances.cash)||0)-tc)*100)/100;
-  balances.tithe_bank = 0;
-  balances.tithe_cash = 0;
+  balances.bank = Math.round(((parseFloat(balances.bank)||0) - tb) * 100) / 100;
+  balances.cash = Math.round(((parseFloat(balances.cash)||0) - tc) * 100) / 100;
+  // Mark all untithed paid jobs so they no longer count toward tithe
+  const affectedIds = [];
+  lawnJobs = lawnJobs.map(j => {
+    if (j.status === 'paid' && !j.tithePaid) { affectedIds.push(j.id); return {...j, tithePaid: true}; }
+    return j;
+  });
+  affectedIds.forEach(id => pendingJobWrites.add(id));
   const today = new Date().toISOString().slice(0,10);
   const titheEntry = { id:'o'+Date.now(), desc:'Tithe', date:today, type:'expense', amount:total };
   otherMoney.push(titheEntry);
@@ -1096,8 +1110,6 @@ function unpayJob(id) {
   if (!j) return;
   if (j.paymentMethod) {
     balances[j.paymentMethod] = Math.max(0, (parseFloat(balances[j.paymentMethod])||0) - jobAmount(j));
-    const tk = 'tithe_'+j.paymentMethod;
-    balances[tk] = Math.max(0, Math.round(((parseFloat(balances[tk])||0)-(jobAmount(j)*0.1))*100)/100);
   }
   lawnJobs = lawnJobs.map(jb => jb.id === id ? {...jb, status: 'unpaid', paymentMethod: null, paymentAmount: null} : jb);
   pendingJobWrites.add(id);
@@ -1109,8 +1121,6 @@ function clearPaidJobs() {
   const count = lawnJobs.filter(j => j.status === 'paid').length;
   if (!count) return;
   if (!confirm(`Delete all ${count} paid job${count>1?'s':''}? This cannot be undone.`)) return;
-  balances.tithe_bank = 0;
-  balances.tithe_cash = 0;
   const paidIds = lawnJobs.filter(j => j.status === 'paid').map(j => j.id);
   lawnJobs = lawnJobs.filter(j => j.status !== 'paid');
   paidIds.forEach(id => { pendingJobDeletes.add(id); pendingJobWrites.delete(id); });
@@ -1292,7 +1302,6 @@ async function bulkMarkPaid() {
       lawnJobs = lawnJobs.map(jb => jb.id===j.id ? {...jb, status:'paid', paymentMethod:m, paymentAmount:amount} : jb);
       pendingJobWrites.add(j.id);
       balances[m] = (parseFloat(balances[m]) || 0) + amount;
-      balances['tithe_'+m] = Math.round(((parseFloat(balances['tithe_'+m])||0)+(amount*0.1))*100)/100;
       logHistory('paid', `Marked ${j.client} job (${fmt(j.date)}) as paid — $${amount} (${m})`, { jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount });
     }
     save(); render(); updateBulkBar(); toast(`Jobs marked as paid ✓`);
@@ -1326,7 +1335,6 @@ async function bulkMarkPaid() {
   });
 
   balances[method] = (parseFloat(balances[method]) || 0) + totalAmount;
-  balances['tithe_'+method] = Math.round(((parseFloat(balances['tithe_'+method])||0)+(totalAmount*0.1))*100)/100;
   lawnJobs = lawnJobs.map(j => ids.includes(j.id) ? {...j, status:'paid', paymentMethod:method} : j);
   ids.forEach(id => pendingJobWrites.add(id));
   save(); render(); updateBulkBar(); toast(`${jobs.length} jobs marked as paid ✓`);
@@ -1377,7 +1385,6 @@ async function markPaid(id) {
   lawnJobs=lawnJobs.map(j=>j.id===id?{...j,status:'paid',paymentMethod:method,paymentAmount:amount}:j);
   pendingJobWrites.add(id);
   balances[method]=(parseFloat(balances[method])||0)+amount;
-  balances['tithe_'+method]=Math.round(((parseFloat(balances['tithe_'+method])||0)+(amount*0.1))*100)/100;
   logHistory('paid', `Marked ${j.client} job (${fmt(j.date)}) as paid — $${amount} (${method})`, { jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount });
   save(); render(); reopenPanel(j.client); toast('Marked as paid ✓');
 }
@@ -1386,11 +1393,9 @@ async function undoPaid(hid) {
   const h = historyLog.find(h=>h.id===hid);
   if (!h) return;
 
-  // Reverse balance and tithe if tracked
+  // Reverse balance if tracked
   if (h.paymentMethod && h.paymentAmount) {
     balances[h.paymentMethod] = Math.max(0, (parseFloat(balances[h.paymentMethod]) || 0) - h.paymentAmount);
-    const tk = 'tithe_'+h.paymentMethod;
-    balances[tk] = Math.max(0, Math.round(((parseFloat(balances[tk])||0)-(h.paymentAmount*0.1))*100)/100);
   }
 
   // Single job undo
@@ -1425,8 +1430,6 @@ function deleteJob(id) {
   const j=lawnJobs.find(j=>j.id===id);
   if (j.status === 'paid' && j.paymentMethod) {
     balances[j.paymentMethod] = Math.max(0, (parseFloat(balances[j.paymentMethod])||0) - jobAmount(j));
-    const tk = 'tithe_'+j.paymentMethod;
-    balances[tk] = Math.max(0, Math.round(((parseFloat(balances[tk])||0)-(jobAmount(j)*0.1))*100)/100);
   }
   lawnJobs=lawnJobs.filter(j=>j.id!==id);
   pendingJobDeletes.add(id); pendingJobWrites.delete(id);
