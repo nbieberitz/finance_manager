@@ -1012,7 +1012,11 @@ function reopenPanel(clientName) {
 function render() {
   renderClients();
 
-  const omSorted = [...otherMoney].sort((a,b) => b.date.localeCompare(a.date));
+  const omSorted = [...otherMoney].sort((a,b) => {
+    const dateDiff = b.date.localeCompare(a.date);
+    if (dateDiff !== 0) return dateDiff;
+    return b.id.localeCompare(a.id); // same date → most recently added first
+  });
   const omWrap = document.getElementById('other-wrap');
   if (!omSorted.length) {
     omWrap.innerHTML = '<div class="empty-state">No entries yet.</div>';
