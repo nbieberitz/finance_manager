@@ -597,10 +597,16 @@ tr:hover td { background: var(--surface2); }
         <div><label>Description</label><input type="text" id="om-desc" placeholder="e.g. Birthday money" /></div>
         <div><label>Date</label><input type="date" id="om-date" /></div>
         <div><label>Category</label>
-          <select id="om-type">
+          <select id="om-type" onchange="toggleOmMethod()">
             <option value="gift">Gift / birthday</option>
             <option value="income">Other income</option>
             <option value="expense">Expense</option>
+          </select>
+        </div>
+        <div id="om-method-wrap"><label>Received via</label>
+          <select id="om-method">
+            <option value="bank">Bank</option>
+            <option value="cash">Cash</option>
           </select>
         </div>
         <div><label>Amount ($)</label><input type="number" id="om-amount" placeholder="0.00" min="0" step="0.01" /></div>
@@ -877,16 +883,22 @@ function logHistory(type, message, extra = {}) {
 }
 
 function computeTithe() {
-  const bank = Math.round(
-    lawnJobs.filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && !j.tithePaid)
+  const jobBank = Math.round(
+    lawnJobs.filter(j => j.status==='paid' && j.paymentMethod==='bank' && !j.tithePaid)
             .reduce((s, j) => s + jobAmount(j), 0) * 0.1 * 100) / 100;
-  const cash = Math.round(
-    lawnJobs.filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && !j.tithePaid)
+  const jobCash = Math.round(
+    lawnJobs.filter(j => j.status==='paid' && j.paymentMethod==='cash' && !j.tithePaid)
             .reduce((s, j) => s + jobAmount(j), 0) * 0.1 * 100) / 100;
-  const income = Math.round(
-    otherMoney.filter(e => (e.type === 'income' || e.type === 'gift') && !e.tithePaid)
+  // Income/gift split by method; entries with no method (legacy) treated as bank
+  const incomeBank = Math.round(
+    otherMoney.filter(e => (e.type==='income'||e.type==='gift') && e.paymentMethod!=='cash' && !e.tithePaid)
               .reduce((s, e) => s + parseFloat(e.amount), 0) * 0.1 * 100) / 100;
-  return { bank, cash, income, total: Math.round((bank + cash + income) * 100) / 100 };
+  const incomeCash = Math.round(
+    otherMoney.filter(e => (e.type==='income'||e.type==='gift') && e.paymentMethod==='cash' && !e.tithePaid)
+              .reduce((s, e) => s + parseFloat(e.amount), 0) * 0.1 * 100) / 100;
+  const bank = Math.round((jobBank + incomeBank) * 100) / 100;
+  const cash = Math.round((jobCash + incomeCash) * 100) / 100;
+  return { bank, cash, total: Math.round((bank + cash) * 100) / 100 };
 }
 function statusBadge(s) {
   return { unpaid:'<span class="badge badge-unpaid">Unpaid</span>', check:'<span class="badge badge-check">Check coming</span>', paid:'<span class="badge badge-paid">Paid</span>' }[s] || '';
@@ -993,14 +1005,14 @@ function saveClient(id) {
   const rate = parseFloat(document.getElementById('ec-rate-'+id).value);
   if (!name || isNaN(rate) || rate < 0) { alert('Name and valid rate required.'); return; }
   const old = clients.find(c=>c.id===id);
-  clients = clients.map(c => c.id===id ? {...c, name, note, rate} : c);
-  pendingClientWrites.add(id);
   const changes = [];
   if (old.name !== name) changes.push(`name: ${old.name} → ${name}`);
   if ((old.note||'') !== note) changes.push(`note: "${old.note||''}" → "${note}"`);
   if (old.rate !== rate) changes.push(`rate: $${old.rate} → $${rate}/job`);
-  const changeStr = changes.length ? changes.join(', ') : 'no changes';
-  logHistory('client', `Edited client — ${name} (${changeStr})`);
+  if (!changes.length) { renderClients(); return; }
+  clients = clients.map(c => c.id===id ? {...c, name, note, rate} : c);
+  pendingClientWrites.add(id);
+  logHistory('client', `Edited client — ${name} (${changes.join(', ')})`);
   save(); render(); toast('Client updated ✓');
 }
 
@@ -1031,7 +1043,7 @@ function render() {
           <td class="mono">${fmt(e.date)}</td>
           <td>${e.desc}</td>
           <td class="mono ${isExp?'amount-neg':'amount-pos'}">${isExp?'-':'+'}$${parseFloat(e.amount).toFixed(2)}</td>
-          <td><span class="badge ${cls}">${lbl}</span></td>
+          <td><span class="badge ${cls}">${lbl}</span>${!isExp&&e.paymentMethod?` <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text-faint)">${e.paymentMethod}</span>`:''}</td>
           <td><div class="row-actions">
             <button class="act-btn edit" onclick="editOther('${e.id}')">edit</button>
             <button class="act-btn danger" onclick="deleteOther('${e.id}')">delete</button>
@@ -1057,7 +1069,7 @@ function render() {
     <div class="metric tithe${titheOwed>0?' tithe-active':''}">
       <div class="metric-label">Tithe owed</div>
       <div class="metric-value">$${titheOwed.toFixed(2)}</div>
-      <div class="metric-sub">${titheOwed>0?`$${tithe.bank.toFixed(2)} bank · $${tithe.cash.toFixed(2)} cash${tithe.income>0?` · $${tithe.income.toFixed(2)} income`:''}` :'10% of paid jobs + income'}</div>
+      <div class="metric-sub">${titheOwed>0?`$${tithe.bank.toFixed(2)} bank · $${tithe.cash.toFixed(2)} cash`:'10% of jobs + income'}</div>
       ${titheOwed>0?`<button class="tithe-pay-btn" onclick="payTithe()">Pay tithe</button>`:''}
     </div>
     <div class="metric purple editable" id="bal-bank-card" onclick="editBalance('bank')">
@@ -1094,15 +1106,13 @@ function historyEntryHTML(h) {
 }
 
 function payTithe() {
-  const { bank: tb, cash: tc, income: ti, total } = computeTithe();
+  const { bank: tb, cash: tc, total } = computeTithe();
   if (!total) return;
   const parts = [];
-  if (tb>0) parts.push(`$${tb.toFixed(2)} from bank jobs`);
-  if (tc>0) parts.push(`$${tc.toFixed(2)} from cash jobs`);
-  if (ti>0) parts.push(`$${ti.toFixed(2)} from other income`);
+  if (tb>0) parts.push(`$${tb.toFixed(2)} from bank`);
+  if (tc>0) parts.push(`$${tc.toFixed(2)} from cash`);
   if (!confirm(`Pay tithe of $${total.toFixed(2)}?\n\n${parts.join('\n')}`)) return;
-  // Deduct job tithe from respective balances; income tithe comes from bank
-  balances.bank = Math.round(((parseFloat(balances.bank)||0) - tb - ti) * 100) / 100;
+  balances.bank = Math.round(((parseFloat(balances.bank)||0) - tb) * 100) / 100;
   balances.cash = Math.round(((parseFloat(balances.cash)||0) - tc) * 100) / 100;
   // Mark all untithed paid jobs
   const affectedJobIds = [];
@@ -1520,23 +1530,36 @@ function addLawnJob() {
   toast('Job added ✓');
 }
 
+function toggleOmMethod() {
+  const type = document.getElementById('om-type').value;
+  document.getElementById('om-method-wrap').style.display = (type === 'expense') ? 'none' : '';
+}
+
+function toggleEditOmMethod(id) {
+  const type = document.getElementById('eo-type-'+id).value;
+  document.getElementById('eo-method-'+id).style.display = (type === 'expense') ? 'none' : '';
+}
+
 function addOtherMoney() {
   const desc=document.getElementById('om-desc').value.trim();
   const date=document.getElementById('om-date').value;
   const type=document.getElementById('om-type').value;
   const amount=parseFloat(document.getElementById('om-amount').value);
+  const method=(type==='income'||type==='gift') ? document.getElementById('om-method').value : null;
   if (!desc) { alert('Please enter a description.'); return; }
   if (!date) { alert('Please enter a valid date.'); return; }
   if (isNaN(amount) || amount <= 0) { alert('Please enter a valid amount greater than 0.'); return; }
-  const newEntry = {id:'o'+Date.now(),desc,date,type,amount};
+  const newEntry = {id:'o'+Date.now(),desc,date,type,amount,...(method?{paymentMethod:method}:{})};
   otherMoney.push(newEntry);
   pendingOtherWrites.add(newEntry.id);
-  logHistory('other',`Added ${type} — "${desc}" $${amount.toFixed(2)} on ${fmt(date)}`);
+  logHistory('other',`Added ${type} — "${desc}" $${amount.toFixed(2)} on ${fmt(date)}${method?' ('+method+')':''}`);
   save(); render();
   document.getElementById('om-desc').value='';
   document.getElementById('om-date').value='';
   document.getElementById('om-amount').value='';
   document.getElementById('om-type').value='gift';
+  document.getElementById('om-method').value='bank';
+  toggleOmMethod();
   toast('Entry added ✓');
 }
 
@@ -1578,6 +1601,12 @@ function saveJob(id) {
   if (!date) { alert('Date required.'); return; }
   if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
   const old = lawnJobs.find(j=>j.id===id);
+  if (old.date===date && old.client===client && old.status===status && jobAmount(old)===amount) {
+    render();
+    const c = clients.find(c => c.name === client);
+    if (c) { const p = document.getElementById('jobs-panel-'+c.id); if (p) p.classList.add('open'); }
+    return;
+  }
   lawnJobs = lawnJobs.map(j => j.id===id ? {...j, date, client, status, amount} : j);
   pendingJobWrites.add(id);
   logHistory('add', `Edited job — ${old.client} ${fmt(old.date)} → ${client} ${fmt(date)}, $${amount}, ${status}`);
@@ -1592,15 +1621,22 @@ function editOther(id) {
   const e = otherMoney.find(e=>e.id===id);
   const row = document.getElementById('orow-'+id);
   row.classList.add('edit-row');
+  const isIncome = e.type!=='expense';
   row.innerHTML = `
     <td><input id="eo-date-${id}" type="date" value="${e.date}" /></td>
     <td><input id="eo-desc-${id}" value="${e.desc}" /></td>
     <td><input id="eo-amount-${id}" type="number" value="${e.amount}" min="0" step="0.01" style="width:90px" /></td>
-    <td><select id="eo-type-${id}">
-      <option value="gift"${e.type==='gift'?' selected':''}>Gift / birthday</option>
-      <option value="income"${e.type==='income'?' selected':''}>Other income</option>
-      <option value="expense"${e.type==='expense'?' selected':''}>Expense</option>
-    </select></td>
+    <td style="display:flex;gap:6px;align-items:center">
+      <select id="eo-type-${id}" onchange="toggleEditOmMethod('${id}')">
+        <option value="gift"${e.type==='gift'?' selected':''}>Gift / birthday</option>
+        <option value="income"${e.type==='income'?' selected':''}>Other income</option>
+        <option value="expense"${e.type==='expense'?' selected':''}>Expense</option>
+      </select>
+      <select id="eo-method-${id}" style="${isIncome?'':'display:none'}">
+        <option value="bank"${e.paymentMethod!=='cash'?' selected':''}>Bank</option>
+        <option value="cash"${e.paymentMethod==='cash'?' selected':''}>Cash</option>
+      </select>
+    </td>
     <td><div class="row-actions">
       <button class="act-btn save" onclick="saveOther('${id}')">save</button>
       <button class="act-btn" onclick="render()">cancel</button>
@@ -1612,11 +1648,15 @@ function saveOther(id) {
   const desc   = document.getElementById('eo-desc-'+id).value.trim();
   const amount = parseFloat(document.getElementById('eo-amount-'+id).value);
   const type   = document.getElementById('eo-type-'+id).value;
+  const method = type!=='expense' ? document.getElementById('eo-method-'+id).value : null;
   if (!date || !desc || isNaN(amount) || amount < 0) { alert('All fields required.'); return; }
   const old = otherMoney.find(e=>e.id===id);
-  otherMoney = otherMoney.map(e => e.id===id ? {...e, date, desc, amount, type} : e);
+  if (old.date===date && old.desc===desc && parseFloat(old.amount)===amount && old.type===type && (old.paymentMethod||null)===method) {
+    render(); return;
+  }
+  otherMoney = otherMoney.map(e => e.id===id ? {...e, date, desc, amount, type, paymentMethod: method} : e);
   pendingOtherWrites.add(id);
-  logHistory('other', `Edited entry — "${old.desc}" → "${desc}" $${amount.toFixed(2)}`);
+  logHistory('other', `Edited entry — "${old.desc}" → "${desc}" $${amount.toFixed(2)}${method?' ('+method+')':''}`);
   save(); render(); toast('Entry updated ✓');
 }
 
