@@ -1552,6 +1552,9 @@ function addOtherMoney() {
   const newEntry = {id:'o'+Date.now(),desc,date,type,amount,...(method?{paymentMethod:method}:{})};
   otherMoney.push(newEntry);
   pendingOtherWrites.add(newEntry.id);
+  if (method) {
+    balances[method] = Math.round(((parseFloat(balances[method]) || 0) + amount) * 100) / 100;
+  }
   logHistory('other',`Added ${type} — "${desc}" $${amount.toFixed(2)} on ${fmt(date)}${method?' ('+method+')':''}`);
   save(); render();
   document.getElementById('om-desc').value='';
@@ -1566,6 +1569,9 @@ function addOtherMoney() {
 function deleteOther(id) {
   if (!confirm('Delete this entry?')) return;
   const e=otherMoney.find(e=>e.id===id);
+  if ((e.type==='income'||e.type==='gift') && e.paymentMethod) {
+    balances[e.paymentMethod] = Math.max(0, Math.round(((parseFloat(balances[e.paymentMethod])||0) - parseFloat(e.amount)) * 100) / 100);
+  }
   otherMoney=otherMoney.filter(e=>e.id!==id);
   pendingOtherDeletes.add(id); pendingOtherWrites.delete(id);
   logHistory('delete',`Deleted entry — "${e.desc}" $${parseFloat(e.amount).toFixed(2)}`);
@@ -1653,6 +1659,14 @@ function saveOther(id) {
   const old = otherMoney.find(e=>e.id===id);
   if (old.date===date && old.desc===desc && parseFloat(old.amount)===amount && old.type===type && (old.paymentMethod||null)===method) {
     render(); return;
+  }
+  // Reverse old balance contribution
+  if ((old.type==='income'||old.type==='gift') && old.paymentMethod) {
+    balances[old.paymentMethod] = Math.max(0, Math.round(((parseFloat(balances[old.paymentMethod])||0) - parseFloat(old.amount)) * 100) / 100);
+  }
+  // Apply new balance contribution
+  if ((type==='income'||type==='gift') && method) {
+    balances[method] = Math.round(((parseFloat(balances[method])||0) + amount) * 100) / 100;
   }
   otherMoney = otherMoney.map(e => e.id===id ? {...e, date, desc, amount, type, paymentMethod: method} : e);
   pendingOtherWrites.add(id);
