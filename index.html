@@ -1129,7 +1129,7 @@ function payTithe() {
   });
   affectedOtherIds.forEach(id => pendingOtherWrites.add(id));
   const today = new Date().toISOString().slice(0,10);
-  const titheEntry = { id:'o'+Date.now(), desc:'Tithe', date:today, type:'expense', amount:total };
+  const titheEntry = { id:'o'+Date.now(), desc:'Tithe', date:today, type:'expense', amount:total, titheBank:tb, titheCash:tc };
   otherMoney.push(titheEntry);
   pendingOtherWrites.add(titheEntry.id);
   logHistory('add', `Tithe paid — $${total.toFixed(2)} (${parts.join(', ')})`);
@@ -1571,6 +1571,10 @@ function deleteOther(id) {
   const e=otherMoney.find(e=>e.id===id);
   if ((e.type==='income'||e.type==='gift') && e.paymentMethod) {
     balances[e.paymentMethod] = Math.max(0, Math.round(((parseFloat(balances[e.paymentMethod])||0) - parseFloat(e.amount)) * 100) / 100);
+  }
+  if (e.type==='expense' && (e.titheBank||e.titheCash)) {
+    balances.bank = Math.round(((parseFloat(balances.bank)||0) + (e.titheBank||0)) * 100) / 100;
+    balances.cash = Math.round(((parseFloat(balances.cash)||0) + (e.titheCash||0)) * 100) / 100;
   }
   otherMoney=otherMoney.filter(e=>e.id!==id);
   pendingOtherDeletes.add(id); pendingOtherWrites.delete(id);
