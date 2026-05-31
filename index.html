@@ -522,7 +522,12 @@ tr:hover td { background: var(--surface2); }
     <div id="clients-wrap"><div class="empty-state">No clients yet.</div></div>
     <div id="bulk-bar" style="display:none;padding:8px 1.25rem;background:var(--surface2);border-top:1px solid var(--border);align-items:center;gap:10px">
       <span id="bulk-count" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted)"></span>
-      <button class="act-btn success" onclick="bulkMarkPaid()" style="font-size:12px;padding:4px 14px">mark selected as paid</button>
+      <select id="bulk-status-sel" style="font-size:11px;padding:3px 8px;font-family:'JetBrains Mono',monospace;background:var(--surface);border:1px solid var(--border-mid);border-radius:var(--radius-sm);color:var(--text);cursor:pointer">
+        <option value="unpaid">Unpaid</option>
+        <option value="check">Check coming</option>
+        <option value="paid">Paid</option>
+      </select>
+      <button class="act-btn success" onclick="bulkSetStatus()" style="font-size:12px;padding:4px 14px">set status</button>
       <button class="act-btn danger" onclick="bulkDelete()" style="font-size:12px;padding:4px 14px">delete selected</button>
     </div>
   </section>
@@ -1282,6 +1287,37 @@ function updateBulkBar() {
   } else {
     bar.style.display = 'none';
   }
+}
+
+async function bulkSetStatus() {
+  const checked = [...document.querySelectorAll('.job-cb:checked')];
+  if (!checked.length) return;
+  const newStatus = document.getElementById('bulk-status-sel').value;
+
+  if (newStatus === 'paid') {
+    bulkMarkPaid();
+    return;
+  }
+
+  const ids = checked.map(c => c.dataset.id);
+  const jobs = ids.map(id => lawnJobs.find(j => j.id === id)).filter(Boolean);
+  const label = { unpaid: 'Unpaid', check: 'Check coming' }[newStatus];
+
+  if (!confirm(`Set ${jobs.length} job${jobs.length > 1 ? 's' : ''} to "${label}"?`)) return;
+
+  // If any were paid, reverse their balance contribution
+  jobs.forEach(j => {
+    if (j.status === 'paid' && j.paymentMethod) {
+      balances[j.paymentMethod] = Math.max(0, (parseFloat(balances[j.paymentMethod]) || 0) - jobAmount(j));
+    }
+  });
+
+  lawnJobs = lawnJobs.map(j =>
+    ids.includes(j.id) ? { ...j, status: newStatus, paymentMethod: null, paymentAmount: null } : j
+  );
+  ids.forEach(id => pendingJobWrites.add(id));
+  logHistory('add', `Set ${jobs.length} job${jobs.length > 1 ? 's' : ''} to ${label}`);
+  save(); render(); updateBulkBar(); toast(`${jobs.length} job${jobs.length > 1 ? 's' : ''} → ${label} ✓`);
 }
 
 async function bulkMarkPaid() {
