@@ -293,6 +293,19 @@ input:not([type="checkbox"])::placeholder { color: var(--text-faint); }
 
 select option { background: var(--surface); }
 
+.date-field { position: relative; }
+.date-field input[type="text"] { padding-right: 32px; }
+.date-pick-btn {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 24px; height: 24px; padding: 0; border: none; background: none;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  border-radius: 4px;
+}
+.date-pick-btn:hover { background: var(--surface2); }
+.date-pick-btn svg { width: 14px; height: 14px; stroke: var(--text-faint); fill: none; stroke-width: 2; display: block; }
+.date-pick-btn:hover svg { stroke: var(--accent); }
+.date-picker-hidden { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; left: -9999px; }
+
 .form-actions { margin-top: 12px; display: flex; gap: 8px; }
 
 .btn {
@@ -536,7 +549,13 @@ tr:hover td { background: var(--surface2); }
     <div class="add-form" id="lawn-form">
       <div class="form-grid">
         <div><label>Client</label><select id="lj-client" onchange="prefillJobAmount()"></select></div>
-        <div><label>Date</label><input type="date" id="lj-date" /></div>
+        <div><label>Date</label>
+          <div class="date-field">
+            <input type="text" id="lj-date" placeholder="MM/DD/YYYY — blank = today" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('lj-date')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="lj-date-picker" class="date-picker-hidden" onchange="applyDatePicker('lj-date')" tabindex="-1" />
+          </div>
+        </div>
         <div><label>Amount ($)</label><input type="number" id="lj-amount" min="0" step="0.01" placeholder="auto" /></div>
         <div><label>Status</label>
           <select id="lj-status">
@@ -584,7 +603,13 @@ tr:hover td { background: var(--surface2); }
     <div class="add-form" id="other-form">
       <div class="form-grid">
         <div><label>Description</label><input type="text" id="om-desc" placeholder="e.g. Birthday money" /></div>
-        <div><label>Date</label><input type="date" id="om-date" /></div>
+        <div><label>Date</label>
+          <div class="date-field">
+            <input type="text" id="om-date" placeholder="MM/DD/YYYY — blank = today" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('om-date')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="om-date-picker" class="date-picker-hidden" onchange="applyDatePicker('om-date')" tabindex="-1" />
+          </div>
+        </div>
         <div><label>Category</label>
           <select id="om-type" onchange="toggleOmTithe()">
             <option value="gift">Gift / birthday</option>
@@ -869,6 +894,58 @@ function getRate(name) { const c = clients.find(c => c.name===name); return c ? 
 function jobAmount(j) { return j.amount !== undefined ? j.amount : getRate(j.client); }
 
 function fmt(d) { const [y,m,dy] = d.split('-'); return `${parseInt(m)}/${parseInt(dy)}/${y.slice(2)}`; }
+
+function todayISO() { return new Date().toISOString().slice(0,10); }
+
+// Parses flexible typed date input into ISO 'YYYY-MM-DD'.
+// Blank -> today. "5/26" -> May 26, current year. "26" -> 26th of current month/year.
+function parseFlexibleDate(str) {
+  str = (str || '').trim();
+  if (!str) return todayISO();
+  const parts = str.split(/[\/\-]/).map(p => p.trim()).filter(p => p !== '');
+  const now = new Date();
+  let month = now.getMonth() + 1, day = now.getDate(), year = now.getFullYear();
+  if (parts.length === 1) {
+    day = parseInt(parts[0], 10);
+  } else if (parts.length === 2) {
+    month = parseInt(parts[0], 10);
+    day = parseInt(parts[1], 10);
+  } else if (parts.length >= 3) {
+    month = parseInt(parts[0], 10);
+    day = parseInt(parts[1], 10);
+    year = parseInt(parts[2], 10);
+    if (year < 100) year += 2000;
+  }
+  if (isNaN(month) || isNaN(day) || isNaN(year) || month < 1 || month > 12 || day < 1 || day > 31) return todayISO();
+  return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+}
+
+// Converts stored ISO date back to a typeable M/D/YYYY string for edit fields.
+function isoToDisplay(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${parseInt(m)}/${parseInt(d)}/${y}`;
+}
+
+// Opens the hidden native date picker tied to a text date field, seeded with
+// whatever that field currently resolves to (today if blank/unparseable).
+function openDatePicker(textId) {
+  const textInput = document.getElementById(textId);
+  const picker = document.getElementById(textId + '-picker');
+  if (!textInput || !picker) return;
+  picker.value = parseFlexibleDate(textInput.value);
+  if (picker.showPicker) { try { picker.showPicker(); return; } catch (e) {} }
+  picker.focus();
+  picker.click();
+}
+
+// Fired when the hidden picker's value changes — writes the picked date back
+// into the visible text field in the same M/D/YYYY style the user types in.
+function applyDatePicker(textId) {
+  const textInput = document.getElementById(textId);
+  const picker = document.getElementById(textId + '-picker');
+  if (picker.value) textInput.value = isoToDisplay(picker.value);
+}
 
 function logHistory(type, message, extra = {}) {
   const entry = { id: extra.id || ('h'+Date.now()), type, message, ts: new Date().toISOString(), ...extra };
@@ -1466,11 +1543,10 @@ function prefillJobAmount() {
 
 function addLawnJob() {
   const client = document.getElementById('lj-client').value;
-  const date   = document.getElementById('lj-date').value;
+  const date   = parseFlexibleDate(document.getElementById('lj-date').value);
   const status = document.getElementById('lj-status').value;
   const raw    = document.getElementById('lj-amount').value;
   const amount = raw !== '' ? parseFloat(raw) : getRate(client);
-  if (!date) { alert('Please select a date.'); return; }
   const newJob = {id:'l'+Date.now(), client, date, status, amount};
   lawnJobs.push(newJob);
   pendingJobWrites.add(newJob.id);
@@ -1489,13 +1565,12 @@ function toggleOmTithe() {
 
 function addOtherMoney() {
   const desc=document.getElementById('om-desc').value.trim();
-  const date=document.getElementById('om-date').value;
+  const date=parseFlexibleDate(document.getElementById('om-date').value);
   const type=document.getElementById('om-type').value;
   const method=document.getElementById('om-method').value;
   const amount=parseFloat(document.getElementById('om-amount').value);
   const titheDeductible = type === 'income' ? document.getElementById('om-tithe').checked : false;
   if (!desc) { alert('Please enter a description.'); return; }
-  if (!date) { alert('Please enter a valid date.'); return; }
   if (isNaN(amount) || amount <= 0) { alert('Please enter a valid amount greater than 0.'); return; }
   const newEntry = {id:'o'+Date.now(),desc,date,type,amount,method,titheDeductible};
   otherMoney.push(newEntry);
@@ -1534,7 +1609,11 @@ function editJob(id) {
   const clientOpts = clients.map(c=>`<option value="${c.name}"${c.name===j.client?' selected':''}>${c.name}</option>`).join('');
   row.innerHTML = `
     <td></td>
-    <td><input id="ej-date-${id}" type="date" value="${j.date}" /></td>
+    <td><div class="date-field">
+      <input id="ej-date-${id}" type="text" value="${isoToDisplay(j.date)}" placeholder="MM/DD/YYYY" />
+      <button type="button" class="date-pick-btn" onclick="openDatePicker('ej-date-${id}')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+      <input type="date" id="ej-date-${id}-picker" class="date-picker-hidden" onchange="applyDatePicker('ej-date-${id}')" tabindex="-1" />
+    </div></td>
     <td><select id="ej-client-${id}">${clientOpts}</select></td>
     <td><input id="ej-amount-${id}" type="number" value="${jobAmount(j)}" min="0" step="0.01" /></td>
     <td><select id="ej-status-${id}">
@@ -1549,11 +1628,10 @@ function editJob(id) {
 }
 
 function saveJob(id) {
-  const date   = document.getElementById('ej-date-'+id).value;
+  const date   = parseFlexibleDate(document.getElementById('ej-date-'+id).value);
   const client = document.getElementById('ej-client-'+id).value;
   const status = document.getElementById('ej-status-'+id).value;
   const amount = parseFloat(document.getElementById('ej-amount-'+id).value);
-  if (!date) { alert('Date required.'); return; }
   if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
   const old = lawnJobs.find(j=>j.id===id);
   lawnJobs = lawnJobs.map(j => j.id===id ? {...j, date, client, status, amount} : j);
@@ -1571,7 +1649,11 @@ function editOther(id) {
   const row = document.getElementById('orow-'+id);
   row.classList.add('edit-row');
   row.innerHTML = `
-    <td><input id="eo-date-${id}" type="date" value="${e.date}" /></td>
+    <td><div class="date-field">
+      <input id="eo-date-${id}" type="text" value="${isoToDisplay(e.date)}" placeholder="MM/DD/YYYY" />
+      <button type="button" class="date-pick-btn" onclick="openDatePicker('eo-date-${id}')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+      <input type="date" id="eo-date-${id}-picker" class="date-picker-hidden" onchange="applyDatePicker('eo-date-${id}')" tabindex="-1" />
+    </div></td>
     <td><input id="eo-desc-${id}" value="${e.desc}" /></td>
     <td><input id="eo-amount-${id}" type="number" value="${e.amount}" min="0" step="0.01" style="width:90px" /></td>
     <td><select id="eo-type-${id}" onchange="toggleEoTithe('${id}')">
@@ -1600,13 +1682,13 @@ function toggleEoTithe(id) {
 }
 
 function saveOther(id) {
-  const date   = document.getElementById('eo-date-'+id).value;
+  const date   = parseFlexibleDate(document.getElementById('eo-date-'+id).value);
   const desc   = document.getElementById('eo-desc-'+id).value.trim();
   const amount = parseFloat(document.getElementById('eo-amount-'+id).value);
   const type   = document.getElementById('eo-type-'+id).value;
   const method = document.getElementById('eo-method-'+id).value;
   const titheDeductible = type === 'income' ? document.getElementById('eo-tithe-'+id).checked : false;
-  if (!date || !desc || isNaN(amount) || amount < 0) { alert('All fields required.'); return; }
+  if (!desc || isNaN(amount) || amount < 0) { alert('All fields required.'); return; }
   const old = otherMoney.find(e=>e.id===id);
   // Reverse the old entry's effect on balances, then apply the new one.
   if (old.method) {
