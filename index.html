@@ -101,11 +101,6 @@ header {
 }
 
 .metric:hover { border-color: var(--border-mid); }
-.metric.editable { cursor: pointer; }
-.metric.editable:hover { border-color: var(--text-faint); background: var(--surface2); }
-.edit-pencil { position: absolute; top: 9px; right: 10px; opacity: 0; transition: opacity 0.15s; line-height: 1; }
-.edit-pencil svg { width: 12px; height: 12px; stroke: var(--text-faint); fill: none; stroke-width: 2; display: block; }
-.metric.editable:hover .edit-pencil { opacity: 1; }
 .metric.tithe { --mv-color: #F59E0B; }
 .metric.tithe .metric-value { color: #F59E0B; }
 .metric.tithe-active { border-color: rgba(245,158,11,0.35); }
@@ -1069,17 +1064,13 @@ function render() {
       <div class="metric-sub">${titheOwed>0?`$${tithe.bank.toFixed(2)} bank · $${tithe.cash.toFixed(2)} cash`:'10% of paid jobs + other income'}</div>
       ${titheOwed>0?`<button class="tithe-pay-btn" onclick="payTithe()">Pay tithe</button>`:''}
     </div>
-    <div class="metric purple editable" id="bal-bank-card" onclick="editBalance('bank')">
-      <span class="edit-pencil"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+    <div class="metric purple" id="bal-bank-card">
       <div class="metric-label">In bank</div>
       <div class="metric-value" id="bal-bank-val">$${parseFloat(balances.bank).toFixed(2)}</div>
-      <div class="metric-sub">click to edit</div>
     </div>
-    <div class="metric editable" id="bal-cash-card" onclick="editBalance('cash')">
-      <span class="edit-pencil"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+    <div class="metric" id="bal-cash-card">
       <div class="metric-label">Cash on hand</div>
       <div class="metric-value" id="bal-cash-val" style="color:var(--amber)">$${parseFloat(balances.cash).toFixed(2)}</div>
-      <div class="metric-sub">click to edit</div>
     </div>
   `;
 
@@ -1628,39 +1619,6 @@ function saveOther(id) {
   pendingOtherWrites.add(id);
   logHistory('other', `Edited entry — "${old.desc}" → "${desc}" $${amount.toFixed(2)}`);
   save(); render(); toast('Entry updated ✓');
-}
-
-function editBalance(key) {
-  const label = key === 'bank' ? 'In bank' : 'Cash on hand';
-  const cardId = key === 'bank' ? 'bal-bank-card' : 'bal-cash-card';
-  const color  = key === 'bank' ? 'var(--purple)' : 'var(--amber)';
-  const card   = document.getElementById(cardId);
-  const prev   = parseFloat(balances[key]) || 0;
-  card.onclick = null;
-  card.innerHTML = `
-    <div class="metric-label">${label}</div>
-    <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
-      <span style="font-family:'JetBrains Mono',monospace;font-size:1rem;color:${color}">$</span>
-      <input id="bal-input-${key}" type="number" min="0" step="0.01" value="${prev.toFixed(2)}"
-        style="font-family:'JetBrains Mono',monospace;font-size:1.1rem;width:100%;padding:3px 6px;color:${color};background:var(--surface3);border:1px solid ${color};border-radius:6px"
-        onkeydown="if(event.key==='Enter')saveBalance('${key}');if(event.key==='Escape')render();"
-        autofocus />
-    </div>
-    <div style="display:flex;gap:6px;margin-top:8px">
-      <button class="act-btn save" style="font-size:10px;padding:2px 8px" onclick="saveBalance('${key}')">save</button>
-      <button class="act-btn" style="font-size:10px;padding:2px 8px" onclick="render()">cancel</button>
-    </div>`;
-  setTimeout(()=>{ const inp=document.getElementById('bal-input-'+key); if(inp){inp.focus();inp.select();} }, 50);
-}
-
-function saveBalance(key) {
-  const val = parseFloat(document.getElementById('bal-input-'+key).value);
-  if (isNaN(val) || val < 0) { alert('Enter a valid amount.'); return; }
-  const label = key === 'bank' ? 'bank' : 'cash';
-  const prev = parseFloat(balances[key]) || 0;
-  logHistory('other', `Updated ${label} balance — $${prev.toFixed(2)} → $${val.toFixed(2)}`);
-  balances[key] = val;
-  save(); render(); toast(`${key==='bank'?'Bank':'Cash'} updated ✓`);
 }
 
 let toastTimer;
