@@ -591,13 +591,24 @@ tr:hover td { background: var(--surface2); }
         <div><label>Description</label><input type="text" id="om-desc" placeholder="e.g. Birthday money" /></div>
         <div><label>Date</label><input type="date" id="om-date" /></div>
         <div><label>Category</label>
-          <select id="om-type">
+          <select id="om-type" onchange="toggleOmTithe()">
             <option value="gift">Gift / birthday</option>
             <option value="income">Other income</option>
             <option value="expense">Expense</option>
           </select>
         </div>
+        <div><label>Method</label>
+          <select id="om-method">
+            <option value="bank">Bank</option>
+            <option value="cash">Cash</option>
+          </select>
+        </div>
         <div><label>Amount ($)</label><input type="number" id="om-amount" placeholder="0.00" min="0" step="0.01" /></div>
+        <div id="om-tithe-wrap" style="display:none;align-self:end">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:0">
+            <input type="checkbox" id="om-tithe" checked /> Tithe-deductible
+          </label>
+        </div>
       </div>
       <div class="form-actions">
         <button class="btn btn-primary" onclick="addOtherMoney()">Add entry</button>
@@ -871,18 +882,22 @@ function logHistory(type, message, extra = {}) {
 }
 
 function computeTithe() {
-  const bank = Math.round(
+  // "Other income" is tithe-deductible only when its own checkbox says so
+  // (defaults to true for entries created before this option existed).
+  // Gift/birthday and expense entries are never eligible regardless.
+  const bank = Math.round((
     lawnJobs.filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && !j.tithePaid)
-            .reduce((s, j) => s + jobAmount(j), 0) * 0.1 * 100) / 100;
-  const cash = Math.round(
+            .reduce((s, j) => s + jobAmount(j), 0) +
+    otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method !== 'cash' && !e.tithePaid)
+              .reduce((s, e) => s + parseFloat(e.amount), 0)
+  ) * 0.1 * 100) / 100;
+  const cash = Math.round((
     lawnJobs.filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && !j.tithePaid)
-            .reduce((s, j) => s + jobAmount(j), 0) * 0.1 * 100) / 100;
-  // "Other income" is tithe-deductible. Gift/birthday entries are explicitly
-  // excluded — only type === 'income' counts here, never 'gift' or 'expense'.
-  const other = Math.round(
-    otherMoney.filter(e => e.type === 'income' && !e.tithePaid)
-              .reduce((s, e) => s + parseFloat(e.amount), 0) * 0.1 * 100) / 100;
-  return { bank, cash, other, total: Math.round((bank + cash + other) * 100) / 100 };
+            .reduce((s, j) => s + jobAmount(j), 0) +
+    otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method === 'cash' && !e.tithePaid)
+              .reduce((s, e) => s + parseFloat(e.amount), 0)
+  ) * 0.1 * 100) / 100;
+  return { bank, cash, total: Math.round((bank + cash) * 100) / 100 };
 }
 
 function statusBadge(s) {
@@ -1015,7 +1030,7 @@ function render() {
     omWrap.innerHTML = '<div class="empty-state">No entries yet.</div>';
   } else {
     omWrap.innerHTML = `<div class="table-wrap"><table>
-      <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Category</th><th style="text-align:right">Actions</th></tr></thead>
+      <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Category</th><th>Method</th><th style="text-align:right">Actions</th></tr></thead>
       <tbody>${omSorted.map(e => {
         const isExp = e.type==='expense';
         const cls = e.type==='gift'?'badge-gift': isExp?'badge-expense':'badge-income';
@@ -1024,7 +1039,8 @@ function render() {
           <td class="mono">${fmt(e.date)}</td>
           <td>${e.desc}</td>
           <td class="mono ${isExp?'amount-neg':'amount-pos'}">${isExp?'-':'+'}$${parseFloat(e.amount).toFixed(2)}</td>
-          <td><span class="badge ${cls}">${lbl}</span></td>
+          <td><span class="badge ${cls}">${lbl}</span>${e.type==='income'&&e.titheDeductible===false?' <span class="mono" style="font-size:10px;color:var(--text-faint)">no tithe</span>':''}</td>
+          <td class="mono">${e.method ? (e.method==='cash'?'Cash':'Bank') : '—'}</td>
           <td><div class="row-actions">
             <button class="act-btn edit" onclick="editOther('${e.id}')">edit</button>
             <button class="act-btn danger" onclick="deleteOther('${e.id}')">delete</button>
@@ -1050,7 +1066,7 @@ function render() {
     <div class="metric tithe${titheOwed>0?' tithe-active':''}">
       <div class="metric-label">Tithe owed</div>
       <div class="metric-value">$${titheOwed.toFixed(2)}</div>
-      <div class="metric-sub">${titheOwed>0?`$${tithe.bank.toFixed(2)} bank · $${tithe.cash.toFixed(2)} cash${tithe.other>0?` · $${tithe.other.toFixed(2)} other income`:''}`:'10% of paid jobs + other income'}</div>
+      <div class="metric-sub">${titheOwed>0?`$${tithe.bank.toFixed(2)} bank · $${tithe.cash.toFixed(2)} cash`:'10% of paid jobs + other income'}</div>
       ${titheOwed>0?`<button class="tithe-pay-btn" onclick="payTithe()">Pay tithe</button>`:''}
     </div>
     <div class="metric purple editable" id="bal-bank-card" onclick="editBalance('bank')">
@@ -1087,13 +1103,9 @@ function historyEntryHTML(h) {
 }
 
 function payTithe() {
-  const { bank: tb, cash: tc, other: to, total } = computeTithe();
+  const { bank: tb, cash: tc, total } = computeTithe();
   if (!total) return;
-  const parts = [];
-  if (tb>0) parts.push(`$${tb.toFixed(2)} from bank`);
-  if (tc>0) parts.push(`$${tc.toFixed(2)} from cash`);
-  if (to>0) parts.push(`$${to.toFixed(2)} on other income`);
-  if (!confirm(`Pay tithe of $${total.toFixed(2)}?\n\n${parts.join('\n')}`)) return;
+  if (!confirm(`Pay tithe of $${total.toFixed(2)}?\n\n$${tb.toFixed(2)} from bank\n$${tc.toFixed(2)} from cash`)) return;
   balances.bank = Math.round(((parseFloat(balances.bank)||0) - tb) * 100) / 100;
   balances.cash = Math.round(((parseFloat(balances.cash)||0) - tc) * 100) / 100;
   // Mark all untithed paid jobs so they no longer count toward tithe
@@ -1103,11 +1115,11 @@ function payTithe() {
     return j;
   });
   affectedIds.forEach(id => pendingJobWrites.add(id));
-  // Mark all untithed 'other income' entries the same way. Gift/birthday and
-  // expense entries are never touched here — they're not tithe-deductible.
+  // Mark all untithed 'other income' entries the same way. Gift/birthday,
+  // expense, and non-deductible income entries are never touched here.
   const affectedOtherIds = [];
   otherMoney = otherMoney.map(e => {
-    if (e.type === 'income' && !e.tithePaid) { affectedOtherIds.push(e.id); return {...e, tithePaid: true}; }
+    if (e.type === 'income' && e.titheDeductible !== false && !e.tithePaid) { affectedOtherIds.push(e.id); return {...e, tithePaid: true}; }
     return e;
   });
   affectedOtherIds.forEach(id => pendingOtherWrites.add(id));
@@ -1115,6 +1127,9 @@ function payTithe() {
   const titheEntry = { id:'o'+Date.now(), desc:'Tithe', date:today, type:'expense', amount:total };
   otherMoney.push(titheEntry);
   pendingOtherWrites.add(titheEntry.id);
+  const parts = [];
+  if (tb>0) parts.push(`$${tb.toFixed(2)} from bank`);
+  if (tc>0) parts.push(`$${tc.toFixed(2)} from cash`);
   logHistory('add', `Tithe paid — $${total.toFixed(2)} (${parts.join(', ')})`);
   save(); render(); toast(`Tithe of $${total.toFixed(2)} paid ✓`);
 }
@@ -1476,23 +1491,35 @@ function addLawnJob() {
   toast('Job added ✓');
 }
 
+function toggleOmTithe() {
+  const wrap = document.getElementById('om-tithe-wrap');
+  wrap.style.display = document.getElementById('om-type').value === 'income' ? '' : 'none';
+}
+
 function addOtherMoney() {
   const desc=document.getElementById('om-desc').value.trim();
   const date=document.getElementById('om-date').value;
   const type=document.getElementById('om-type').value;
+  const method=document.getElementById('om-method').value;
   const amount=parseFloat(document.getElementById('om-amount').value);
+  const titheDeductible = type === 'income' ? document.getElementById('om-tithe').checked : false;
   if (!desc) { alert('Please enter a description.'); return; }
   if (!date) { alert('Please enter a valid date.'); return; }
   if (isNaN(amount) || amount <= 0) { alert('Please enter a valid amount greater than 0.'); return; }
-  const newEntry = {id:'o'+Date.now(),desc,date,type,amount};
+  const newEntry = {id:'o'+Date.now(),desc,date,type,amount,method,titheDeductible};
   otherMoney.push(newEntry);
   pendingOtherWrites.add(newEntry.id);
-  logHistory('other',`Added ${type} — "${desc}" $${amount.toFixed(2)} on ${fmt(date)}`);
+  const delta = type === 'expense' ? -amount : amount;
+  balances[method] = Math.round(((parseFloat(balances[method])||0) + delta) * 100) / 100;
+  logHistory('other',`Added ${type} — "${desc}" $${amount.toFixed(2)} on ${fmt(date)} (${method})`);
   save(); render();
   document.getElementById('om-desc').value='';
   document.getElementById('om-date').value='';
   document.getElementById('om-amount').value='';
   document.getElementById('om-type').value='gift';
+  document.getElementById('om-method').value='bank';
+  document.getElementById('om-tithe').checked=true;
+  toggleOmTithe();
   toast('Entry added ✓');
 }
 
@@ -1501,6 +1528,10 @@ function deleteOther(id) {
   const e=otherMoney.find(e=>e.id===id);
   otherMoney=otherMoney.filter(e=>e.id!==id);
   pendingOtherDeletes.add(id); pendingOtherWrites.delete(id);
+  if (e.method) {
+    const delta = e.type === 'expense' ? parseFloat(e.amount) : -parseFloat(e.amount);
+    balances[e.method] = Math.round(((parseFloat(balances[e.method])||0) + delta) * 100) / 100;
+  }
   logHistory('delete',`Deleted entry — "${e.desc}" $${parseFloat(e.amount).toFixed(2)}`);
   save(); render(); toast('Entry deleted');
 }
@@ -1552,10 +1583,19 @@ function editOther(id) {
     <td><input id="eo-date-${id}" type="date" value="${e.date}" /></td>
     <td><input id="eo-desc-${id}" value="${e.desc}" /></td>
     <td><input id="eo-amount-${id}" type="number" value="${e.amount}" min="0" step="0.01" style="width:90px" /></td>
-    <td><select id="eo-type-${id}">
+    <td><select id="eo-type-${id}" onchange="toggleEoTithe('${id}')">
       <option value="gift"${e.type==='gift'?' selected':''}>Gift / birthday</option>
       <option value="income"${e.type==='income'?' selected':''}>Other income</option>
       <option value="expense"${e.type==='expense'?' selected':''}>Expense</option>
+    </select>
+    <div id="eo-tithe-wrap-${id}" style="display:${e.type==='income'?'':'none'};margin-top:6px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:0;font-size:11px">
+        <input type="checkbox" id="eo-tithe-${id}"${e.titheDeductible!==false?' checked':''} /> Tithe-deductible
+      </label>
+    </div></td>
+    <td><select id="eo-method-${id}">
+      <option value="bank"${e.method!=='cash'?' selected':''}>Bank</option>
+      <option value="cash"${e.method==='cash'?' selected':''}>Cash</option>
     </select></td>
     <td><div class="row-actions">
       <button class="act-btn save" onclick="saveOther('${id}')">save</button>
@@ -1563,14 +1603,28 @@ function editOther(id) {
     </div></td>`;
 }
 
+function toggleEoTithe(id) {
+  const wrap = document.getElementById('eo-tithe-wrap-'+id);
+  wrap.style.display = document.getElementById('eo-type-'+id).value === 'income' ? '' : 'none';
+}
+
 function saveOther(id) {
   const date   = document.getElementById('eo-date-'+id).value;
   const desc   = document.getElementById('eo-desc-'+id).value.trim();
   const amount = parseFloat(document.getElementById('eo-amount-'+id).value);
   const type   = document.getElementById('eo-type-'+id).value;
+  const method = document.getElementById('eo-method-'+id).value;
+  const titheDeductible = type === 'income' ? document.getElementById('eo-tithe-'+id).checked : false;
   if (!date || !desc || isNaN(amount) || amount < 0) { alert('All fields required.'); return; }
   const old = otherMoney.find(e=>e.id===id);
-  otherMoney = otherMoney.map(e => e.id===id ? {...e, date, desc, amount, type} : e);
+  // Reverse the old entry's effect on balances, then apply the new one.
+  if (old.method) {
+    const oldDelta = old.type === 'expense' ? parseFloat(old.amount) : -parseFloat(old.amount);
+    balances[old.method] = Math.round(((parseFloat(balances[old.method])||0) + oldDelta) * 100) / 100;
+  }
+  const newDelta = type === 'expense' ? -amount : amount;
+  balances[method] = Math.round(((parseFloat(balances[method])||0) + newDelta) * 100) / 100;
+  otherMoney = otherMoney.map(e => e.id===id ? {...e, date, desc, amount, type, method, titheDeductible} : e);
   pendingOtherWrites.add(id);
   logHistory('other', `Edited entry — "${old.desc}" → "${desc}" $${amount.toFixed(2)}`);
   save(); render(); toast('Entry updated ✓');
