@@ -536,7 +536,7 @@ tr:hover td { background: var(--surface2); }
     <div class="add-form" id="lawn-form">
       <div class="form-grid">
         <div><label>Client</label><select id="lj-client" onchange="prefillJobAmount()"></select></div>
-        <div><label>Date</label><input type="date" id="lj-date" /></div>
+        <div><label>Date</label><input type="text" id="lj-date" placeholder="mm/dd/yyyy" /></div>
         <div><label>Amount ($)</label><input type="number" id="lj-amount" min="0" step="0.01" placeholder="auto" /></div>
         <div><label>Status</label>
           <select id="lj-status">
@@ -584,7 +584,7 @@ tr:hover td { background: var(--surface2); }
     <div class="add-form" id="other-form">
       <div class="form-grid">
         <div><label>Description</label><input type="text" id="om-desc" placeholder="e.g. Birthday money" /></div>
-        <div><label>Date</label><input type="date" id="om-date" /></div>
+        <div><label>Date</label><input type="text" id="om-date" placeholder="mm/dd/yyyy" /></div>
         <div><label>Category</label>
           <select id="om-type" onchange="toggleOmTitheCheckbox()">
             <option value="gift">Gift / birthday</option>
@@ -757,6 +757,52 @@ function getRate(name) { const c = clients.find(c => c.name===name); return c ? 
 function jobAmount(j) { return j.amount !== undefined ? j.amount : getRate(j.client); }
 
 function fmt(d) { const [y,m,dy] = d.split('-'); return `${parseInt(m)}/${parseInt(dy)}/${y.slice(2)}`; }
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+}
+
+function todayDisplay() {
+  const d = new Date();
+  return `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
+}
+
+// Parses flexible date input:
+//   "" (blank)   -> today
+//   "26"         -> day 26, current month & year
+//   "5/26"       -> month 5, day 26, current year
+//   "5/26/26"    -> month 5, day 26, year 2026
+//   "5/26/2026"  -> full date as given
+// Returns ISO "YYYY-MM-DD" or null if the input doesn't form a valid date.
+function parseSmartDate(raw) {
+  const str = (raw || '').trim();
+  if (!str) return todayISO();
+  const parts = str.split(/[\/\-\.]/).map(p => p.trim()).filter(p => p.length > 0);
+  const now = new Date();
+  let month, day, year;
+  if (parts.length === 1) {
+    day = parseInt(parts[0], 10);
+    month = now.getMonth() + 1;
+    year = now.getFullYear();
+  } else if (parts.length === 2) {
+    month = parseInt(parts[0], 10);
+    day = parseInt(parts[1], 10);
+    year = now.getFullYear();
+  } else {
+    month = parseInt(parts[0], 10);
+    day = parseInt(parts[1], 10);
+    year = parseInt(parts[2], 10);
+    if (parts[2].length === 2) year += 2000;
+  }
+  if (!Number.isInteger(month) || !Number.isInteger(day) || !Number.isInteger(year)) return null;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const dt = new Date(year, month - 1, day);
+  if (dt.getFullYear() !== year || dt.getMonth() !== month - 1 || dt.getDate() !== day) return null;
+  return `${year}-${pad2(month)}-${pad2(day)}`;
+}
 
 function logHistory(type, message) {
   historyLog.unshift({ id:'h'+Date.now(), type, message, ts: new Date().toISOString() });
@@ -934,17 +980,15 @@ function render() {
       <div class="metric-sub">${titheOwed>0?`bank $${titheBank.toFixed(2)} · cash $${titheCash.toFixed(2)}`:'all clear ✓'}</div>
       ${titheOwed>0?`<button onclick="payTithe()" style="margin-top:10px;width:100%;font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid #3D2800;background:var(--accent-pale);color:var(--accent);cursor:pointer;transition:background .15s" onmouseover="this.style.background='#2A1800'" onmouseout="this.style.background='var(--accent-pale)'">Mark paid → $0</button>`:''}
     </div>
-    <div class="metric purple editable" id="bal-bank-card" onclick="editBalance('bank')">
-      <span class="edit-pencil"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+    <div class="metric purple" id="bal-bank-card">
       <div class="metric-label">In bank</div>
       <div class="metric-value" id="bal-bank-val">$${parseFloat(balances.bank).toFixed(2)}</div>
-      <div class="metric-sub">click to edit</div>
+      <div class="metric-sub">&nbsp;</div>
     </div>
-    <div class="metric editable" id="bal-cash-card" onclick="editBalance('cash')">
-      <span class="edit-pencil"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+    <div class="metric" id="bal-cash-card">
       <div class="metric-label">Cash on hand</div>
       <div class="metric-value" id="bal-cash-val" style="color:var(--amber)">$${parseFloat(balances.cash).toFixed(2)}</div>
-      <div class="metric-sub">click to edit</div>
+      <div class="metric-sub">&nbsp;</div>
     </div>
   `;
 
@@ -1075,7 +1119,20 @@ function clearHistory() {
   historyLog=[]; save(); renderHistory(); toast('History cleared');
 }
 
-function toggleForm(id) { document.getElementById(id).classList.toggle('open'); }
+function toggleForm(id) {
+  const form = document.getElementById(id);
+  form.classList.toggle('open');
+  if (form.classList.contains('open')) {
+    if (id === 'lawn-form') {
+      const el = document.getElementById('lj-date');
+      if (el && !el.value) el.value = todayDisplay();
+    }
+    if (id === 'other-form') {
+      const el = document.getElementById('om-date');
+      if (el && !el.value) el.value = todayDisplay();
+    }
+  }
+}
 function toggleSection(id) { const el=document.getElementById(id); el.style.display=el.style.display==='none'?'':'none'; }
 
 function addClient() {
@@ -1292,16 +1349,16 @@ function prefillJobAmount() {
 
 function addLawnJob() {
   const client = document.getElementById('lj-client').value;
-  const date   = document.getElementById('lj-date').value;
+  const date   = parseSmartDate(document.getElementById('lj-date').value);
   const status = document.getElementById('lj-status').value;
   const raw    = document.getElementById('lj-amount').value;
   const amount = raw !== '' ? parseFloat(raw) : getRate(client);
-  if (!date) { alert('Please select a date.'); return; }
+  if (!date) { alert('Please enter a valid date (e.g. 5/26 or 5/26/2026).'); return; }
   lawnJobs.push({id:'l'+Date.now(), client, date, status, amount});
   logHistory('add', `Added job — ${client} on ${fmt(date)}, ${status} ($${amount})`);
   save(); render();
   document.getElementById('lawn-form').classList.remove('open');
-  document.getElementById('lj-date').value = '';
+  document.getElementById('lj-date').value = todayDisplay();
   prefillJobAmount();
   toast('Job added ✓');
 }
@@ -1313,11 +1370,11 @@ function toggleOmTitheCheckbox() {
 
 function addOtherMoney() {
   const desc=document.getElementById('om-desc').value.trim();
-  const date=document.getElementById('om-date').value;
+  const date=parseSmartDate(document.getElementById('om-date').value);
   const type=document.getElementById('om-type').value;
   const amount=parseFloat(document.getElementById('om-amount').value);
   if (!desc) { alert('Please enter a description.'); return; }
-  if (!date) { alert('Please enter a valid date.'); return; }
+  if (!date) { alert('Please enter a valid date (e.g. 5/26 or 5/26/2026).'); return; }
   if (isNaN(amount) || amount <= 0) { alert('Please enter a valid amount greater than 0.'); return; }
   const titheDeductible = type === 'income' && document.getElementById('om-tithe').checked;
   const titheApplied = titheDeductible ? Math.round(amount * 0.10 * 100) / 100 : 0;
@@ -1332,7 +1389,7 @@ function addOtherMoney() {
   }
   save(); render();
   document.getElementById('om-desc').value='';
-  document.getElementById('om-date').value='';
+  document.getElementById('om-date').value=todayDisplay();
   document.getElementById('om-amount').value='';
   document.getElementById('om-type').value='gift';
   document.getElementById('om-tithe').checked=true;
@@ -1359,7 +1416,7 @@ function editJob(id) {
   const clientOpts = clients.map(c=>`<option value="${c.name}"${c.name===j.client?' selected':''}>${c.name}</option>`).join('');
   row.innerHTML = `
     <td></td>
-    <td><input id="ej-date-${id}" type="date" value="${j.date}" /></td>
+    <td><input id="ej-date-${id}" type="text" value="${fmt(j.date)}" placeholder="mm/dd/yyyy" style="width:90px" /></td>
     <td><select id="ej-client-${id}">${clientOpts}</select></td>
     <td><input id="ej-amount-${id}" type="number" value="${jobAmount(j)}" min="0" step="0.01" /></td>
     <td><select id="ej-status-${id}">
@@ -1374,11 +1431,11 @@ function editJob(id) {
 }
 
 function saveJob(id) {
-  const date   = document.getElementById('ej-date-'+id).value;
+  const date   = parseSmartDate(document.getElementById('ej-date-'+id).value);
   const client = document.getElementById('ej-client-'+id).value;
   const status = document.getElementById('ej-status-'+id).value;
   const amount = parseFloat(document.getElementById('ej-amount-'+id).value);
-  if (!date) { alert('Date required.'); return; }
+  if (!date) { alert('Please enter a valid date (e.g. 5/26 or 5/26/2026).'); return; }
   if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
   const old = lawnJobs.find(j=>j.id===id);
   lawnJobs = lawnJobs.map(j => j.id===id ? {...j, date, client, status, amount} : j);
@@ -1395,7 +1452,7 @@ function editOther(id) {
   const row = document.getElementById('orow-'+id);
   row.classList.add('edit-row');
   row.innerHTML = `
-    <td><input id="eo-date-${id}" type="date" value="${e.date}" /></td>
+    <td><input id="eo-date-${id}" type="text" value="${fmt(e.date)}" placeholder="mm/dd/yyyy" style="width:90px" /></td>
     <td><input id="eo-desc-${id}" value="${e.desc}" /></td>
     <td><input id="eo-amount-${id}" type="number" value="${e.amount}" min="0" step="0.01" style="width:90px" /></td>
     <td><select id="eo-type-${id}" onchange="toggleEoTitheCheckbox('${id}')">
@@ -1421,11 +1478,11 @@ function toggleEoTitheCheckbox(id) {
 }
 
 function saveOther(id) {
-  const date   = document.getElementById('eo-date-'+id).value;
+  const date   = parseSmartDate(document.getElementById('eo-date-'+id).value);
   const desc   = document.getElementById('eo-desc-'+id).value.trim();
   const amount = parseFloat(document.getElementById('eo-amount-'+id).value);
   const type   = document.getElementById('eo-type-'+id).value;
-  if (!date || !desc || isNaN(amount) || amount < 0) { alert('All fields required.'); return; }
+  if (!date || !desc || isNaN(amount) || amount < 0) { alert('All fields required (and date must be valid).'); return; }
   const old = otherMoney.find(e=>e.id===id);
   const oldTitheApplied = old.titheApplied !== undefined
     ? old.titheApplied
@@ -1439,39 +1496,6 @@ function saveOther(id) {
   otherMoney = otherMoney.map(e => e.id===id ? {...e, date, desc, amount, type, titheDeductible, titheApplied} : e);
   logHistory('other', `Edited entry — "${old.desc}" → "${desc}" $${amount.toFixed(2)}`);
   save(); render(); toast('Entry updated ✓');
-}
-
-function editBalance(key) {
-  const label = key === 'bank' ? 'In bank' : 'Cash on hand';
-  const cardId = key === 'bank' ? 'bal-bank-card' : 'bal-cash-card';
-  const color  = key === 'bank' ? 'var(--purple)' : 'var(--amber)';
-  const card   = document.getElementById(cardId);
-  const prev   = parseFloat(balances[key]) || 0;
-  card.onclick = null;
-  card.innerHTML = `
-    <div class="metric-label">${label}</div>
-    <div style="display:flex;align-items:center;gap:6px;margin-top:4px">
-      <span style="font-family:'JetBrains Mono',monospace;font-size:1rem;color:${color}">$</span>
-      <input id="bal-input-${key}" type="number" min="0" step="0.01" value="${prev.toFixed(2)}"
-        style="font-family:'JetBrains Mono',monospace;font-size:1.1rem;width:100%;padding:3px 6px;color:${color};background:var(--surface3);border:1px solid ${color};border-radius:6px"
-        onkeydown="if(event.key==='Enter')saveBalance('${key}');if(event.key==='Escape')render();"
-        autofocus />
-    </div>
-    <div style="display:flex;gap:6px;margin-top:8px">
-      <button class="act-btn save" style="font-size:10px;padding:2px 8px" onclick="saveBalance('${key}')">save</button>
-      <button class="act-btn" style="font-size:10px;padding:2px 8px" onclick="render()">cancel</button>
-    </div>`;
-  setTimeout(()=>{ const inp=document.getElementById('bal-input-'+key); if(inp){inp.focus();inp.select();} }, 50);
-}
-
-function saveBalance(key) {
-  const val = parseFloat(document.getElementById('bal-input-'+key).value);
-  if (isNaN(val) || val < 0) { alert('Enter a valid amount.'); return; }
-  const label = key === 'bank' ? 'bank' : 'cash';
-  const prev = parseFloat(balances[key]) || 0;
-  logHistory('other', `Updated ${label} balance — $${prev.toFixed(2)} → $${val.toFixed(2)}`);
-  balances[key] = val;
-  save(); render(); toast(`${key==='bank'?'Bank':'Cash'} updated ✓`);
 }
 
 function payTithe() {
