@@ -470,15 +470,15 @@ tr:hover td { background: var(--surface2); }
   th:nth-child(4), td:nth-child(4) { display: none; }
 }
 
-/* Client job dropdown */
-.client-jobs-toggle { background:none; border:none; color:var(--text-muted); font-size:11px; cursor:pointer; padding:2px 8px; border-radius:4px; font-family:'JetBrains Mono',monospace; white-space:nowrap; }
-.client-jobs-toggle:hover { color:var(--text); background:var(--surface3); }
-.client-jobs-panel { display:none; background:var(--surface2); border-top:1px solid var(--border); }
-.client-jobs-panel.open { display:block; }
-.client-jobs-panel table { width:100%; }
-.client-jobs-panel th { font-size:10px; padding:6px 1rem; color:var(--text-muted); background:transparent; }
-.client-jobs-panel td { padding:6px 1rem; font-size:12px; }
-.client-jobs-panel tr:not(:last-child) td { border-bottom:1px solid var(--border); }
+/* Client event dropdown */
+.client-events-toggle { background:none; border:none; color:var(--text-muted); font-size:11px; cursor:pointer; padding:2px 8px; border-radius:4px; font-family:'JetBrains Mono',monospace; white-space:nowrap; }
+.client-events-toggle:hover { color:var(--text); background:var(--surface3); }
+.client-events-panel { display:none; background:var(--surface2); border-top:1px solid var(--border); }
+.client-events-panel.open { display:block; }
+.client-events-panel table { width:100%; }
+.client-events-panel th { font-size:10px; padding:6px 1rem; color:var(--text-muted); background:transparent; }
+.client-events-panel td { padding:6px 1rem; font-size:12px; }
+.client-events-panel tr:not(:last-child) td { border-bottom:1px solid var(--border); }
 .auth-area { display:flex; align-items:center; gap:10px; }
 .auth-user { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-muted); }
 .auth-user img { width:28px; height:28px; border-radius:50%; border:1px solid var(--border-mid); }
@@ -520,7 +520,7 @@ tr:hover td { background: var(--surface2); }
       <div class="form-grid">
         <div><label>Name / nickname</label><input type="text" id="cl-name" placeholder="e.g. Mr. Johnson" /></div>
         <div><label>Note (optional)</label><input type="text" id="cl-note" placeholder="e.g. Oak St." /></div>
-        <div><label>Rate per job ($)</label><input type="number" id="cl-rate" placeholder="0.00" min="0" step="0.01" /></div>
+        <div><label>Rate per event ($)</label><input type="number" id="cl-rate" placeholder="0.00" min="0" step="0.01" /></div>
       </div>
       <div class="form-actions">
         <button class="btn btn-primary" onclick="addClient()">Add client</button>
@@ -535,30 +535,30 @@ tr:hover td { background: var(--surface2); }
     </div>
   </section>
 
-  <!-- Add Job -->
+  <!-- Add Event -->
   <section>
     <div class="section-header static">
       <div class="section-title">
         <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
-        Jobs
+        Events
       </div>
       <div class="header-actions">
-        <button class="pill-btn" style="color:#4ADE80;border-color:#0A3D1A;background:#052E16" onclick="toggleForm('lawn-form')">+ Add job</button>
+        <button class="pill-btn" style="color:#4ADE80;border-color:#0A3D1A;background:#052E16" onclick="toggleForm('event-form')">+ Add event</button>
       </div>
     </div>
-    <div class="add-form" id="lawn-form">
+    <div class="add-form" id="event-form">
       <div class="form-grid">
-        <div><label>Client</label><select id="lj-client" onchange="prefillJobAmount()"></select></div>
+        <div><label>Client</label><select id="le-client" onchange="prefillEventAmount()"></select></div>
         <div><label>Date</label>
           <div class="date-field">
-            <input type="text" id="lj-date" placeholder="MM/DD/YYYY — blank = today" />
-            <button type="button" class="date-pick-btn" onclick="openDatePicker('lj-date')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
-            <input type="date" id="lj-date-picker" class="date-picker-hidden" onchange="applyDatePicker('lj-date')" tabindex="-1" />
+            <input type="text" id="le-date" placeholder="MM/DD/YYYY — blank = today" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('le-date')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="le-date-picker" class="date-picker-hidden" onchange="applyDatePicker('le-date')" tabindex="-1" />
           </div>
         </div>
-        <div><label>Amount ($)</label><input type="number" id="lj-amount" min="0" step="0.01" placeholder="auto" /></div>
+        <div><label>Amount ($)</label><input type="number" id="le-amount" min="0" step="0.01" placeholder="auto" /></div>
         <div><label>Status</label>
-          <select id="lj-status">
+          <select id="le-status">
             <option value="unpaid">Unpaid</option>
             <option value="check">Check coming</option>
             <option value="paid">Paid</option>
@@ -566,26 +566,26 @@ tr:hover td { background: var(--surface2); }
         </div>
       </div>
       <div class="form-actions">
-        <button class="btn btn-primary" onclick="addLawnJob()">Add job</button>
-        <button class="btn btn-ghost" onclick="toggleForm('lawn-form')">Cancel</button>
+        <button class="btn btn-primary" onclick="addEvent()">Add event</button>
+        <button class="btn btn-ghost" onclick="toggleForm('event-form')">Cancel</button>
       </div>
     </div>
   </section>
 
-  <!-- Paid Jobs -->
+  <!-- Paid Events -->
   <section>
-    <div class="section-header" onclick="toggleSection('paid-jobs-body')">
+    <div class="section-header" onclick="toggleSection('paid-events-body')">
       <div class="section-title">
         <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        Paid Jobs
+        Paid Events
       </div>
       <div class="header-actions">
-        <span id="paid-jobs-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
-        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearPaidJobs()">Clear all</button>
+        <span id="paid-events-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
+        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearPaidEvents()">Clear all</button>
       </div>
     </div>
-    <div id="paid-jobs-body" style="display:none">
-      <div id="paid-jobs-wrap"><div class="empty-state">No paid jobs yet.</div></div>
+    <div id="paid-events-body" style="display:none">
+      <div id="paid-events-wrap"><div class="empty-state">No paid events yet.</div></div>
     </div>
   </section>
 
@@ -718,7 +718,7 @@ function loadFromFirestore() {
   pendingHistoryEntries = [];
 
   // Track first fire of all 4 listeners before doing initial render
-  const ready = { main: false, clients: false, jobs: false, other: false };
+  const ready = { main: false, clients: false, events: false, other: false };
   let initialRenderDone = false;
 
   async function checkReady() {
@@ -751,10 +751,10 @@ function loadFromFirestore() {
     else if (initialRenderDone) render();
   }));
 
-  // Jobs
+  // Events
   unsubscribers.push(userDoc().collection('jobs').onSnapshot(snap => {
-    lawnJobs = snap.docs.map(d => d.data());
-    if (!ready.jobs) { ready.jobs = true; checkReady(); }
+    lawnEvents = snap.docs.map(d => d.data());
+    if (!ready.events) { ready.events = true; checkReady(); }
     else if (initialRenderDone) render();
   }));
 
@@ -819,10 +819,10 @@ async function saveToFirestore() {
   };
 
   await upsertItems('clients', pendingClientWrites, clients);
-  await upsertItems('jobs',    pendingJobWrites,    lawnJobs);
+  await upsertItems('jobs',    pendingEventWrites,    lawnEvents);
   await upsertItems('other',   pendingOtherWrites,  otherMoney);
   await deleteItems('clients', pendingClientDeletes);
-  await deleteItems('jobs',    pendingJobDeletes);
+  await deleteItems('jobs',    pendingEventDeletes);
   await deleteItems('other',   pendingOtherDeletes);
 
   // History entries (unchanged)
@@ -871,7 +871,7 @@ function detachListeners() { unsubscribers.forEach(fn => fn()); unsubscribers = 
 
 // ── App data ──────────────────────────────────────────────
 let clients    = [];
-let lawnJobs   = [];
+let lawnEvents   = [];
 let otherMoney = [];
 let historyLog = [];          // in-memory loaded entries
 let balances   = { bank: 0, cash: 0 };
@@ -883,15 +883,15 @@ let allHistoryLoaded      = false; // true when no more entries on server
 // Pending subcollection writes/deletes (only changed records get written)
 let pendingClientWrites  = new Set();
 let pendingClientDeletes = new Set();
-let pendingJobWrites     = new Set();
-let pendingJobDeletes    = new Set();
+let pendingEventWrites     = new Set();
+let pendingEventDeletes    = new Set();
 let pendingOtherWrites   = new Set();
 let pendingOtherDeletes  = new Set();
 
 function historyCol() { return db.collection('users').doc(currentUser.uid).collection('history'); }
 
 function getRate(name) { const c = clients.find(c => c.name===name); return c ? c.rate : 0; }
-function jobAmount(j) { return j.amount !== undefined ? j.amount : getRate(j.client); }
+function eventAmount(j) { return j.amount !== undefined ? j.amount : getRate(j.client); }
 
 function fmt(d) { const [y,m,dy] = d.split('-'); return `${parseInt(m)}/${parseInt(dy)}/${y.slice(2)}`; }
 
@@ -953,15 +953,15 @@ function logHistory(type, message, extra = {}) {
   pendingHistoryEntries.push(entry);
 }
 
-// Bank / cash totals are fully derived from the ledger — paid jobs and
+// Bank / cash totals are fully derived from the ledger — paid events and
 // income/expense entries — every time this is called, instead of being a
 // manually incremented running total. This means there's no longer any way
 // for the displayed balance to drift out of sync with the underlying data.
 function computeBalances() {
   let bank = 0, cash = 0;
-  lawnJobs.forEach(j => {
+  lawnEvents.forEach(j => {
     if (j.status !== 'paid' || !j.paymentMethod) return;
-    const amt = jobAmount(j);
+    const amt = eventAmount(j);
     if (j.paymentMethod === 'bank') bank += amt;
     else if (j.paymentMethod === 'cash') cash += amt;
   });
@@ -983,14 +983,14 @@ function computeTithe() {
   // (defaults to true for entries created before this option existed).
   // Gift/birthday and expense entries are never eligible regardless.
   const bank = Math.round((
-    lawnJobs.filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && !j.tithePaid)
-            .reduce((s, j) => s + jobAmount(j), 0) +
+    lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && !j.tithePaid)
+            .reduce((s, j) => s + eventAmount(j), 0) +
     otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method !== 'cash' && !e.tithePaid)
               .reduce((s, e) => s + parseFloat(e.amount), 0)
   ) * 0.1 * 100) / 100;
   const cash = Math.round((
-    lawnJobs.filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && !j.tithePaid)
-            .reduce((s, j) => s + jobAmount(j), 0) +
+    lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && !j.tithePaid)
+            .reduce((s, j) => s + eventAmount(j), 0) +
     otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method === 'cash' && !e.tithePaid)
               .reduce((s, e) => s + parseFloat(e.amount), 0)
   ) * 0.1 * 100) / 100;
@@ -1002,9 +1002,9 @@ function statusBadge(s) {
 }
 
 function refreshClientDropdown() {
-  const sel = document.getElementById('lj-client');
+  const sel = document.getElementById('le-client');
   sel.innerHTML = clients.map(c => `<option value="${c.name}">${c.name}${c.note?' ('+c.note+')':''} — $${c.rate}</option>`).join('');
-  prefillJobAmount();
+  prefillEventAmount();
 }
 
 function renderClients() {
@@ -1012,22 +1012,22 @@ function renderClients() {
   if (!clients.length) { wrap.innerHTML = '<div class="empty-state">No clients yet.</div>'; refreshClientDropdown(); return; }
 
   wrap.innerHTML = clients.map(c => {
-    const clientJobs = lawnJobs.filter(j => j.client === c.name && j.status !== 'paid')
+    const clientJobs = lawnEvents.filter(j => j.client === c.name && j.status !== 'paid')
       .sort((a,b) => b.date.localeCompare(a.date));
     const jobCount = clientJobs.length;
-    const owed = clientJobs.reduce((s,j) => s + jobAmount(j), 0);
+    const owed = clientJobs.reduce((s,j) => s + eventAmount(j), 0);
 
     const jobRows = clientJobs.map(j => `
-      <tr id="jrow-${j.id}">
-        <td style="width:32px"><input type="checkbox" class="job-cb" data-id="${j.id}" onclick="updateBulkBar()" /></td>
+      <tr id="erow-${j.id}">
+        <td style="width:32px"><input type="checkbox" class="event-cb" data-id="${j.id}" onclick="updateBulkBar()" /></td>
         <td class="mono">${fmt(j.date)}</td>
         <td style="color:var(--text-muted);font-size:12px">${j.client}</td>
-        <td class="mono amount-pos">$${jobAmount(j)}</td>
+        <td class="mono amount-pos">$${eventAmount(j)}</td>
         <td>${statusBadge(j.status)}</td>
         <td><div class="row-actions">
-          <button class="act-btn edit" onclick="editJob('${j.id}')">edit</button>
+          <button class="act-btn edit" onclick="editEvent('${j.id}')">edit</button>
           <button class="act-btn success" onclick="markPaid('${j.id}')">mark paid</button>
-          <button class="act-btn danger" onclick="deleteJob('${j.id}')">delete</button>
+          <button class="act-btn danger" onclick="deleteEvent('${j.id}')">delete</button>
         </div></td>
       </tr>`).join('');
 
@@ -1036,19 +1036,19 @@ function renderClients() {
         <div style="display:flex;align-items:center;padding:10px 1.25rem;gap:10px;border-bottom:1px solid var(--border)">
           <div style="font-weight:500">${c.name}</div>
           ${jobCount > 0 ? `
-          <button class="client-jobs-toggle" onclick="toggleClientJobs('${c.id}')">
-            ${jobCount} job${jobCount>1?'s':''} · $${owed} owed ▾
-          </button>` : '<span style="font-size:11px;color:var(--text-muted)">no open jobs</span>'}
+          <button class="client-events-toggle" onclick="toggleClientEvents('${c.id}')">
+            ${jobCount} event${jobCount>1?'s':''} · $${owed} owed ▾
+          </button>` : '<span style="font-size:11px;color:var(--text-muted)">no open events</span>'}
           <div style="flex:1"></div>
           <div style="color:var(--text-muted);font-size:12px">${c.note||''}</div>
-          <div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--text-muted)">$${c.rate}/job</div>
+          <div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--text-muted)">$${c.rate}/event</div>
           <div class="row-actions" style="margin:0">
             <button class="act-btn edit" onclick="editClient('${c.id}')">edit</button>
             <button class="act-btn danger" onclick="deleteClient('${c.id}')">remove</button>
           </div>
         </div>
         ${jobCount > 0 ? `
-        <div class="client-jobs-panel" id="jobs-panel-${c.id}">
+        <div class="client-events-panel" id="events-panel-${c.id}">
           <table>
             <thead><tr>
               <th colspan="2" style="width:auto">
@@ -1069,15 +1069,15 @@ function renderClients() {
   updateBulkBar();
 }
 
-function toggleClientJobs(cid) {
-  const panel = document.getElementById('jobs-panel-'+cid);
+function toggleClientEvents(cid) {
+  const panel = document.getElementById('events-panel-'+cid);
   if (panel) panel.classList.toggle('open');
 }
 
 function toggleClientSelectAll(cb, cid) {
-  const panel = document.getElementById('jobs-panel-'+cid);
+  const panel = document.getElementById('events-panel-'+cid);
   if (!panel) return;
-  panel.querySelectorAll('.job-cb').forEach(c => c.checked = cb.checked);
+  panel.querySelectorAll('.event-cb').forEach(c => c.checked = cb.checked);
   updateBulkBar();
 }
 
@@ -1107,7 +1107,7 @@ function saveClient(id) {
   const changes = [];
   if (old.name !== name) changes.push(`name: ${old.name} → ${name}`);
   if ((old.note||'') !== note) changes.push(`note: "${old.note||''}" → "${note}"`);
-  if (old.rate !== rate) changes.push(`rate: $${old.rate} → $${rate}/job`);
+  if (old.rate !== rate) changes.push(`rate: $${old.rate} → $${rate}/event`);
   const changeStr = changes.length ? changes.join(', ') : 'no changes';
   logHistory('client', `Edited client — ${name} (${changeStr})`);
   save(); render(); toast('Client updated ✓');
@@ -1115,7 +1115,7 @@ function saveClient(id) {
 
 function reopenPanel(clientName) {
   const c = clients.find(c => c.name === clientName);
-  if (c) { const p = document.getElementById('jobs-panel-'+c.id); if (p) p.classList.add('open'); }
+  if (c) { const p = document.getElementById('events-panel-'+c.id); if (p) p.classList.add('open'); }
 }
 
 function render() {
@@ -1146,9 +1146,9 @@ function render() {
       }).join('')}</tbody></table></div>`;
   }
 
-  const unpaid   = lawnJobs.filter(j=>j.status==='unpaid').reduce((s,j)=>s+jobAmount(j),0);
-  const check    = lawnJobs.filter(j=>j.status==='check').reduce((s,j)=>s+jobAmount(j),0);
-  const paidJobs = lawnJobs.filter(j=>j.status==='paid').reduce((s,j)=>s+jobAmount(j),0);
+  const unpaid   = lawnEvents.filter(j=>j.status==='unpaid').reduce((s,j)=>s+eventAmount(j),0);
+  const check    = lawnEvents.filter(j=>j.status==='check').reduce((s,j)=>s+eventAmount(j),0);
+  const paidJobs = lawnEvents.filter(j=>j.status==='paid').reduce((s,j)=>s+eventAmount(j),0);
   const income   = otherMoney.filter(e=>e.type!=='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
   const expenses = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
   const tithe     = computeTithe();
@@ -1159,12 +1159,12 @@ function render() {
   document.getElementById('summary').innerHTML = `
     <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${netCash.toFixed(2)}</div><div class="metric-sub">paid + income − expenses − tithe</div></div>
     <div class="metric amber"><div class="metric-label">Owed to you</div><div class="metric-value">$${unpaid+check}</div><div class="metric-sub">${unpaid>0?'$'+unpaid+' unpaid':''}${unpaid>0&&check>0?' · ':''}${check>0?'$'+check+' by check':''}</div></div>
-    <div class="metric blue"><div class="metric-label">Total earned</div><div class="metric-value">$${(paidJobs+income).toFixed(2)}</div><div class="metric-sub">jobs + other income</div></div>
+    <div class="metric blue"><div class="metric-label">Total earned</div><div class="metric-value">$${(paidJobs+income).toFixed(2)}</div><div class="metric-sub">events + other income</div></div>
     <div class="metric red"><div class="metric-label">Expenses</div><div class="metric-value">$${expenses.toFixed(2)}</div><div class="metric-sub">&nbsp;</div></div>
     <div class="metric tithe${titheOwed>0?' tithe-active':''}">
       <div class="metric-label">Tithe owed</div>
       <div class="metric-value">$${titheOwed.toFixed(2)}</div>
-      <div class="metric-sub">${titheOwed>0?`$${tithe.bank.toFixed(2)} bank · $${tithe.cash.toFixed(2)} cash`:'10% of paid jobs + other income'}</div>
+      <div class="metric-sub">${titheOwed>0?`$${tithe.bank.toFixed(2)} bank · $${tithe.cash.toFixed(2)} cash`:'10% of paid events + other income'}</div>
       ${titheOwed>0?`<button class="tithe-pay-btn" onclick="payTithe()">Pay tithe</button>`:''}
     </div>
     <div class="metric purple" id="bal-bank-card">
@@ -1177,7 +1177,7 @@ function render() {
     </div>
   `;
 
-renderPaidJobs();
+renderPaidEvents();
 renderHistory();
 }
 
@@ -1200,13 +1200,13 @@ function payTithe() {
   const { bank: tb, cash: tc, total } = computeTithe();
   if (!total) return;
   if (!confirm(`Pay tithe of $${total.toFixed(2)}?\n\n$${tb.toFixed(2)} from bank\n$${tc.toFixed(2)} from cash`)) return;
-  // Mark all untithed paid jobs so they no longer count toward tithe
+  // Mark all untithed paid events so they no longer count toward tithe
   const affectedIds = [];
-  lawnJobs = lawnJobs.map(j => {
+  lawnEvents = lawnEvents.map(j => {
     if (j.status === 'paid' && !j.tithePaid) { affectedIds.push(j.id); return {...j, tithePaid: true}; }
     return j;
   });
-  affectedIds.forEach(id => pendingJobWrites.add(id));
+  affectedIds.forEach(id => pendingEventWrites.add(id));
   // Mark all untithed 'other income' entries the same way. Gift/birthday,
   // expense, and non-deductible income entries are never touched here.
   const affectedOtherIds = [];
@@ -1233,44 +1233,44 @@ function payTithe() {
   save(); render(); toast(`Tithe of $${total.toFixed(2)} paid ✓`);
 }
 
-function unpayJob(id) {
-  const j = lawnJobs.find(j => j.id === id);
+function unpayEvent(id) {
+  const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
-  lawnJobs = lawnJobs.map(jb => jb.id === id ? {...jb, status: 'unpaid', paymentMethod: null, paymentAmount: null} : jb);
-  pendingJobWrites.add(id);
-  logHistory('add', `Restored job to unpaid — ${j.client} on ${fmt(j.date)} ($${jobAmount(j)})`);
-  save(); render(); reopenPanel(j.client); toast('Job moved back to unpaid ✓');
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? {...jb, status: 'unpaid', paymentMethod: null, paymentAmount: null} : jb);
+  pendingEventWrites.add(id);
+  logHistory('add', `Restored event to unpaid — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`);
+  save(); render(); reopenPanel(j.client); toast('Event moved back to unpaid ✓');
 }
 
-function clearPaidJobs() {
-  const count = lawnJobs.filter(j => j.status === 'paid').length;
+function clearPaidEvents() {
+  const count = lawnEvents.filter(j => j.status === 'paid').length;
   if (!count) return;
-  if (!confirm(`Delete all ${count} paid job${count>1?'s':''}? This cannot be undone.`)) return;
-  const paidIds = lawnJobs.filter(j => j.status === 'paid').map(j => j.id);
-  lawnJobs = lawnJobs.filter(j => j.status !== 'paid');
-  paidIds.forEach(id => { pendingJobDeletes.add(id); pendingJobWrites.delete(id); });
-  logHistory('delete', `Cleared ${count} paid job${count>1?'s':''}`);
-  save(); render(); toast(`${count} paid job${count>1?'s':''} cleared`);
+  if (!confirm(`Delete all ${count} paid event${count>1?'s':''}? This cannot be undone.`)) return;
+  const paidIds = lawnEvents.filter(j => j.status === 'paid').map(j => j.id);
+  lawnEvents = lawnEvents.filter(j => j.status !== 'paid');
+  paidIds.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
+  logHistory('delete', `Cleared ${count} paid event${count>1?'s':''}`);
+  save(); render(); toast(`${count} paid event${count>1?'s':''} cleared`);
 }
 
-function renderPaidJobs() {
-  const paid = lawnJobs.filter(j => j.status === 'paid').sort((a,b) => b.date.localeCompare(a.date));
-  const total = paid.reduce((s,j) => s + jobAmount(j), 0);
-  const summary = document.getElementById('paid-jobs-summary');
-  if (summary) summary.textContent = paid.length ? `${paid.length} job${paid.length>1?'s':''} · $${total.toFixed(2)}` : '';
-  const wrap = document.getElementById('paid-jobs-wrap');
+function renderPaidEvents() {
+  const paid = lawnEvents.filter(j => j.status === 'paid').sort((a,b) => b.date.localeCompare(a.date));
+  const total = paid.reduce((s,j) => s + eventAmount(j), 0);
+  const summary = document.getElementById('paid-events-summary');
+  if (summary) summary.textContent = paid.length ? `${paid.length} event${paid.length>1?'s':''} · $${total.toFixed(2)}` : '';
+  const wrap = document.getElementById('paid-events-wrap');
   if (!wrap) return;
-  if (!paid.length) { wrap.innerHTML = '<div class="empty-state">No paid jobs yet.</div>'; return; }
+  if (!paid.length) { wrap.innerHTML = '<div class="empty-state">No paid events yet.</div>'; return; }
   wrap.innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>Date</th><th>Client</th><th>Amount</th><th></th></tr></thead>
     <tbody>${paid.map(j => `
       <tr>
         <td class="mono">${fmt(j.date)}</td>
         <td>${j.client}</td>
-        <td class="mono amount-pos">$${jobAmount(j).toFixed(2)}</td>
+        <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}</td>
         <td><div class="row-actions">
-          <button class="act-btn" style="color:#4ADE80;border-color:#0A3D1A" onclick="unpayJob('${j.id}')">undo</button>
-          <button class="act-btn danger" onclick="deleteJob('${j.id}')">delete</button>
+          <button class="act-btn" style="color:#4ADE80;border-color:#0A3D1A" onclick="unpayEvent('${j.id}')">undo</button>
+          <button class="act-btn danger" onclick="deleteEvent('${j.id}')">delete</button>
         </div></td>
       </tr>`).join('')}
     </tbody></table></div>`;
@@ -1374,7 +1374,7 @@ function addClient() {
   const newClient = {id:'c'+Date.now(),name,note,rate};
   clients.push(newClient);
   pendingClientWrites.add(newClient.id);
-  logHistory('client',`Added client — ${name}${note?' ('+note+')':''} at $${rate}/job`);
+  logHistory('client',`Added client — ${name}${note?' ('+note+')':''} at $${rate}/event`);
   document.getElementById('client-form').classList.remove('open');
   save(); renderClients();
   document.getElementById('cl-name').value='';
@@ -1393,42 +1393,42 @@ function deleteClient(id) {
 }
 
 function toggleSelectAll(cb) {
-  document.querySelectorAll('.job-cb').forEach(c => c.checked = cb.checked);
+  document.querySelectorAll('.event-cb').forEach(c => c.checked = cb.checked);
   updateBulkBar();
 }
 
 function updateBulkBar() {
-  const checked = document.querySelectorAll('.job-cb:checked');
+  const checked = document.querySelectorAll('.event-cb:checked');
   const bar = document.getElementById('bulk-bar');
   const countEl = document.getElementById('bulk-count');
   if (checked.length > 0) {
     bar.style.display = 'flex';
-    countEl.textContent = `${checked.length} job${checked.length>1?'s':''} selected`;
+    countEl.textContent = `${checked.length} event${checked.length>1?'s':''} selected`;
   } else {
     bar.style.display = 'none';
   }
 }
 
 async function bulkMarkPaid() {
-  const checked = [...document.querySelectorAll('.job-cb:checked')];
+  const checked = [...document.querySelectorAll('.event-cb:checked')];
   if (!checked.length) return;
   const method = await promptPaymentMethod(true);
   if (!method) return;
   const ids = checked.map(c => c.dataset.id);
-  const jobs = ids.map(id => lawnJobs.find(j => j.id===id)).filter(Boolean);
+  const jobs = ids.map(id => lawnEvents.find(j => j.id===id)).filter(Boolean);
 
   if (method === 'individual') {
-    // Prompt cash/bank for each job one at a time
+    // Prompt cash/bank for each event one at a time
     for (const j of jobs) {
       const m = await promptPaymentMethod(false, j);
-      if (!m) continue; // skip this job if cancelled
-      const amount = jobAmount(j);
+      if (!m) continue; // skip this event if cancelled
+      const amount = eventAmount(j);
       const prev = j.status;
-      lawnJobs = lawnJobs.map(jb => jb.id===j.id ? {...jb, status:'paid', paymentMethod:m, paymentAmount:amount} : jb);
-      pendingJobWrites.add(j.id);
-      logHistory('paid', `Marked ${j.client} job (${fmt(j.date)}) as paid — $${amount} (${m})`, { jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount });
+      lawnEvents = lawnEvents.map(jb => jb.id===j.id ? {...jb, status:'paid', paymentMethod:m, paymentAmount:amount} : jb);
+      pendingEventWrites.add(j.id);
+      logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${m})`, { jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount });
     }
-    save(); render(); updateBulkBar(); toast(`Jobs marked as paid ✓`);
+    save(); render(); updateBulkBar(); toast(`Events marked as paid ✓`);
     return;
   }
 
@@ -1441,13 +1441,13 @@ async function bulkMarkPaid() {
 
   const hid = Date.now();
   Object.entries(byClient).forEach(([client, cJobs], i) => {
-    const total = cJobs.reduce((s, j) => s + jobAmount(j), 0);
+    const total = cJobs.reduce((s, j) => s + eventAmount(j), 0);
     const dates = cJobs.map(j => j.date).sort();
     const dateRange = dates.length === 1
       ? fmt(dates[0])
       : `${fmt(dates[0])} – ${fmt(dates[dates.length-1])}`;
     const jobIds = cJobs.map(j => j.id);
-    logHistory('paid', `Marked ${client} paid — ${cJobs.length} job${cJobs.length>1?'s':''} (${dateRange}) — $${total} (${method})`, {
+    logHistory('paid', `Marked ${client} paid — ${cJobs.length} event${cJobs.length>1?'s':''} (${dateRange}) — $${total} (${method})`, {
       id: 'h'+(hid+i),
       bulkJobIds: jobIds,
       prevStatuses: Object.fromEntries(cJobs.map(j=>[j.id, j.status])),
@@ -1456,21 +1456,21 @@ async function bulkMarkPaid() {
     });
   });
 
-  lawnJobs = lawnJobs.map(j => ids.includes(j.id) ? {...j, status:'paid', paymentMethod:method} : j);
-  ids.forEach(id => pendingJobWrites.add(id));
-  save(); render(); updateBulkBar(); toast(`${jobs.length} jobs marked as paid ✓`);
+  lawnEvents = lawnEvents.map(j => ids.includes(j.id) ? {...j, status:'paid', paymentMethod:method} : j);
+  ids.forEach(id => pendingEventWrites.add(id));
+  save(); render(); updateBulkBar(); toast(`${jobs.length} events marked as paid ✓`);
 }
 
 function bulkDelete() {
-  const checked = [...document.querySelectorAll('.job-cb:checked')];
+  const checked = [...document.querySelectorAll('.event-cb:checked')];
   if (!checked.length) return;
   const ids = checked.map(c => c.dataset.id);
-  const jobs = ids.map(id => lawnJobs.find(j => j.id === id)).filter(Boolean);
-  if (!confirm(`Delete ${jobs.length} selected job${jobs.length > 1 ? 's' : ''}?`)) return;
-  jobs.forEach(j => logHistory('delete', `Deleted job — ${j.client} on ${fmt(j.date)} ($${jobAmount(j)})`));
-  lawnJobs = lawnJobs.filter(j => !ids.includes(j.id));
-  ids.forEach(id => { pendingJobDeletes.add(id); pendingJobWrites.delete(id); });
-  save(); render(); updateBulkBar(); toast(`${jobs.length} job${jobs.length > 1 ? 's' : ''} deleted`);
+  const jobs = ids.map(id => lawnEvents.find(j => j.id === id)).filter(Boolean);
+  if (!confirm(`Delete ${jobs.length} selected event${jobs.length > 1 ? 's' : ''}?`)) return;
+  jobs.forEach(j => logHistory('delete', `Deleted event — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`));
+  lawnEvents = lawnEvents.filter(j => !ids.includes(j.id));
+  ids.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
+  save(); render(); updateBulkBar(); toast(`${jobs.length} event${jobs.length > 1 ? 's' : ''} deleted`);
 }
 
 function promptPaymentMethod(showIndividual = false, job = null) {
@@ -1484,7 +1484,7 @@ function promptPaymentMethod(showIndividual = false, job = null) {
       jobInfo.style.display = 'block';
       jobInfo.innerHTML =
         `<span style="color:var(--text)">${job.client}</span><br>` +
-        `${fmt(job.date)} &nbsp;·&nbsp; ${statusLabel} &nbsp;·&nbsp; <span style="color:#4ADE80">$${jobAmount(job)}</span>`;
+        `${fmt(job.date)} &nbsp;·&nbsp; ${statusLabel} &nbsp;·&nbsp; <span style="color:#4ADE80">$${eventAmount(job)}</span>`;
     } else {
       jobInfo.style.display = 'none';
     }
@@ -1500,12 +1500,12 @@ function promptPaymentMethod(showIndividual = false, job = null) {
 async function markPaid(id) {
   const method = await promptPaymentMethod();
   if (!method) return;
-  const j=lawnJobs.find(j=>j.id===id);
+  const j=lawnEvents.find(j=>j.id===id);
   const prev=j.status;
-  const amount=jobAmount(j);
-  lawnJobs=lawnJobs.map(j=>j.id===id?{...j,status:'paid',paymentMethod:method,paymentAmount:amount}:j);
-  pendingJobWrites.add(id);
-  logHistory('paid', `Marked ${j.client} job (${fmt(j.date)}) as paid — $${amount} (${method})`, { jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount });
+  const amount=eventAmount(j);
+  lawnEvents=lawnEvents.map(j=>j.id===id?{...j,status:'paid',paymentMethod:method,paymentAmount:amount}:j);
+  pendingEventWrites.add(id);
+  logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${method})`, { jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount });
   save(); render(); reopenPanel(j.client); toast('Marked as paid ✓');
 }
 
@@ -1513,64 +1513,64 @@ async function undoPaid(hid) {
   const h = historyLog.find(h=>h.id===hid);
   if (!h) return;
 
-  // Single job undo
+  // Single event undo
   if (h.jobId) {
-    const job = lawnJobs.find(j=>j.id===h.jobId);
-    if (!job) { toast('Job no longer exists'); return; }
+    const job = lawnEvents.find(j=>j.id===h.jobId);
+    if (!job) { toast('Event no longer exists'); return; }
     const restore = h.prevStatus || 'unpaid';
-    lawnJobs = lawnJobs.map(j=>j.id===h.jobId ? {...j, status:restore, paymentMethod:null, paymentAmount:null} : j);
-    pendingJobWrites.add(h.jobId);
+    lawnEvents = lawnEvents.map(j=>j.id===h.jobId ? {...j, status:restore, paymentMethod:null, paymentAmount:null} : j);
+    pendingEventWrites.add(h.jobId);
     historyLog = historyLog.filter(h=>h.id!==hid);
     if (currentUser) await historyCol().doc(hid).delete();
-    logHistory('add', `Undid payment — ${job.client} job (${fmt(job.date)}) restored to ${restore}`);
+    logHistory('add', `Undid payment — ${job.client} event (${fmt(job.date)}) restored to ${restore}`);
   }
 
   // Bulk undo
   if (h.bulkJobIds) {
     h.bulkJobIds.forEach(jid => {
       const prev = h.prevStatuses?.[jid] || 'unpaid';
-      lawnJobs = lawnJobs.map(j=>j.id===jid ? {...j, status:prev, paymentMethod:null, paymentAmount:null} : j);
-      pendingJobWrites.add(jid);
+      lawnEvents = lawnEvents.map(j=>j.id===jid ? {...j, status:prev, paymentMethod:null, paymentAmount:null} : j);
+      pendingEventWrites.add(jid);
     });
     historyLog = historyLog.filter(h=>h.id!==hid);
     if (currentUser) await historyCol().doc(hid).delete();
-    logHistory('add', `Undid bulk payment — ${h.bulkJobIds.length} jobs restored`);
+    logHistory('add', `Undid bulk payment — ${h.bulkJobIds.length} events restored`);
   }
 
   save(); render(); toast('Payment undone ✓');
 }
 
-function deleteJob(id) {
-  if (!confirm('Delete this job?')) return;
-  const j=lawnJobs.find(j=>j.id===id);
-  lawnJobs=lawnJobs.filter(j=>j.id!==id);
-  pendingJobDeletes.add(id); pendingJobWrites.delete(id);
-  logHistory('delete',`Deleted job — ${j.client} on ${fmt(j.date)} ($${jobAmount(j)})`);
-  save(); render(); reopenPanel(j.client); toast('Job deleted');
+function deleteEvent(id) {
+  if (!confirm('Delete this event?')) return;
+  const j=lawnEvents.find(j=>j.id===id);
+  lawnEvents=lawnEvents.filter(j=>j.id!==id);
+  pendingEventDeletes.add(id); pendingEventWrites.delete(id);
+  logHistory('delete',`Deleted event — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`);
+  save(); render(); reopenPanel(j.client); toast('Event deleted');
 }
 
-function prefillJobAmount() {
-  const client = document.getElementById('lj-client').value;
-  const inp = document.getElementById('lj-amount');
+function prefillEventAmount() {
+  const client = document.getElementById('le-client').value;
+  const inp = document.getElementById('le-amount');
   inp.value = getRate(client);
   inp.placeholder = '';
 }
 
-function addLawnJob() {
-  const client = document.getElementById('lj-client').value;
-  const date   = parseFlexibleDate(document.getElementById('lj-date').value);
-  const status = document.getElementById('lj-status').value;
-  const raw    = document.getElementById('lj-amount').value;
+function addEvent() {
+  const client = document.getElementById('le-client').value;
+  const date   = parseFlexibleDate(document.getElementById('le-date').value);
+  const status = document.getElementById('le-status').value;
+  const raw    = document.getElementById('le-amount').value;
   const amount = raw !== '' ? parseFloat(raw) : getRate(client);
   const newJob = {id:'l'+Date.now(), client, date, status, amount};
-  lawnJobs.push(newJob);
-  pendingJobWrites.add(newJob.id);
-  logHistory('add', `Added job — ${client} on ${fmt(date)}, ${status} ($${amount})`);
+  lawnEvents.push(newJob);
+  pendingEventWrites.add(newJob.id);
+  logHistory('add', `Added event — ${client} on ${fmt(date)}, ${status} ($${amount})`);
   save(); render();
-  document.getElementById('lawn-form').classList.remove('open');
-  document.getElementById('lj-date').value = '';
-  prefillJobAmount();
-  toast('Job added ✓');
+  document.getElementById('event-form').classList.remove('open');
+  document.getElementById('le-date').value = '';
+  prefillEventAmount();
+  toast('Event added ✓');
 }
 
 function toggleOmTithe() {
@@ -1611,46 +1611,46 @@ function deleteOther(id) {
   save(); render(); toast('Entry deleted');
 }
 
-function editJob(id) {
-  const j = lawnJobs.find(j=>j.id===id);
-  const row = document.getElementById('jrow-'+id);
+function editEvent(id) {
+  const j = lawnEvents.find(j=>j.id===id);
+  const row = document.getElementById('erow-'+id);
   row.classList.add('edit-row');
   const clientOpts = clients.map(c=>`<option value="${c.name}"${c.name===j.client?' selected':''}>${c.name}</option>`).join('');
   row.innerHTML = `
     <td></td>
     <td><div class="date-field">
-      <input id="ej-date-${id}" type="text" value="${isoToDisplay(j.date)}" placeholder="MM/DD/YYYY" />
-      <button type="button" class="date-pick-btn" onclick="openDatePicker('ej-date-${id}')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
-      <input type="date" id="ej-date-${id}-picker" class="date-picker-hidden" onchange="applyDatePicker('ej-date-${id}')" tabindex="-1" />
+      <input id="ee-date-${id}" type="text" value="${isoToDisplay(j.date)}" placeholder="MM/DD/YYYY" />
+      <button type="button" class="date-pick-btn" onclick="openDatePicker('ee-date-${id}')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+      <input type="date" id="ee-date-${id}-picker" class="date-picker-hidden" onchange="applyDatePicker('ee-date-${id}')" tabindex="-1" />
     </div></td>
-    <td><select id="ej-client-${id}">${clientOpts}</select></td>
-    <td><input id="ej-amount-${id}" type="number" value="${jobAmount(j)}" min="0" step="0.01" /></td>
-    <td><select id="ej-status-${id}">
+    <td><select id="ee-client-${id}">${clientOpts}</select></td>
+    <td><input id="ee-amount-${id}" type="number" value="${eventAmount(j)}" min="0" step="0.01" /></td>
+    <td><select id="ee-status-${id}">
       <option value="unpaid"${j.status==='unpaid'?' selected':''}>Unpaid</option>
       <option value="check"${j.status==='check'?' selected':''}>Check coming</option>
       <option value="paid"${j.status==='paid'?' selected':''}>Paid</option>
     </select></td>
     <td><div class="row-actions">
-      <button class="act-btn save" onclick="saveJob('${id}')">save</button>
+      <button class="act-btn save" onclick="saveEvent('${id}')">save</button>
       <button class="act-btn" onclick="renderClients()">cancel</button>
     </div></td>`;
 }
 
-function saveJob(id) {
-  const date   = parseFlexibleDate(document.getElementById('ej-date-'+id).value);
-  const client = document.getElementById('ej-client-'+id).value;
-  const status = document.getElementById('ej-status-'+id).value;
-  const amount = parseFloat(document.getElementById('ej-amount-'+id).value);
+function saveEvent(id) {
+  const date   = parseFlexibleDate(document.getElementById('ee-date-'+id).value);
+  const client = document.getElementById('ee-client-'+id).value;
+  const status = document.getElementById('ee-status-'+id).value;
+  const amount = parseFloat(document.getElementById('ee-amount-'+id).value);
   if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
-  const old = lawnJobs.find(j=>j.id===id);
-  lawnJobs = lawnJobs.map(j => j.id===id ? {...j, date, client, status, amount} : j);
-  pendingJobWrites.add(id);
-  logHistory('add', `Edited job — ${old.client} ${fmt(old.date)} → ${client} ${fmt(date)}, $${amount}, ${status}`);
+  const old = lawnEvents.find(j=>j.id===id);
+  lawnEvents = lawnEvents.map(j => j.id===id ? {...j, date, client, status, amount} : j);
+  pendingEventWrites.add(id);
+  logHistory('add', `Edited event — ${old.client} ${fmt(old.date)} → ${client} ${fmt(date)}, $${amount}, ${status}`);
   save();
   render();
   const c = clients.find(c => c.name === client) || clients.find(c => c.name === old.client);
-  if (c) { const p = document.getElementById('jobs-panel-'+c.id); if (p) p.classList.add('open'); }
-  toast('Job updated ✓');
+  if (c) { const p = document.getElementById('events-panel-'+c.id); if (p) p.classList.add('open'); }
+  toast('Event updated ✓');
 }
 
 function editOther(id) {
