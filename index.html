@@ -371,6 +371,11 @@ tr:hover td { background: var(--surface2); }
 .badge-expense { background: var(--red-pale); color: var(--red); border: 1px solid #3D0A0A; }
 .badge-income { background: var(--accent-pale); color: var(--accent); border: 1px solid #3D2800; }
 .badge-transfer { background: var(--blue-pale); color: var(--blue); border: 1px solid #0F2040; }
+.badge-witem { background: var(--blue-pale); color: var(--blue); border: 1px solid #0F2040; }
+.badge-wother { background: var(--purple-pale); color: var(--purple); border: 1px solid #2A1040; }
+.wl-link { color: var(--blue); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 11px; white-space: nowrap; }
+.wl-link:hover { text-decoration: underline; }
+.wl-desc { color: var(--text-muted); font-size: 12px; }
 
 .row-actions { display: flex; gap: 5px; justify-content: flex-end; }
 
@@ -588,6 +593,38 @@ tr:hover td { background: var(--surface2); }
     <div id="other-wrap"><div class="empty-state">No entries yet.</div></div>
   </section>
 
+  <!-- Wishlist -->
+  <section>
+    <div class="section-header" onclick="toggleForm('wishlist-form', this)">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M6 2l-3 4v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        Wishlist
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn" tabindex="-1">+ Add item</button>
+      </div>
+    </div>
+    <div class="add-form" id="wishlist-form">
+      <div class="form-grid">
+        <div><label>Title</label><input type="text" id="wl-title" placeholder="e.g. New mower" /></div>
+        <div><label>Price ($)</label><input type="number" id="wl-price" placeholder="0.00" min="0" step="0.01" /></div>
+        <div><label>Category</label>
+          <select id="wl-category">
+            <option value="item">Item</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div><label>Link (optional)</label><input type="text" id="wl-link" placeholder="https://…" /></div>
+        <div><label>Description (optional)</label><input type="text" id="wl-desc" placeholder="A few notes" /></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addWishlistItem()">Add item</button>
+        <button class="btn btn-ghost" onclick="toggleForm('wishlist-form')">Cancel</button>
+      </div>
+    </div>
+    <div id="wishlist-wrap"><div class="empty-state">No items yet.</div></div>
+  </section>
+
   <!-- History -->
   <section>
     <div class="section-header" onclick="toggleSection('history-body')">
@@ -776,8 +813,8 @@ function loadFromFirestore() {
   historyLog = []; lastHistoryDoc = null; allHistoryLoaded = false;
   pendingHistoryEntries = [];
 
-  // Track first fire of all 4 listeners before doing initial render
-  const ready = { main: false, clients: false, events: false, other: false };
+  // Track first fire of all 5 listeners before doing initial render
+  const ready = { main: false, clients: false, events: false, other: false, wishlist: false };
   let initialRenderDone = false;
 
   async function checkReady() {
@@ -821,6 +858,13 @@ function loadFromFirestore() {
   unsubscribers.push(userDoc().collection('other').onSnapshot(snap => {
     otherMoney = snap.docs.map(d => d.data());
     if (!ready.other) { ready.other = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
+
+  // Wishlist
+  unsubscribers.push(userDoc().collection('wishlist').onSnapshot(snap => {
+    wishlist = snap.docs.map(d => d.data());
+    if (!ready.wishlist) { ready.wishlist = true; checkReady(); }
     else if (initialRenderDone) render();
   }));
 }
@@ -880,9 +924,11 @@ async function saveToFirestore() {
   await upsertItems('clients', pendingClientWrites, clients);
   await upsertItems('jobs',    pendingEventWrites,    lawnEvents);
   await upsertItems('other',   pendingOtherWrites,  otherMoney);
+  await upsertItems('wishlist', pendingWishlistWrites, wishlist);
   await deleteItems('clients', pendingClientDeletes);
   await deleteItems('jobs',    pendingEventDeletes);
   await deleteItems('other',   pendingOtherDeletes);
+  await deleteItems('wishlist', pendingWishlistDeletes);
 
   // History entries (unchanged)
   while (pendingHistoryEntries.length > 0) {
@@ -932,6 +978,7 @@ function detachListeners() { unsubscribers.forEach(fn => fn()); unsubscribers = 
 let clients    = [];
 let lawnEvents   = [];
 let otherMoney = [];
+let wishlist   = [];
 let historyLog = [];          // in-memory loaded entries
 let balances   = { bank: 0, cash: 0 };
 
@@ -1006,6 +1053,8 @@ let pendingEventWrites     = new Set();
 let pendingEventDeletes    = new Set();
 let pendingOtherWrites   = new Set();
 let pendingOtherDeletes  = new Set();
+let pendingWishlistWrites  = new Set();
+let pendingWishlistDeletes = new Set();
 
 function historyCol() { return db.collection('users').doc(currentUser.uid).collection('history'); }
 
@@ -1316,6 +1365,7 @@ function render() {
   `;
 
 renderPaidEvents();
+renderWishlist();
 renderAllHistory();
 }
 
@@ -1955,6 +2005,104 @@ function toast(msg) {
   el.textContent=msg; el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>el.classList.remove('show'),2200);
+}
+
+// ── Wishlist ──────────────────────────────────────────────
+function normalizeUrl(url) {
+  if (!url) return '';
+  return /^https?:\/\//i.test(url) ? url : 'https://' + url;
+}
+
+function renderWishlist() {
+  const wrap = document.getElementById('wishlist-wrap');
+  if (!wrap) return;
+  const sorted = [...wishlist].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  if (!sorted.length) {
+    wrap.innerHTML = '<div class="empty-state">No items yet.</div>';
+    return;
+  }
+  wrap.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Title</th><th>Price</th><th>Category</th><th>Description</th><th>Link</th><th style="text-align:right">Actions</th></tr></thead>
+    <tbody>${sorted.map(w => {
+      const cls = w.category==='other' ? 'badge-wother' : 'badge-witem';
+      const lbl = w.category==='other' ? 'Other' : 'Item';
+      const linkCell = w.link ? `<a class="wl-link" href="${w.link}" target="_blank" rel="noopener noreferrer">Visit ↗</a>` : '<span class="mono">—</span>';
+      return `<tr id="wlrow-${w.id}">
+        <td>${w.title}</td>
+        <td class="mono">$${parseFloat(w.price).toFixed(2)}</td>
+        <td><span class="badge ${cls}">${lbl}</span></td>
+        <td class="wl-desc">${w.desc || '—'}</td>
+        <td>${linkCell}</td>
+        <td><div class="row-actions">
+          <button class="act-btn edit" onclick="editWishlistItem('${w.id}')">edit</button>
+          <button class="act-btn danger" onclick="deleteWishlistItem('${w.id}')">delete</button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+function addWishlistItem() {
+  const title    = document.getElementById('wl-title').value.trim();
+  const price    = parseFloat(document.getElementById('wl-price').value);
+  const category = document.getElementById('wl-category').value;
+  const link     = normalizeUrl(document.getElementById('wl-link').value.trim());
+  const desc     = document.getElementById('wl-desc').value.trim();
+  if (!title) { alert('Please enter a title.'); return; }
+  if (isNaN(price) || price < 0) { alert('Please enter a valid price.'); return; }
+  const newItem = {id:'w'+Date.now(), title, price, category, link, desc, date: new Date().toISOString().slice(0,10)};
+  wishlist.push(newItem);
+  pendingWishlistWrites.add(newItem.id);
+  logHistory('other', `Added to wishlist — "${title}" $${price.toFixed(2)} (${category==='other'?'Other':'Item'})`, { job: null });
+  save(); render();
+  document.getElementById('wl-title').value='';
+  document.getElementById('wl-price').value='';
+  document.getElementById('wl-link').value='';
+  document.getElementById('wl-desc').value='';
+  document.getElementById('wl-category').value='item';
+  toast('Added to wishlist ✓');
+}
+
+function deleteWishlistItem(id) {
+  if (!confirm('Delete this item?')) return;
+  const w = wishlist.find(w=>w.id===id);
+  wishlist = wishlist.filter(w=>w.id!==id);
+  pendingWishlistDeletes.add(id); pendingWishlistWrites.delete(id);
+  logHistory('delete', `Deleted wishlist item — "${w.title}" $${parseFloat(w.price).toFixed(2)}`, { job: null });
+  save(); render(); toast('Item deleted');
+}
+
+function editWishlistItem(id) {
+  const w = wishlist.find(w=>w.id===id);
+  const row = document.getElementById('wlrow-'+id);
+  row.classList.add('edit-row');
+  row.innerHTML = `
+    <td><input id="ewl-title-${id}" value="${w.title}" /></td>
+    <td><input id="ewl-price-${id}" type="number" value="${w.price}" min="0" step="0.01" style="width:90px" /></td>
+    <td><select id="ewl-category-${id}">
+      <option value="item"${w.category!=='other'?' selected':''}>Item</option>
+      <option value="other"${w.category==='other'?' selected':''}>Other</option>
+    </select></td>
+    <td><input id="ewl-desc-${id}" value="${w.desc||''}" /></td>
+    <td><input id="ewl-link-${id}" value="${w.link||''}" /></td>
+    <td><div class="row-actions">
+      <button class="act-btn save" onclick="saveWishlistItem('${id}')">save</button>
+      <button class="act-btn" onclick="render()">cancel</button>
+    </div></td>`;
+}
+
+function saveWishlistItem(id) {
+  const title    = document.getElementById('ewl-title-'+id).value.trim();
+  const price    = parseFloat(document.getElementById('ewl-price-'+id).value);
+  const category = document.getElementById('ewl-category-'+id).value;
+  const desc     = document.getElementById('ewl-desc-'+id).value.trim();
+  const link     = normalizeUrl(document.getElementById('ewl-link-'+id).value.trim());
+  if (!title) { alert('Please enter a title.'); return; }
+  if (isNaN(price) || price < 0) { alert('Please enter a valid price.'); return; }
+  const old = wishlist.find(w=>w.id===id);
+  wishlist = wishlist.map(w => w.id===id ? {...w, title, price, category, desc, link} : w);
+  pendingWishlistWrites.add(id);
+  logHistory('other', `Edited wishlist item — "${old.title}" → "${title}" $${price.toFixed(2)}`, { job: null });
+  save(); render(); toast('Item updated ✓');
 }
 </script>
 </body>
