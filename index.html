@@ -519,14 +519,52 @@ tr:hover td { background: var(--surface2); }
 /* Distribution of funds */
 .funds-section-body { padding:1.1rem 1.25rem; cursor:pointer; transition:background 0.15s; }
 .funds-section-body:hover { background:var(--surface2); }
-.funds-bar-track { display:flex; width:100%; height:22px; border-radius:8px; overflow:hidden; background:var(--surface3); border:1px solid var(--border-mid); }
-.funds-seg { height:100%; transition:width 0.3s; }
-.funds-seg:first-child { border-radius:7px 0 0 7px; }
-.funds-seg:last-child { border-radius:0 7px 7px 0; }
-.funds-legend { display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:12px; }
-.funds-legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); font-family:'JetBrains Mono',monospace; }
-.funds-swatch { width:10px; height:10px; border-radius:3px; flex-shrink:0; display:inline-block; }
-.funds-overflow-note { width:100%; font-size:11px; color:var(--amber); font-family:'JetBrains Mono',monospace; margin-top:4px; }
+
+.funds-bar-track { display:flex; width:100%; height:30px; gap:3px; }
+
+.funds-seg {
+  position:relative;
+  height:100%;
+  min-width:7px;
+  border-radius:9px;
+  overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.10), inset 0 -3px 5px rgba(0,0,0,0.22);
+  transition: width 0.7s cubic-bezier(.16,.84,.32,1), filter 0.15s, transform 0.15s;
+}
+.funds-seg::before {
+  content:'';
+  position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0) 45%, rgba(0,0,0,0.16) 100%);
+  pointer-events:none;
+}
+.funds-seg.seg-free { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.07) 0 6px, transparent 6px 12px); }
+.funds-seg:hover { filter:brightness(1.16); transform:translateY(-1px); }
+.funds-seg.is-dim { filter:brightness(0.45) saturate(0.55); }
+
+.funds-seg-pct { position:relative; font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:0.01em; white-space:nowrap; pointer-events:none; }
+.funds-seg-pct.on-light { color:rgba(13,15,14,0.82); text-shadow:0 1px 0 rgba(255,255,255,0.3); }
+.funds-seg-pct.on-dark { color:rgba(232,237,233,0.62); text-shadow:0 1px 1px rgba(0,0,0,0.4); }
+
+.funds-legend { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.funds-legend-item {
+  display:flex; align-items:center; gap:7px;
+  background:var(--surface2); border:1px solid var(--border); border-radius:20px;
+  padding:5px 12px 5px 8px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-muted);
+  transition: opacity 0.15s, border-color 0.15s, transform 0.15s;
+}
+.funds-legend-item:hover { border-color:var(--border-mid); transform:translateY(-1px); }
+.funds-legend-item.is-dim { opacity:0.4; }
+.funds-legend-name { font-family:'Inter',sans-serif; font-weight:500; color:var(--text); }
+.funds-legend-pct { font-weight:600; }
+.funds-swatch { width:9px; height:9px; border-radius:3px; flex-shrink:0; display:inline-block; }
+.funds-overflow-note {
+  display:flex; align-items:center; gap:7px; width:100%;
+  font-size:11px; color:var(--amber); font-family:'JetBrains Mono',monospace;
+  margin-top:10px; padding:7px 11px; background:var(--amber-pale);
+  border:1px solid rgba(252,211,77,0.25); border-radius:8px;
+}
 
 /* Pockets page */
 .pocket-progress-track { width:100%; height:6px; border-radius:4px; background:var(--surface3); overflow:hidden; }
@@ -2266,28 +2304,60 @@ function renderFundsDistribution(barId = 'funds-bar-wrap', legendId = 'funds-leg
   const total = Math.max(lastNetCash, sumPockets, 0);
   const overflow = sumPockets > lastNetCash ? Math.round((sumPockets - lastNetCash) * 100) / 100 : 0;
 
+  let segments;
   if (total <= 0) {
-    wrap.innerHTML = `<div class="funds-bar-track"><div class="funds-seg" style="width:100%;background:var(--surface3)"></div></div>`;
-    legend.innerHTML = `<div class="funds-legend-item"><span class="funds-swatch" style="background:var(--surface3)"></span>Savings — $0.00 (100%)</div>`;
-    return;
+    segments = [{ label: 'Savings', amount: 0, color: 'var(--text-faint)' }];
+  } else {
+    const free = freeAmount();
+    segments = [{ label: 'Savings', amount: free, color: 'var(--text-faint)' }];
+    pockets.forEach(p => {
+      if ((p.balance || 0) <= 0) return;
+      segments.push({ label: p.name, amount: p.balance, color: getPocketColor(p.id) });
+    });
   }
 
-  const free = freeAmount();
-  const segments = [{ label: 'Savings', amount: free, color: 'var(--text-faint)' }];
-  pockets.forEach(p => {
-    if ((p.balance || 0) <= 0) return;
-    segments.push({ label: p.name, amount: p.balance, color: getPocketColor(p.id) });
-  });
+  wrap.innerHTML = `<div class="funds-bar-track">${segments.map((s, i) => {
+    const pct = Math.min(100, total > 0 ? (s.amount / total * 100) : 100);
+    if (pct <= 0) return ''; // exact-zero categories (e.g. Savings fully absorbed) get no bar segment, just a legend entry
+    const pctRound = Math.round(pct);
+    const isFree = i === 0;
+    return `<div class="funds-seg${isFree ? ' seg-free' : ''}" data-key="seg-${i}" data-target-width="${pct.toFixed(2)}%" style="width:0%;background-color:${s.color}" title="${s.label} — $${s.amount.toFixed(2)} (${pctRound}%)">${
+      pct >= 9 ? `<span class="funds-seg-pct ${isFree ? 'on-dark' : 'on-light'}">${pctRound}%</span>` : ''
+    }</div>`;
+  }).join('')}</div>`;
 
-  wrap.innerHTML = `<div class="funds-bar-track">${segments.map(s =>
-    `<div class="funds-seg" style="width:${(s.amount / total * 100).toFixed(2)}%;background:${s.color}" title="${s.label} — $${s.amount.toFixed(2)}"></div>`
-  ).join('')}</div>`;
-
-  legend.innerHTML = segments.map(s =>
-    `<div class="funds-legend-item"><span class="funds-swatch" style="background:${s.color}"></span>${s.label} — $${s.amount.toFixed(2)} (${(s.amount / total * 100).toFixed(0)}%)</div>`
-  ).join('') + (overflow > 0
-    ? `<div class="funds-overflow-note">$${overflow.toFixed(2)} set aside ahead of being paid — settles once those events are marked paid</div>`
+  legend.innerHTML = segments.map((s, i) => {
+    const pct = Math.round(total > 0 ? (s.amount / total * 100) : 100);
+    return `<div class="funds-legend-item" data-key="seg-${i}">
+      <span class="funds-swatch" style="background:${s.color}"></span>
+      <span class="funds-legend-name">${s.label}</span>
+      <span>$${s.amount.toFixed(2)}</span>
+      <span class="funds-legend-pct" style="color:${s.color}">${pct}%</span>
+    </div>`;
+  }).join('') + (overflow > 0
+    ? `<div class="funds-overflow-note"><span>⚠</span>$${overflow.toFixed(2)} set aside ahead of being paid — settles once those events are marked paid</div>`
     : '');
+
+  // Grow the segments in from 0 so the bar animates on every render.
+  const segEls = [...wrap.querySelectorAll('.funds-seg')];
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    segEls.forEach(el => { el.style.width = el.dataset.targetWidth; });
+  }));
+
+  // Hovering a segment (or its legend chip) highlights that pair and dims the rest.
+  const itemEls = [...legend.querySelectorAll('.funds-legend-item')];
+  const setActive = key => {
+    segEls.forEach(s => s.classList.toggle('is-dim', !!key && s.dataset.key !== key));
+    itemEls.forEach(it => it.classList.toggle('is-dim', !!key && it.dataset.key !== key));
+  };
+  segEls.forEach(s => {
+    s.addEventListener('mouseenter', () => setActive(s.dataset.key));
+    s.addEventListener('mouseleave', () => setActive(null));
+  });
+  itemEls.forEach(it => {
+    it.addEventListener('mouseenter', () => setActive(it.dataset.key));
+    it.addEventListener('mouseleave', () => setActive(null));
+  });
 }
 
 // ── Pockets page ──────────────────────────────────────────
