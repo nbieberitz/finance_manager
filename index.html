@@ -829,15 +829,16 @@ tr:hover td { background: var(--surface2); }
     </div>
   </section>
 
-  <!-- Pockets -->
+  <!-- Pockets & Rules (combined) -->
   <section>
-    <div class="section-header" onclick="toggleForm('pocket-form', this)">
+    <div class="section-header static">
       <div class="section-title">
         <svg viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0016.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 002 8.5c0 2.29 1.51 4.04 3 5.5l7 7z"/></svg>
         Pockets
       </div>
       <div class="header-actions">
-        <button class="pill-btn" tabindex="-1">+ Add pocket</button>
+        <button class="pill-btn" onclick="toggleForm('rule-form')" tabindex="-1">+ Add rule</button>
+        <button class="pill-btn" onclick="toggleForm('pocket-form')" tabindex="-1">+ Add pocket</button>
       </div>
     </div>
     <div class="add-form" id="pocket-form">
@@ -851,20 +852,6 @@ tr:hover td { background: var(--surface2); }
         <button class="btn btn-ghost" onclick="toggleForm('pocket-form')">Cancel</button>
       </div>
     </div>
-    <div id="pockets-wrap"><div class="empty-state">No pockets yet.</div></div>
-  </section>
-
-  <!-- Pocket Rules -->
-  <section>
-    <div class="section-header" onclick="toggleForm('rule-form', this)">
-      <div class="section-title">
-        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-        Pocket Rules
-      </div>
-      <div class="header-actions">
-        <button class="pill-btn" tabindex="-1">+ Add rule</button>
-      </div>
-    </div>
     <div class="add-form" id="rule-form">
       <div class="form-grid">
         <div><label>Job</label><select id="rl-job"></select></div>
@@ -876,7 +863,13 @@ tr:hover td { background: var(--surface2); }
         <button class="btn btn-ghost" onclick="toggleForm('rule-form')">Cancel</button>
       </div>
     </div>
-    <div id="rules-wrap"><div class="empty-state">No rules yet.</div></div>
+    <div id="pockets-wrap"><div class="empty-state">No pockets yet.</div></div>
+    <div id="rules-subsection">
+      <div style="padding:6px 1.25rem;border-top:1px solid var(--border);background:var(--surface2)">
+        <span style="font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint)">Auto-allocation rules</span>
+      </div>
+      <div id="rules-wrap"><div class="empty-state">No rules yet.</div></div>
+    </div>
   </section>
 
   <!-- Pockets History -->
