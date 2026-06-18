@@ -515,6 +515,23 @@ tr:hover td { background: var(--surface2); }
 /* Job detail view */
 .job-view-header { display:flex; align-items:center; gap:14px; margin-bottom:1.25rem; }
 .job-view-title { font-family:'Syne',sans-serif; font-size:1.3rem; font-weight:600; color:var(--text); letter-spacing:-0.01em; }
+
+/* Distribution of funds */
+.funds-section-body { padding:1.1rem 1.25rem; cursor:pointer; transition:background 0.15s; }
+.funds-section-body:hover { background:var(--surface2); }
+.funds-bar-track { display:flex; width:100%; height:22px; border-radius:8px; overflow:hidden; background:var(--surface3); border:1px solid var(--border-mid); }
+.funds-seg { height:100%; transition:width 0.3s; }
+.funds-seg:first-child { border-radius:7px 0 0 7px; }
+.funds-seg:last-child { border-radius:0 7px 7px 0; }
+.funds-legend { display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:12px; }
+.funds-legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); font-family:'JetBrains Mono',monospace; }
+.funds-swatch { width:10px; height:10px; border-radius:3px; flex-shrink:0; display:inline-block; }
+.funds-overflow-note { width:100%; font-size:11px; color:var(--amber); font-family:'JetBrains Mono',monospace; margin-top:4px; }
+
+/* Pockets page */
+.pocket-progress-track { width:100%; height:6px; border-radius:4px; background:var(--surface3); overflow:hidden; }
+.pocket-progress-fill { height:100%; border-radius:4px; transition:width 0.3s; }
+.dot-pocket { background: var(--purple); }
 </style>
 </head>
 <body>
@@ -531,6 +548,23 @@ tr:hover td { background: var(--surface2); }
 <div class="container" id="main-view">
 
   <div class="summary-grid" id="summary"></div>
+
+  <!-- Distribution of Funds -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
+        Distribution of Funds
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn" onclick="openPockets()">Manage pockets →</button>
+      </div>
+    </div>
+    <div class="funds-section-body" onclick="openPockets()">
+      <div class="funds-bar-wrap" id="funds-bar-wrap"></div>
+      <div class="funds-legend" id="funds-legend"></div>
+    </div>
+  </section>
 
   <!-- Jobs -->
   <section>
@@ -752,6 +786,100 @@ tr:hover td { background: var(--surface2); }
 
 </div>
 
+<div class="container" id="pockets-view" style="display:none">
+
+  <div class="job-view-header">
+    <button class="pill-btn" onclick="closePockets()">← Back</button>
+    <div class="job-view-title">Pockets</div>
+  </div>
+
+  <div class="summary-grid" id="pockets-summary"></div>
+
+  <!-- Move Money -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><line x1="17" y1="3" x2="17" y2="21"/><polyline points="13 7 17 3 21 7"/><polyline points="11 17 7 21 3 17"/><line x1="7" y1="21" x2="7" y2="3"/></svg>
+        Move Money
+      </div>
+    </div>
+    <div style="padding:1.1rem 1.25rem">
+      <div class="form-grid">
+        <div><label>From</label><select id="mv-from"></select></div>
+        <div><label>To</label><select id="mv-to"></select></div>
+        <div><label>Amount ($)</label><input type="number" id="mv-amount" min="0" step="0.01" placeholder="0.00" /></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="executeMoveFunds()">Move</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pockets -->
+  <section>
+    <div class="section-header" onclick="toggleForm('pocket-form', this)">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0016.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 002 8.5c0 2.29 1.51 4.04 3 5.5l7 7z"/></svg>
+        Pockets
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn" tabindex="-1">+ Add pocket</button>
+      </div>
+    </div>
+    <div class="add-form" id="pocket-form">
+      <div class="form-grid">
+        <div><label>Name</label><input type="text" id="pk-name" placeholder="e.g. New mower fund" /></div>
+        <div><label>Linked wishlist item</label><select id="pk-wishlist"></select></div>
+        <div><label>Starting balance ($, optional)</label><input type="number" id="pk-balance" min="0" step="0.01" placeholder="0.00" /></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addPocket()">Add pocket</button>
+        <button class="btn btn-ghost" onclick="toggleForm('pocket-form')">Cancel</button>
+      </div>
+    </div>
+    <div id="pockets-wrap"><div class="empty-state">No pockets yet.</div></div>
+  </section>
+
+  <!-- Pocket Rules -->
+  <section>
+    <div class="section-header" onclick="toggleForm('rule-form', this)">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Pocket Rules
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn" tabindex="-1">+ Add rule</button>
+      </div>
+    </div>
+    <div class="add-form" id="rule-form">
+      <div class="form-grid">
+        <div><label>Job</label><select id="rl-job"></select></div>
+        <div><label>Percent (%)</label><input type="number" id="rl-percent" min="1" max="100" step="1" placeholder="e.g. 10" /></div>
+        <div><label>Goes to pocket</label><select id="rl-pocket"></select></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addPocketRule()">Add rule</button>
+        <button class="btn btn-ghost" onclick="toggleForm('rule-form')">Cancel</button>
+      </div>
+    </div>
+    <div id="rules-wrap"><div class="empty-state">No rules yet.</div></div>
+  </section>
+
+  <!-- Pockets History -->
+  <section>
+    <div class="section-header" onclick="toggleSection('pocket-history-body')">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Pockets History
+      </div>
+    </div>
+    <div id="pocket-history-body">
+      <div id="pocket-history-wrap"><div class="empty-state">No pocket changes yet.</div></div>
+    </div>
+  </section>
+
+</div>
+
 <div id="loading-overlay">
   <div class="loading-spinner"></div>
   <div class="loading-text">LOADING…</div>
@@ -814,7 +942,7 @@ function loadFromFirestore() {
   pendingHistoryEntries = [];
 
   // Track first fire of all 5 listeners before doing initial render
-  const ready = { main: false, clients: false, events: false, other: false, wishlist: false };
+  const ready = { main: false, clients: false, events: false, other: false, wishlist: false, pockets: false, pocketRules: false };
   let initialRenderDone = false;
 
   async function checkReady() {
@@ -865,6 +993,20 @@ function loadFromFirestore() {
   unsubscribers.push(userDoc().collection('wishlist').onSnapshot(snap => {
     wishlist = snap.docs.map(d => d.data());
     if (!ready.wishlist) { ready.wishlist = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
+
+  // Pockets
+  unsubscribers.push(userDoc().collection('pockets').onSnapshot(snap => {
+    pockets = snap.docs.map(d => d.data());
+    if (!ready.pockets) { ready.pockets = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
+
+  // Pocket Rules
+  unsubscribers.push(userDoc().collection('pocketRules').onSnapshot(snap => {
+    pocketRules = snap.docs.map(d => d.data());
+    if (!ready.pocketRules) { ready.pocketRules = true; checkReady(); }
     else if (initialRenderDone) render();
   }));
 }
@@ -925,10 +1067,14 @@ async function saveToFirestore() {
   await upsertItems('jobs',    pendingEventWrites,    lawnEvents);
   await upsertItems('other',   pendingOtherWrites,  otherMoney);
   await upsertItems('wishlist', pendingWishlistWrites, wishlist);
+  await upsertItems('pockets', pendingPocketWrites, pockets);
+  await upsertItems('pocketRules', pendingRuleWrites, pocketRules);
   await deleteItems('clients', pendingClientDeletes);
   await deleteItems('jobs',    pendingEventDeletes);
   await deleteItems('other',   pendingOtherDeletes);
   await deleteItems('wishlist', pendingWishlistDeletes);
+  await deleteItems('pockets', pendingPocketDeletes);
+  await deleteItems('pocketRules', pendingRuleDeletes);
 
   // History entries (unchanged)
   while (pendingHistoryEntries.length > 0) {
@@ -979,6 +1125,10 @@ let clients    = [];
 let lawnEvents   = [];
 let otherMoney = [];
 let wishlist   = [];
+let pockets      = [];
+let pocketRules  = [];
+let pocketsOpen  = false;
+let lastNetCash  = 0;
 let historyLog = [];          // in-memory loaded entries
 let balances   = { bank: 0, cash: 0 };
 
@@ -992,6 +1142,63 @@ function getJob(id) { return JOBS.find(j => j.id === id); }
 // Items created before jobs existed have no .job field — they were all
 // lawn mowing, so that's the safe default rather than losing them.
 function jobOf(item) { return item.job || 'lawn_mowing'; }
+
+// ── Pockets ───────────────────────────────────────────────
+// A "pocket" is a named savings bucket linked to a wishlist item. Pocket
+// rules say "x% of every new event on job Y gets set aside into pocket Z" —
+// applied the moment an event is added (see addEvent / applyPocketRules).
+const POCKET_COLORS = ['#60A5FA','#C084FC','#F472B6','#34D399','#FBBF24','#FB923C','#22D3EE','#A78BFA'];
+function getPocket(id) { return pockets.find(p => p.id === id); }
+function getWishlistItem(id) { return wishlist.find(w => w.id === id); }
+function getPocketColor(pocketId) {
+  const idx = pockets.findIndex(p => p.id === pocketId);
+  return POCKET_COLORS[idx % POCKET_COLORS.length] || '#888';
+}
+function sumPocketBalances() {
+  return Math.round(pockets.reduce((s, p) => s + (p.balance || 0), 0) * 100) / 100;
+}
+// Free / unallocated money right now: net cash minus whatever's earmarked
+// in pockets, never shown below zero (see funds-overflow-note for when
+// pockets have outrun net cash because of unpaid events).
+function freeAmount() {
+  return Math.max(0, Math.round((lastNetCash - sumPocketBalances()) * 100) / 100);
+}
+function adjustPocketBalance(pocketId, delta) {
+  pockets = pockets.map(p => p.id === pocketId
+    ? { ...p, balance: Math.max(0, Math.round(((p.balance || 0) + delta) * 100) / 100) }
+    : p);
+  pendingPocketWrites.add(pocketId);
+}
+// Applies every pocket rule attached to jobId against an event's amount the
+// moment it's marked paid, moving money out of Free and into the matching
+// pocket(s). Returns the list of allocations made so the event can carry
+// them — letting a later undo/delete cleanly reverse exactly what was set
+// aside for it.
+function applyPocketRules(jobId, amount) {
+  const rules = pocketRules.filter(r => r.jobId === jobId);
+  const allocations = [];
+  rules.forEach(r => {
+    const pocket = getPocket(r.pocketId);
+    if (!pocket) return;
+    const alloc = Math.round(amount * r.percent / 100 * 100) / 100;
+    if (alloc <= 0) return;
+    adjustPocketBalance(pocket.id, alloc);
+    allocations.push({ pocketId: pocket.id, amount: alloc });
+    logHistory('pocket', `Auto-set-aside $${alloc.toFixed(2)} → "${pocket.name}" (${r.percent}% of paid ${getJob(jobId) ? getJob(jobId).label : jobId} event)`, { job: null, pocketId: pocket.id });
+  });
+  return allocations;
+}
+// Reverses whatever applyPocketRules set aside for this event (stored on
+// j.pocketAllocations), used whenever a payment is undone or a paid event
+// is deleted outright.
+function reversePocketAllocations(j, reason) {
+  if (!j || !j.pocketAllocations || !j.pocketAllocations.length) return;
+  j.pocketAllocations.forEach(a => {
+    const pocket = getPocket(a.pocketId);
+    adjustPocketBalance(a.pocketId, -a.amount);
+    logHistory('pocket', `Reversed $${a.amount.toFixed(2)} set-aside in "${pocket ? pocket.name : 'a removed pocket'}" — ${reason}`, { job: null, pocketId: a.pocketId });
+  });
+}
 
 let currentJobId = null; // null = on the main page; otherwise the open job's id
 
@@ -1009,6 +1216,22 @@ function openJob(id) {
 function closeJob() {
   currentJobId = null;
   document.getElementById('job-view').style.display = 'none';
+  document.getElementById('main-view').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function openPockets() {
+  pocketsOpen = true;
+  document.getElementById('main-view').style.display = 'none';
+  document.getElementById('job-view').style.display = 'none';
+  document.getElementById('pockets-view').style.display = 'block';
+  renderPocketsPage();
+  window.scrollTo(0, 0);
+}
+
+function closePockets() {
+  pocketsOpen = false;
+  document.getElementById('pockets-view').style.display = 'none';
   document.getElementById('main-view').style.display = 'block';
   window.scrollTo(0, 0);
 }
@@ -1055,6 +1278,10 @@ let pendingOtherWrites   = new Set();
 let pendingOtherDeletes  = new Set();
 let pendingWishlistWrites  = new Set();
 let pendingWishlistDeletes = new Set();
+let pendingPocketWrites  = new Set();
+let pendingPocketDeletes = new Set();
+let pendingRuleWrites    = new Set();
+let pendingRuleDeletes   = new Set();
 
 function historyCol() { return db.collection('users').doc(currentUser.uid).collection('history'); }
 
@@ -1340,6 +1567,7 @@ function render() {
   const titheOwed = tithe.total;
   const netCash  = paidJobs + income - expenses - titheOwed;
   balances = computeBalances();
+  lastNetCash = Math.round(netCash * 100) / 100;
 
   document.getElementById('summary').innerHTML = `
     <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${netCash.toFixed(2)}</div><div class="metric-sub">paid + income − expenses − tithe</div></div>
@@ -1366,11 +1594,13 @@ function render() {
 
 renderPaidEvents();
 renderWishlist();
+renderFundsDistribution();
+if (pocketsOpen) renderPocketsPage();
 renderAllHistory();
 }
 
 function historyEntryHTML(h) {
-  const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client'}[h.type]||'dot-add';
+  const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client',pocket:'dot-pocket'}[h.type]||'dot-add';
   const d = new Date(h.ts);
   return `<div class="history-entry" id="hrow-${h.id}">
     <div class="history-dot ${dc}"></div>
@@ -1536,7 +1766,7 @@ function closeFullHistory() {
 function editHistory(id) {
   const h = historyLog.find(h=>h.id===id);
   const row = document.getElementById('hrow-'+id);
-  const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client'}[h.type]||'dot-add';
+  const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client',pocket:'dot-pocket'}[h.type]||'dot-add';
   const d = new Date(h.ts);
   row.innerHTML = `
     <div class="history-dot ${dc}"></div>
@@ -1659,7 +1889,8 @@ async function bulkMarkPaid() {
       if (!m) continue; // skip this event if cancelled
       const amount = eventAmount(j);
       const prev = j.status;
-      lawnEvents = lawnEvents.map(jb => jb.id===j.id ? {...jb, status:'paid', paymentMethod:m, paymentAmount:amount} : jb);
+      const allocations = applyPocketRules(jobOf(j), amount);
+      lawnEvents = lawnEvents.map(jb => jb.id===j.id ? {...jb, status:'paid', paymentMethod:m, paymentAmount:amount, ...(allocations.length?{pocketAllocations:allocations}:{})} : jb);
       pendingEventWrites.add(j.id);
       logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${m})`, { jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount, job: currentJobId });
     }
@@ -1672,6 +1903,15 @@ async function bulkMarkPaid() {
   jobs.forEach(j => {
     if (!byClient[j.client]) byClient[j.client] = [];
     byClient[j.client].push(j);
+  });
+
+  // Pocket rules apply per event (each event keeps its own allocation
+  // record for later undo/delete) even though the history entry below is
+  // grouped per client for readability.
+  const allocationsByJobId = {};
+  jobs.forEach(j => {
+    const allocations = applyPocketRules(jobOf(j), eventAmount(j));
+    if (allocations.length) allocationsByJobId[j.id] = allocations;
   });
 
   const hid = Date.now();
@@ -1692,7 +1932,7 @@ async function bulkMarkPaid() {
     });
   });
 
-  lawnEvents = lawnEvents.map(j => ids.includes(j.id) ? {...j, status:'paid', paymentMethod:method} : j);
+  lawnEvents = lawnEvents.map(j => ids.includes(j.id) ? {...j, status:'paid', paymentMethod:method, ...(allocationsByJobId[j.id]?{pocketAllocations:allocationsByJobId[j.id]}:{})} : j);
   ids.forEach(id => pendingEventWrites.add(id));
   save(); render(); updateBulkBar(); toast(`${jobs.length} events marked as paid ✓`);
 }
@@ -1703,7 +1943,16 @@ function bulkDelete() {
   const ids = checked.map(c => c.dataset.id);
   const jobs = ids.map(id => lawnEvents.find(j => j.id === id)).filter(Boolean);
   if (!confirm(`Delete ${jobs.length} selected event${jobs.length > 1 ? 's' : ''}?`)) return;
-  jobs.forEach(j => logHistory('delete', `Deleted event — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`, { job: currentJobId }));
+  jobs.forEach(j => {
+    logHistory('delete', `Deleted event — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`, { job: currentJobId });
+    if (j.pocketAllocations && j.pocketAllocations.length) {
+      j.pocketAllocations.forEach(a => {
+        const pocket = getPocket(a.pocketId);
+        adjustPocketBalance(a.pocketId, -a.amount);
+        logHistory('pocket', `Reversed $${a.amount.toFixed(2)} set-aside in "${pocket ? pocket.name : 'a removed pocket'}" — event deleted`, { job: null, pocketId: a.pocketId });
+      });
+    }
+  });
   lawnEvents = lawnEvents.filter(j => !ids.includes(j.id));
   ids.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
   save(); render(); updateBulkBar(); toast(`${jobs.length} event${jobs.length > 1 ? 's' : ''} deleted`);
@@ -1739,7 +1988,8 @@ async function markPaid(id) {
   const j=lawnEvents.find(j=>j.id===id);
   const prev=j.status;
   const amount=eventAmount(j);
-  lawnEvents=lawnEvents.map(j=>j.id===id?{...j,status:'paid',paymentMethod:method,paymentAmount:amount}:j);
+  const allocations = applyPocketRules(jobOf(j), amount);
+  lawnEvents=lawnEvents.map(j=>j.id===id?{...j,status:'paid',paymentMethod:method,paymentAmount:amount,...(allocations.length?{pocketAllocations:allocations}:{})}:j);
   pendingEventWrites.add(id);
   logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${method})`, { jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount, job: currentJobId });
   save(); render(); reopenPanel(j.client); toast('Marked as paid ✓');
@@ -1779,6 +2029,13 @@ async function undoPaid(hid) {
 function deleteEvent(id) {
   if (!confirm('Delete this event?')) return;
   const j=lawnEvents.find(j=>j.id===id);
+  if (j.pocketAllocations && j.pocketAllocations.length) {
+    j.pocketAllocations.forEach(a => {
+      const pocket = getPocket(a.pocketId);
+      adjustPocketBalance(a.pocketId, -a.amount);
+      logHistory('pocket', `Reversed $${a.amount.toFixed(2)} set-aside in "${pocket ? pocket.name : 'a removed pocket'}" — event deleted`, { job: null, pocketId: a.pocketId });
+    });
+  }
   lawnEvents=lawnEvents.filter(j=>j.id!==id);
   pendingEventDeletes.add(id); pendingEventWrites.delete(id);
   logHistory('delete',`Deleted event — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`, { job: currentJobId });
@@ -1799,6 +2056,12 @@ function addEvent() {
   const raw    = document.getElementById('le-amount').value;
   const amount = raw !== '' ? parseFloat(raw) : getRate(client);
   const newJob = {id:'l'+Date.now(), client, date, status, amount, job: currentJobId};
+  // Pocket rules only earmark money once an event is actually paid — if
+  // it's being created already marked paid, apply them right away.
+  if (status === 'paid') {
+    const allocations = applyPocketRules(currentJobId, amount);
+    if (allocations.length) newJob.pocketAllocations = allocations;
+  }
   lawnEvents.push(newJob);
   pendingEventWrites.add(newJob.id);
   logHistory('add', `Added event — ${client} on ${fmt(date)}, ${status} ($${amount})`, { job: currentJobId });
@@ -2005,6 +2268,267 @@ function toast(msg) {
   el.textContent=msg; el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>el.classList.remove('show'),2200);
+}
+
+// ── Distribution of Funds bar (above Jobs) ───────────────────
+function renderFundsDistribution() {
+  const wrap = document.getElementById('funds-bar-wrap');
+  const legend = document.getElementById('funds-legend');
+  if (!wrap || !legend) return;
+  const sumPockets = sumPocketBalances();
+  const total = Math.max(lastNetCash, sumPockets, 0);
+  const overflow = sumPockets > lastNetCash ? Math.round((sumPockets - lastNetCash) * 100) / 100 : 0;
+
+  if (total <= 0) {
+    wrap.innerHTML = `<div class="funds-bar-track"><div class="funds-seg" style="width:100%;background:var(--surface3)"></div></div>`;
+    legend.innerHTML = `<div class="funds-legend-item"><span class="funds-swatch" style="background:var(--surface3)"></span>Savings — $0.00 (100%)</div>`;
+    return;
+  }
+
+  const free = freeAmount();
+  const segments = [{ label: 'Savings', amount: free, color: 'var(--text-faint)' }];
+  pockets.forEach(p => {
+    if ((p.balance || 0) <= 0) return;
+    segments.push({ label: p.name, amount: p.balance, color: getPocketColor(p.id) });
+  });
+
+  wrap.innerHTML = `<div class="funds-bar-track">${segments.map(s =>
+    `<div class="funds-seg" style="width:${(s.amount / total * 100).toFixed(2)}%;background:${s.color}" title="${s.label} — $${s.amount.toFixed(2)}"></div>`
+  ).join('')}</div>`;
+
+  legend.innerHTML = segments.map(s =>
+    `<div class="funds-legend-item"><span class="funds-swatch" style="background:${s.color}"></span>${s.label} — $${s.amount.toFixed(2)} (${(s.amount / total * 100).toFixed(0)}%)</div>`
+  ).join('') + (overflow > 0
+    ? `<div class="funds-overflow-note">$${overflow.toFixed(2)} set aside ahead of being paid — settles once those events are marked paid</div>`
+    : '');
+}
+
+// ── Pockets page ──────────────────────────────────────────
+function renderPocketsPage() {
+  if (!pocketsOpen) return;
+  const sumPockets = sumPocketBalances();
+  const free = freeAmount();
+
+  document.getElementById('pockets-summary').innerHTML = `
+    <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${lastNetCash.toFixed(2)}</div></div>
+    <div class="metric"><div class="metric-label">Free / Savings</div><div class="metric-value">$${free.toFixed(2)}</div></div>
+    <div class="metric blue"><div class="metric-label">In pockets</div><div class="metric-value">$${sumPockets.toFixed(2)}</div></div>
+  `;
+
+  const moveOptions = [{ id: 'free', label: 'Free / Savings' }].concat(pockets.map(p => ({ id: p.id, label: p.name })));
+  const fromSel = document.getElementById('mv-from'), toSel = document.getElementById('mv-to');
+  const prevFrom = fromSel.value, prevTo = toSel.value;
+  fromSel.innerHTML = moveOptions.map(o => `<option value="${o.id}">${o.label}</option>`).join('');
+  toSel.innerHTML   = moveOptions.map(o => `<option value="${o.id}">${o.label}</option>`).join('');
+  if (moveOptions.find(o => o.id === prevFrom)) fromSel.value = prevFrom;
+  if (moveOptions.find(o => o.id === prevTo))   toSel.value = prevTo;
+
+  renderPocketsList();
+  renderPocketRulesList();
+  renderPocketHistory();
+}
+
+function renderPocketsList() {
+  const wlSel = document.getElementById('pk-wishlist');
+  if (wlSel) wlSel.innerHTML = wishlist.length
+    ? wishlist.map(w => `<option value="${w.id}">${w.title} — $${parseFloat(w.price).toFixed(2)}</option>`).join('')
+    : `<option value="">Add a wishlist item first</option>`;
+
+  const wrap = document.getElementById('pockets-wrap');
+  if (!pockets.length) { wrap.innerHTML = '<div class="empty-state">No pockets yet. Add one above and link it to a wishlist item.</div>'; return; }
+
+  wrap.innerHTML = pockets.map(p => {
+    const item = getWishlistItem(p.wishlistItemId);
+    const price = item ? parseFloat(item.price) : null;
+    const pct = price ? Math.min(100, Math.round((p.balance || 0) / price * 100)) : null;
+    const color = getPocketColor(p.id);
+    return `
+      <div id="pocket-row-${p.id}" style="padding:12px 1.25rem;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="funds-swatch" style="background:${color}"></span>
+          <div style="font-weight:500">${p.name}</div>
+          <div style="flex:1"></div>
+          <div class="mono" style="color:var(--text-muted);font-size:12px">${item ? `→ ${item.title}` : '(linked item removed)'}</div>
+          <div class="mono" style="font-size:13px;color:${color}">$${(p.balance || 0).toFixed(2)}${price ? ` / $${price.toFixed(2)}` : ''}${pct !== null ? ` (${pct}%)` : ''}</div>
+          <div class="row-actions" style="margin:0">
+            <button class="act-btn edit" onclick="editPocket('${p.id}')">edit</button>
+            <button class="act-btn danger" onclick="deletePocket('${p.id}')">delete</button>
+          </div>
+        </div>
+        ${price ? `<div class="pocket-progress-track" style="margin-top:8px"><div class="pocket-progress-fill" style="width:${pct}%;background:${color}"></div></div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+function addPocket() {
+  const name = document.getElementById('pk-name').value.trim();
+  const wishlistItemId = document.getElementById('pk-wishlist').value;
+  const startBalRaw = document.getElementById('pk-balance').value;
+  if (!name) { alert('Please enter a name.'); return; }
+  if (!wishlistItemId) { alert('Add a wishlist item first, then link this pocket to it.'); return; }
+  let startBal = startBalRaw !== '' ? parseFloat(startBalRaw) : 0;
+  if (isNaN(startBal) || startBal < 0) startBal = 0;
+  const freeNow = freeAmount();
+  if (startBal > freeNow) { alert(`Only $${freeNow.toFixed(2)} is currently free to dedicate.`); return; }
+  const newPocket = { id: 'pk' + Date.now(), name, wishlistItemId, balance: startBal, createdAt: new Date().toISOString() };
+  pockets.push(newPocket);
+  pendingPocketWrites.add(newPocket.id);
+  const item = getWishlistItem(wishlistItemId);
+  logHistory('pocket', `Added pocket — "${name}"${item ? ` (→ ${item.title})` : ''}${startBal > 0 ? ` with $${startBal.toFixed(2)} from Free` : ''}`, { job: null, pocketId: newPocket.id });
+  save(); render(); toast('Pocket added ✓');
+  document.getElementById('pocket-form').classList.remove('open');
+  document.getElementById('pk-name').value = '';
+  document.getElementById('pk-balance').value = '';
+}
+
+function editPocket(id) {
+  const p = pockets.find(p => p.id === id);
+  const row = document.getElementById('pocket-row-' + id);
+  const wlOpts = wishlist.map(w => `<option value="${w.id}"${w.id === p.wishlistItemId ? ' selected' : ''}>${w.title} — $${parseFloat(w.price).toFixed(2)}</option>`).join('');
+  row.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <input id="epk-name-${id}" value="${p.name}" style="flex:1;min-width:140px;font-size:13px;padding:5px 8px" />
+      <select id="epk-wishlist-${id}" style="font-size:13px;padding:5px 8px">${wlOpts}</select>
+      <div class="row-actions" style="margin:0">
+        <button class="act-btn save" onclick="savePocket('${id}')">save</button>
+        <button class="act-btn" onclick="renderPocketsList()">cancel</button>
+      </div>
+    </div>`;
+}
+
+function savePocket(id) {
+  const name = document.getElementById('epk-name-' + id).value.trim();
+  const wishlistItemId = document.getElementById('epk-wishlist-' + id).value;
+  if (!name) { alert('Name required.'); return; }
+  const old = pockets.find(p => p.id === id);
+  pockets = pockets.map(p => p.id === id ? { ...p, name, wishlistItemId } : p);
+  pendingPocketWrites.add(id);
+  logHistory('pocket', `Edited pocket — "${old.name}" → "${name}"`, { job: null, pocketId: id });
+  save(); render(); toast('Pocket updated ✓');
+}
+
+function deletePocket(id) {
+  const p = pockets.find(p => p.id === id);
+  if (!confirm(`Delete "${p.name}"? Its $${(p.balance || 0).toFixed(2)} balance will return to Free / Savings.`)) return;
+  pockets = pockets.filter(p => p.id !== id);
+  pendingPocketDeletes.add(id); pendingPocketWrites.delete(id);
+  const orphanRules = pocketRules.filter(r => r.pocketId === id);
+  pocketRules = pocketRules.filter(r => r.pocketId !== id);
+  orphanRules.forEach(r => { pendingRuleDeletes.add(r.id); pendingRuleWrites.delete(r.id); });
+  logHistory('pocket', `Deleted pocket — "${p.name}" ($${(p.balance || 0).toFixed(2)} returned to Free)${orphanRules.length ? ` and removed ${orphanRules.length} rule${orphanRules.length > 1 ? 's' : ''}` : ''}`, { job: null });
+  save(); render(); toast('Pocket deleted');
+}
+
+function renderPocketRulesList() {
+  const jobSel = document.getElementById('rl-job');
+  if (jobSel) jobSel.innerHTML = JOBS.map(j => `<option value="${j.id}">${j.label}</option>`).join('');
+  const pocketSel = document.getElementById('rl-pocket');
+  if (pocketSel) pocketSel.innerHTML = pockets.length
+    ? pockets.map(p => `<option value="${p.id}">${p.name}</option>`).join('')
+    : `<option value="">Add a pocket first</option>`;
+
+  const wrap = document.getElementById('rules-wrap');
+  if (!pocketRules.length) { wrap.innerHTML = '<div class="empty-state">No rules yet. Set one up so new events automatically set money aside.</div>'; return; }
+
+  wrap.innerHTML = pocketRules.map(r => {
+    const job = getJob(r.jobId);
+    const pocket = getPocket(r.pocketId);
+    return `
+      <div id="rule-row-${r.id}" style="display:flex;align-items:center;gap:10px;padding:10px 1.25rem;border-bottom:1px solid var(--border);font-size:13px">
+        <div style="flex:1">From every <strong>${job ? job.label : '(removed job)'}</strong> event, <strong style="color:#4ADE80">${r.percent}%</strong> → ${pocket ? pocket.name : '(removed pocket)'}</div>
+        <div class="row-actions" style="margin:0">
+          <button class="act-btn edit" onclick="editPocketRule('${r.id}')">edit</button>
+          <button class="act-btn danger" onclick="deletePocketRule('${r.id}')">delete</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function addPocketRule() {
+  const jobId = document.getElementById('rl-job').value;
+  const pocketId = document.getElementById('rl-pocket').value;
+  const percent = parseFloat(document.getElementById('rl-percent').value);
+  if (!jobId || !pocketId) { alert('Choose a job and a pocket.'); return; }
+  if (isNaN(percent) || percent <= 0 || percent > 100) { alert('Enter a percent between 1 and 100.'); return; }
+  const existingTotal = pocketRules.filter(r => r.jobId === jobId).reduce((s, r) => s + r.percent, 0);
+  if (existingTotal + percent > 100) { alert(`That job already has ${existingTotal}% allocated across other rules — this would push it past 100%.`); return; }
+  const newRule = { id: 'rl' + Date.now(), jobId, pocketId, percent, createdAt: new Date().toISOString() };
+  pocketRules.push(newRule);
+  pendingRuleWrites.add(newRule.id);
+  const pocket = getPocket(pocketId);
+  logHistory('pocket', `Added rule — ${percent}% of every ${getJob(jobId).label} event → "${pocket ? pocket.name : '?'}"`, { job: null });
+  save(); render(); toast('Rule added ✓');
+  document.getElementById('rule-form').classList.remove('open');
+  document.getElementById('rl-percent').value = '';
+}
+
+function editPocketRule(id) {
+  const r = pocketRules.find(r => r.id === id);
+  const row = document.getElementById('rule-row-' + id);
+  const jobOpts = JOBS.map(j => `<option value="${j.id}"${j.id === r.jobId ? ' selected' : ''}>${j.label}</option>`).join('');
+  const pocketOpts = pockets.map(p => `<option value="${p.id}"${p.id === r.pocketId ? ' selected' : ''}>${p.name}</option>`).join('');
+  row.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1">
+      <select id="erl-job-${id}" style="font-size:12px;padding:5px 8px">${jobOpts}</select>
+      <input id="erl-percent-${id}" type="number" value="${r.percent}" min="1" max="100" style="width:70px;font-size:12px;padding:5px 8px" />%
+      <span style="color:var(--text-muted);font-size:12px">→</span>
+      <select id="erl-pocket-${id}" style="font-size:12px;padding:5px 8px">${pocketOpts}</select>
+    </div>
+    <div class="row-actions" style="margin:0">
+      <button class="act-btn save" onclick="savePocketRule('${id}')">save</button>
+      <button class="act-btn" onclick="renderPocketRulesList()">cancel</button>
+    </div>`;
+}
+
+function savePocketRule(id) {
+  const jobId = document.getElementById('erl-job-' + id).value;
+  const pocketId = document.getElementById('erl-pocket-' + id).value;
+  const percent = parseFloat(document.getElementById('erl-percent-' + id).value);
+  if (isNaN(percent) || percent <= 0 || percent > 100) { alert('Enter a percent between 1 and 100.'); return; }
+  const existingTotal = pocketRules.filter(r => r.jobId === jobId && r.id !== id).reduce((s, r) => s + r.percent, 0);
+  if (existingTotal + percent > 100) { alert(`That job already has ${existingTotal}% allocated across other rules — this would push it past 100%.`); return; }
+  pocketRules = pocketRules.map(r => r.id === id ? { ...r, jobId, pocketId, percent } : r);
+  pendingRuleWrites.add(id);
+  logHistory('pocket', `Edited rule — now ${percent}% of every ${getJob(jobId).label} event → ${getPocket(pocketId) ? getPocket(pocketId).name : '?'}`, { job: null });
+  save(); render(); toast('Rule updated ✓');
+}
+
+function deletePocketRule(id) {
+  const r = pocketRules.find(r => r.id === id);
+  if (!confirm('Delete this rule? Future events will no longer auto-allocate for it.')) return;
+  pocketRules = pocketRules.filter(r => r.id !== id);
+  pendingRuleDeletes.add(id); pendingRuleWrites.delete(id);
+  logHistory('pocket', `Deleted rule — ${r.percent}% of every ${getJob(r.jobId) ? getJob(r.jobId).label : r.jobId} event → ${getPocket(r.pocketId) ? getPocket(r.pocketId).name : '?'}`, { job: null });
+  save(); render(); toast('Rule deleted');
+}
+
+function executeMoveFunds() {
+  const from = document.getElementById('mv-from').value;
+  const to = document.getElementById('mv-to').value;
+  const amount = parseFloat(document.getElementById('mv-amount').value);
+  if (!from || !to) { alert('Choose a source and destination.'); return; }
+  if (from === to) { alert('Source and destination must be different.'); return; }
+  if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
+
+  const fromLabel = from === 'free' ? 'Free / Savings' : (getPocket(from) ? getPocket(from).name : 'Unknown');
+  const toLabel   = to === 'free'   ? 'Free / Savings' : (getPocket(to)   ? getPocket(to).name   : 'Unknown');
+  const fromAvailable = from === 'free' ? freeAmount() : (getPocket(from) ? getPocket(from).balance || 0 : 0);
+  if (amount > fromAvailable) { alert(`Only $${fromAvailable.toFixed(2)} available in ${fromLabel}.`); return; }
+
+  if (from !== 'free') adjustPocketBalance(from, -amount);
+  if (to !== 'free') adjustPocketBalance(to, amount);
+
+  logHistory('pocket', `Moved $${amount.toFixed(2)} — ${fromLabel} → ${toLabel}`, { job: null });
+  save(); render(); toast('Money moved ✓');
+  document.getElementById('mv-amount').value = '';
+}
+
+function renderPocketHistory() {
+  const wrap = document.getElementById('pocket-history-wrap');
+  if (!wrap) return;
+  const filtered = historyLog.filter(h => h.type === 'pocket');
+  if (!filtered.length) { wrap.innerHTML = '<div class="empty-state">No pocket changes yet.</div>'; return; }
+  wrap.innerHTML = filtered.slice(0, 40).map(historyEntryHTML).join('');
 }
 
 // ── Wishlist ──────────────────────────────────────────────
