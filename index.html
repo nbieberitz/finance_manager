@@ -574,13 +574,74 @@ tr:hover td { background: var(--surface2); }
 .pocket-rule-row { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--text-muted); padding:4px 0; }
 .pocket-rule-empty { font-size:12px; color:var(--text-faint); padding:2px 0; }
 .pocket-rule-form { margin-top:10px; padding:10px; background:var(--surface3); border-radius:8px; border-bottom:none; }
+
+/* ── Test Mode ───────────────────────────────────────────── */
+.test-mode-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 10000;
+  background: linear-gradient(135deg, #431407, #7c2d12);
+  border-bottom: 2px solid #ea580c;
+  padding: 9px 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #fdba74;
+  letter-spacing: 0.04em;
+  transform: translateY(-100%);
+  transition: transform 0.28s cubic-bezier(.16,.84,.32,1);
+  gap: 12px;
+}
+.test-mode-banner.visible { transform: translateY(0); }
+body.test-mode-active { padding-top: calc(2rem + 46px) !important; }
+.test-mode-exit-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(234,88,12,0.55);
+  background: rgba(234,88,12,0.15);
+  color: #fb923c;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.test-mode-exit-btn:hover { background: rgba(234,88,12,0.32); }
+.test-mode-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 3px 11px;
+  border-radius: 20px;
+  border: 1px solid var(--border-mid);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.test-mode-btn:hover { border-color: #ea580c; color: #fb923c; background: rgba(234,88,12,0.08); }
 </style>
 </head>
 <body>
 
+<div id="test-mode-banner" class="test-mode-banner">
+  <div style="display:flex;align-items:center;gap:10px;min-width:0">
+    <span style="font-size:15px;flex-shrink:0">⚗</span>
+    <span><strong>TEST MODE</strong> — all changes are temporary and won't touch your real account</span>
+  </div>
+  <button class="test-mode-exit-btn" onclick="exitTestMode()">✕ Exit test mode</button>
+</div>
+
 <header>
-  <div class="logo">
-    <h1>Finance Manager</h1>
+  <div style="display:flex;align-items:center;gap:14px">
+    <div class="logo">
+      <h1>Finance Manager</h1>
+    </div>
+    <button id="test-mode-btn" class="test-mode-btn" onclick="enterTestMode()" style="display:none" title="Sandbox mode — changes won't be saved to your account">⚗ test mode</button>
   </div>
   <div class="auth-area" id="auth-area">
     <span id="auth-loading">connecting…</span>
@@ -1061,6 +1122,8 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
 let currentUser = null;
+let testMode = false;
+let testModeSnapshot = null;
 
 function userDoc() { return db.collection('users').doc(currentUser.uid); }
 
@@ -1150,7 +1213,7 @@ function save() {
 }
 
 async function loadMoreHistory() {
-  if (allHistoryLoaded) return;
+  if (allHistoryLoaded || testMode) return;
   let query = historyCol().orderBy('ts', 'desc').limit(50);
   if (lastHistoryDoc) query = query.startAfter(lastHistoryDoc);
   const snap = await query.get();
@@ -1164,7 +1227,7 @@ async function loadMoreHistory() {
 }
 
 async function saveToFirestore() {
-  if (!currentUser) return;
+  if (!currentUser || testMode) return;
 
   // Main doc holds only balances now
   await userDoc().set({ balances });
@@ -1238,6 +1301,7 @@ auth.onAuthStateChanged(user => {
         Sign in with Google
       </button>`;
   }
+  updateTestModeUI();
 });
 
 function signIn() {
@@ -1441,6 +1505,96 @@ let pendingRuleWrites    = new Set();
 let pendingRuleDeletes   = new Set();
 
 function historyCol() { return db.collection('users').doc(currentUser.uid).collection('history'); }
+
+// ── Test Mode ─────────────────────────────────────────────
+// Pure in-memory sandbox: all state is deep-copied, real Firestore listeners
+// are detached, and every write path is blocked. Nothing touches the DB.
+// On exit (or page refresh), loadFromFirestore() reconnects to real data.
+
+function enterTestMode() {
+  if (testMode || !currentUser) return;
+  if (!confirm(
+    'Enter test mode?\n\n' +
+    'Your current data will be copied into a sandbox. You can add outrageous numbers, ' +
+    'delete everything, or break things freely — nothing will touch your real account.\n\n' +
+    'Exit test mode (or refresh the page) to restore your real data.'
+  )) return;
+
+  // Cancel any pending debounced save so it doesn\'t fire after we detach
+  clearTimeout(saveTimer);
+
+  // Deep-copy the entire app state
+  testModeSnapshot = {
+    balances:         JSON.parse(JSON.stringify(balances)),
+    clients:          JSON.parse(JSON.stringify(clients)),
+    lawnEvents:       JSON.parse(JSON.stringify(lawnEvents)),
+    otherMoney:       JSON.parse(JSON.stringify(otherMoney)),
+    wishlist:         JSON.parse(JSON.stringify(wishlist)),
+    pockets:          JSON.parse(JSON.stringify(pockets)),
+    pocketRules:      JSON.parse(JSON.stringify(pocketRules)),
+    historyLog:       JSON.parse(JSON.stringify(historyLog)),
+    lastNetCash:      lastNetCash,
+    allHistoryLoaded: allHistoryLoaded,
+  };
+
+  // Detach real-time Firestore listeners — all writes are now blocked
+  detachListeners();
+  pendingHistoryEntries = [];
+
+  testMode = true;
+  updateTestModeUI();
+  render();
+  toast('⚗ Test mode on — go wild, nothing gets saved');
+}
+
+function exitTestMode() {
+  if (!testMode || !testModeSnapshot) return;
+
+  // Restore every piece of state from the pre-test snapshot
+  balances         = testModeSnapshot.balances;
+  clients          = testModeSnapshot.clients;
+  lawnEvents       = testModeSnapshot.lawnEvents;
+  otherMoney       = testModeSnapshot.otherMoney;
+  wishlist         = testModeSnapshot.wishlist;
+  pockets          = testModeSnapshot.pockets;
+  pocketRules      = testModeSnapshot.pocketRules;
+  historyLog       = testModeSnapshot.historyLog;
+  lastNetCash      = testModeSnapshot.lastNetCash;
+  allHistoryLoaded = testModeSnapshot.allHistoryLoaded;
+  pendingHistoryEntries = [];
+
+  testModeSnapshot = null;
+  testMode = false;
+
+  updateTestModeUI();
+
+  // Reconnect Firestore listeners — this will confirm & re-render with real data
+  loadFromFirestore();
+  toast('Test mode off — real data restored ✓');
+}
+
+function updateTestModeUI() {
+  const banner = document.getElementById('test-mode-banner');
+  const btn    = document.getElementById('test-mode-btn');
+  if (!banner) return;
+  if (testMode) {
+    banner.classList.add('visible');
+    document.body.classList.add('test-mode-active');
+    if (btn) btn.style.display = 'none';
+  } else {
+    banner.classList.remove('visible');
+    document.body.classList.remove('test-mode-active');
+    if (btn) btn.style.display = currentUser ? '' : 'none';
+  }
+}
+
+// Warn before navigating away or refreshing while in test mode
+window.addEventListener('beforeunload', e => {
+  if (testMode) {
+    e.preventDefault();
+    return (e.returnValue = 'You\'re in test mode — leaving will discard all test changes.');
+  }
+});
 
 function getRate(name) { const c = clients.find(c => c.name===name); return c ? c.rate : 0; }
 function eventAmount(j) { return j.amount !== undefined ? j.amount : getRate(j.client); }
@@ -1952,21 +2106,21 @@ async function saveHistory(id) {
   const msg = document.getElementById('hmsg-'+id).value.trim();
   if (!msg) { alert('Message cannot be empty.'); return; }
   historyLog = historyLog.map(h => h.id===id ? {...h, message: msg} : h);
-  if (currentUser) await historyCol().doc(id).update({ message: msg });
+  if (currentUser && !testMode) await historyCol().doc(id).update({ message: msg });
   renderAllHistory(); toast('Log entry updated ✓');
 }
 
 async function deleteHistory(id) {
   if (!confirm('Delete this log entry?')) return;
   historyLog = historyLog.filter(h=>h.id!==id);
-  if (currentUser) await historyCol().doc(id).delete();
+  if (currentUser && !testMode) await historyCol().doc(id).delete();
   renderAllHistory(); toast('Log entry deleted');
 }
 
 async function clearHistory() {
   if (!confirm('Clear ALL history? This includes every job, not just one, and cannot be undone.')) return;
   historyLog = []; pendingHistoryEntries = []; lastHistoryDoc = null; allHistoryLoaded = true;
-  if (currentUser) {
+  if (currentUser && !testMode) {
     let snap = await historyCol().limit(50).get();
     while (!snap.empty) {
       const batch = db.batch();
@@ -1987,7 +2141,7 @@ async function clearJobHistory(jobId) {
   const ids = toDelete.map(h => h.id);
   historyLog = historyLog.filter(h => !ids.includes(h.id));
   pendingHistoryEntries = pendingHistoryEntries.filter(h => !ids.includes(h.id));
-  if (currentUser) {
+  if (currentUser && !testMode) {
     for (let i = 0; i < ids.length; i += 50) {
       const batch = db.batch();
       ids.slice(i, i + 50).forEach(id => batch.delete(historyCol().doc(id)));
