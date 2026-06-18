@@ -2056,12 +2056,6 @@ function addEvent() {
   const raw    = document.getElementById('le-amount').value;
   const amount = raw !== '' ? parseFloat(raw) : getRate(client);
   const newJob = {id:'l'+Date.now(), client, date, status, amount, job: currentJobId};
-  // Pocket rules only earmark money once an event is actually paid — if
-  // it's being created already marked paid, apply them right away.
-  if (status === 'paid') {
-    const allocations = applyPocketRules(currentJobId, amount);
-    if (allocations.length) newJob.pocketAllocations = allocations;
-  }
   lawnEvents.push(newJob);
   pendingEventWrites.add(newJob.id);
   logHistory('add', `Added event — ${client} on ${fmt(date)}, ${status} ($${amount})`, { job: currentJobId });
