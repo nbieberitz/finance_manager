@@ -106,8 +106,6 @@ header {
 .metric.tithe-active { border-color: rgba(245,158,11,0.35); }
 .tithe-pay-btn { margin-top:8px; padding:4px 12px; font-size:11px; font-family:'JetBrains Mono',monospace; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.4); color:#F59E0B; border-radius:20px; cursor:pointer; transition:background 0.15s; }
 .tithe-pay-btn:hover { background:rgba(245,158,11,0.28); }
-.transfer-btn { margin-top:8px; padding:4px 12px; font-size:11px; font-family:'JetBrains Mono',monospace; background:rgba(96,165,250,0.13); border:1px solid rgba(96,165,250,0.4); color:var(--blue); border-radius:20px; cursor:pointer; transition:background 0.15s; }
-.transfer-btn:hover { background:rgba(96,165,250,0.26); }
 
 .metric-label {
   font-size: 10px;
@@ -560,13 +558,14 @@ tr:hover td { background: var(--surface2); }
           </div>
         </div>
         <div><label>Category</label>
-          <select id="om-type" onchange="toggleOmTithe()">
+          <select id="om-type" onchange="updateOmFields()">
             <option value="gift">Gift / birthday</option>
             <option value="income">Other income</option>
             <option value="expense">Expense</option>
+            <option value="transfer">Transfer (bank ⇄ cash)</option>
           </select>
         </div>
-        <div><label>Method</label>
+        <div><label id="om-method-label">Method</label>
           <select id="om-method">
             <option value="bank">Bank</option>
             <option value="cash">Cash</option>
@@ -744,25 +743,6 @@ tr:hover td { background: var(--surface2); }
     </div>
     <button id="pm-individual" class="btn btn-ghost" style="display:none;color:var(--blue);border-color:#0F2040;width:100%">Prompt each individually</button>
     <button id="pm-cancel" style="background:none;border:none;color:var(--text-faint);font-size:11px;cursor:pointer;font-family:'JetBrains Mono',monospace;text-align:center;">cancel</button>
-  </div>
-</div>
-
-<div id="transfer-modal" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.88);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;">
-  <div style="background:var(--surface2);border:1px solid var(--border-mid);border-radius:var(--radius);padding:1.75rem 1.5rem;min-width:260px;max-width:300px;display:flex;flex-direction:column;gap:1.1rem;">
-    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:var(--text);letter-spacing:0.04em">Transfer money</div>
-    <div id="tr-direction" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--blue);background:var(--blue-pale);border:1px solid #0F2040;border-radius:var(--radius-sm);padding:8px 10px;text-align:center;"></div>
-    <div>
-      <label>Amount ($)</label>
-      <input type="number" id="tr-amount" placeholder="0.00" min="0" step="0.01" />
-    </div>
-    <div>
-      <label>Note (optional)</label>
-      <input type="text" id="tr-note" placeholder="Transfer" />
-    </div>
-    <div style="display:flex;gap:8px;">
-      <button id="tr-confirm" class="btn btn-ghost" style="flex:1;color:var(--blue);border-color:#0F2040" onclick="confirmTransfer()">Confirm</button>
-      <button id="tr-cancel" style="background:none;border:none;color:var(--text-faint);font-size:11px;cursor:pointer;font-family:'JetBrains Mono',monospace;" onclick="closeTransferModal()">cancel</button>
-    </div>
   </div>
 </div>
 
@@ -1276,27 +1256,22 @@ function render() {
     omWrap.innerHTML = `<div class="table-wrap"><table>
       <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Category</th><th>Method</th><th style="text-align:right">Actions</th></tr></thead>
       <tbody>${omSorted.map(e => {
-        if (e.type === 'transfer') {
-          return `<tr id="orow-${e.id}">
-            <td class="mono">${fmt(e.date)}</td>
-            <td>${e.desc || 'Transfer'}</td>
-            <td class="mono" style="color:var(--blue)">$${parseFloat(e.amount).toFixed(2)}</td>
-            <td><span class="badge badge-transfer">⇄ Transfer</span></td>
-            <td class="mono">${e.fromMethod==='cash'?'Cash':'Bank'} → ${e.toMethod==='cash'?'Cash':'Bank'}</td>
-            <td><div class="row-actions">
-              <button class="act-btn danger" onclick="deleteOther('${e.id}')">delete</button>
-            </div></td>
-          </tr>`;
-        }
         const isExp = e.type==='expense';
-        const cls = e.type==='gift'?'badge-gift': isExp?'badge-expense':'badge-income';
-        const lbl = e.type==='gift'?'Gift / birthday': isExp?'Expense':'Income';
+        const isTransfer = e.type==='transfer';
+        const cls = isTransfer?'badge-transfer': e.type==='gift'?'badge-gift': isExp?'badge-expense':'badge-income';
+        const lbl = isTransfer?'⇄ Transfer': e.type==='gift'?'Gift / birthday': isExp?'Expense':'Income';
+        const amountCell = isTransfer
+          ? `<td class="mono" style="color:var(--blue)">$${parseFloat(e.amount).toFixed(2)}</td>`
+          : `<td class="mono ${isExp?'amount-neg':'amount-pos'}">${isExp?'-':'+'}$${parseFloat(e.amount).toFixed(2)}</td>`;
+        const methodCell = isTransfer
+          ? `<td class="mono">${e.fromMethod==='cash'?'Cash':'Bank'} → ${e.toMethod==='cash'?'Cash':'Bank'}</td>`
+          : `<td class="mono">${e.method ? (e.method==='cash'?'Cash':'Bank') : '—'}</td>`;
         return `<tr id="orow-${e.id}">
           <td class="mono">${fmt(e.date)}</td>
           <td>${e.desc}</td>
-          <td class="mono ${isExp?'amount-neg':'amount-pos'}">${isExp?'-':'+'}$${parseFloat(e.amount).toFixed(2)}</td>
+          ${amountCell}
           <td><span class="badge ${cls}">${lbl}</span>${e.type==='income'&&e.titheDeductible===false?' <span class="mono" style="font-size:10px;color:var(--text-faint)">no tithe</span>':''}</td>
-          <td class="mono">${e.method ? (e.method==='cash'?'Cash':'Bank') : '—'}</td>
+          ${methodCell}
           <td><div class="row-actions">
             <button class="act-btn edit" onclick="editOther('${e.id}')">edit</button>
             <button class="act-btn danger" onclick="deleteOther('${e.id}')">delete</button>
@@ -1329,12 +1304,10 @@ function render() {
     <div class="metric purple" id="bal-bank-card">
       <div class="metric-label">In bank</div>
       <div class="metric-value" id="bal-bank-val">$${parseFloat(balances.bank).toFixed(2)}</div>
-      <button class="transfer-btn" onclick="openTransferModal('bank-to-cash')">⇄ Move to cash</button>
     </div>
     <div class="metric" id="bal-cash-card">
       <div class="metric-label">Cash on hand</div>
       <div class="metric-value" id="bal-cash-val" style="color:var(--amber)">$${parseFloat(balances.cash).toFixed(2)}</div>
-      <button class="transfer-btn" onclick="openTransferModal('cash-to-bank')">⇄ Move to bank</button>
     </div>
   `;
 
@@ -1392,43 +1365,6 @@ function payTithe() {
   if (tc>0) parts.push(`$${tc.toFixed(2)} from cash`);
   logHistory('add', `Tithe paid — $${total.toFixed(2)} (${parts.join(', ')})`, { job: null });
   save(); render(); toast(`Tithe of $${total.toFixed(2)} paid ✓`);
-}
-
-// ── Bank ⇄ Cash transfer ──────────────────────────────────
-let transferDirection = null;
-
-function openTransferModal(direction) {
-  transferDirection = direction;
-  const label = direction === 'bank-to-cash' ? 'Bank → Cash' : 'Cash → Bank';
-  document.getElementById('tr-direction').textContent = label;
-  document.getElementById('tr-amount').value = '';
-  document.getElementById('tr-note').value = '';
-  document.getElementById('transfer-modal').style.display = 'flex';
-  document.getElementById('tr-amount').focus();
-}
-
-function closeTransferModal() {
-  document.getElementById('transfer-modal').style.display = 'none';
-  transferDirection = null;
-}
-
-function confirmTransfer() {
-  const amount = parseFloat(document.getElementById('tr-amount').value);
-  if (isNaN(amount) || amount <= 0) { alert('Please enter a valid amount greater than 0.'); return; }
-  const fromMethod = transferDirection === 'bank-to-cash' ? 'bank' : 'cash';
-  const toMethod   = transferDirection === 'bank-to-cash' ? 'cash' : 'bank';
-  const available = fromMethod === 'bank' ? balances.bank : balances.cash;
-  if (amount > available + 0.001 && !confirm(`This is more than the $${available.toFixed(2)} currently showing in ${fromMethod}. Transfer anyway?`)) return;
-  const note = document.getElementById('tr-note').value.trim();
-  const today = new Date().toISOString().slice(0,10);
-  const desc = note || (fromMethod === 'bank' ? 'Transfer to cash' : 'Transfer to bank');
-  const entry = {id:'t'+Date.now(), desc, date: today, type:'transfer', amount, fromMethod, toMethod};
-  otherMoney.push(entry);
-  pendingOtherWrites.add(entry.id);
-  logHistory('other', `Transferred $${amount.toFixed(2)} — ${fromMethod} → ${toMethod}${note ? ' ('+note+')' : ''}`, { job: null });
-  save(); render();
-  closeTransferModal();
-  toast('Transfer complete ✓');
 }
 
 function unpayEvent(id) {
@@ -1819,33 +1755,58 @@ function addEvent() {
   toast('Event added ✓');
 }
 
-function toggleOmTithe() {
-  const wrap = document.getElementById('om-tithe-wrap');
-  wrap.style.display = document.getElementById('om-type').value === 'income' ? '' : 'none';
+function updateOmFields() {
+  const type = document.getElementById('om-type').value;
+  document.getElementById('om-tithe-wrap').style.display = type === 'income' ? '' : 'none';
+  const sel = document.getElementById('om-method');
+  const label = document.getElementById('om-method-label');
+  const desc = document.getElementById('om-desc');
+  if (type === 'transfer') {
+    sel.innerHTML = `<option value="bank-to-cash">Bank → Cash</option><option value="cash-to-bank">Cash → Bank</option>`;
+    label.textContent = 'Direction';
+    desc.placeholder = 'Optional note';
+  } else {
+    if (sel.options[0] && sel.options[0].value === 'bank-to-cash') {
+      sel.innerHTML = `<option value="bank">Bank</option><option value="cash">Cash</option>`;
+    }
+    label.textContent = 'Method';
+    desc.placeholder = 'e.g. Birthday money';
+  }
 }
 
 function addOtherMoney() {
-  const desc=document.getElementById('om-desc').value.trim();
-  const date=parseFlexibleDate(document.getElementById('om-date').value);
-  const type=document.getElementById('om-type').value;
-  const method=document.getElementById('om-method').value;
-  const amount=parseFloat(document.getElementById('om-amount').value);
-  const titheDeductible = type === 'income' ? document.getElementById('om-tithe').checked : false;
-  if (!desc) { alert('Please enter a description.'); return; }
+  const descRaw = document.getElementById('om-desc').value.trim();
+  const date    = parseFlexibleDate(document.getElementById('om-date').value);
+  const type    = document.getElementById('om-type').value;
+  const amount  = parseFloat(document.getElementById('om-amount').value);
   if (isNaN(amount) || amount <= 0) { alert('Please enter a valid amount greater than 0.'); return; }
-  const newEntry = {id:'o'+Date.now(),desc,date,type,amount,method,titheDeductible};
+
+  let newEntry, historyMsg;
+  if (type === 'transfer') {
+    const dir = document.getElementById('om-method').value;
+    const fromMethod = dir === 'bank-to-cash' ? 'bank' : 'cash';
+    const toMethod   = dir === 'bank-to-cash' ? 'cash' : 'bank';
+    const desc = descRaw || 'Transfer';
+    newEntry = {id:'o'+Date.now(), desc, date, type:'transfer', amount, fromMethod, toMethod};
+    historyMsg = `Transferred $${amount.toFixed(2)} — ${fromMethod} → ${toMethod}${descRaw ? ' ('+descRaw+')' : ''}`;
+  } else {
+    if (!descRaw) { alert('Please enter a description.'); return; }
+    const method = document.getElementById('om-method').value;
+    const titheDeductible = type === 'income' ? document.getElementById('om-tithe').checked : false;
+    newEntry = {id:'o'+Date.now(), desc:descRaw, date, type, amount, method, titheDeductible};
+    historyMsg = `Added ${type} — "${descRaw}" $${amount.toFixed(2)} on ${fmt(date)} (${method})`;
+  }
   otherMoney.push(newEntry);
   pendingOtherWrites.add(newEntry.id);
-  logHistory('other',`Added ${type} — "${desc}" $${amount.toFixed(2)} on ${fmt(date)} (${method})`, { job: null });
+  logHistory('other', historyMsg, { job: null });
   save(); render();
   document.getElementById('om-desc').value='';
   document.getElementById('om-date').value='';
   document.getElementById('om-amount').value='';
   document.getElementById('om-type').value='gift';
-  document.getElementById('om-method').value='bank';
+  updateOmFields();
   document.getElementById('om-tithe').checked=true;
-  toggleOmTithe();
-  toast('Entry added ✓');
+  toast(type==='transfer' ? 'Transfer added ✓' : 'Entry added ✓');
 }
 
 function deleteOther(id) {
@@ -1903,6 +1864,11 @@ function editOther(id) {
   const e = otherMoney.find(e=>e.id===id);
   const row = document.getElementById('orow-'+id);
   row.classList.add('edit-row');
+  const isTransfer = e.type === 'transfer';
+  const dirVal = isTransfer ? (e.fromMethod === 'bank' ? 'bank-to-cash' : 'cash-to-bank') : null;
+  const methodOptions = isTransfer
+    ? `<option value="bank-to-cash"${dirVal==='bank-to-cash'?' selected':''}>Bank → Cash</option><option value="cash-to-bank"${dirVal==='cash-to-bank'?' selected':''}>Cash → Bank</option>`
+    : `<option value="bank"${e.method!=='cash'?' selected':''}>Bank</option><option value="cash"${e.method==='cash'?' selected':''}>Cash</option>`;
   row.innerHTML = `
     <td><div class="date-field">
       <input id="eo-date-${id}" type="text" value="${isoToDisplay(e.date)}" placeholder="MM/DD/YYYY" />
@@ -1915,16 +1881,14 @@ function editOther(id) {
       <option value="gift"${e.type==='gift'?' selected':''}>Gift / birthday</option>
       <option value="income"${e.type==='income'?' selected':''}>Other income</option>
       <option value="expense"${e.type==='expense'?' selected':''}>Expense</option>
+      <option value="transfer"${isTransfer?' selected':''}>Transfer (bank ⇄ cash)</option>
     </select>
     <div id="eo-tithe-wrap-${id}" style="display:${e.type==='income'?'':'none'};margin-top:6px">
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:0;font-size:11px">
         <input type="checkbox" id="eo-tithe-${id}"${e.titheDeductible!==false?' checked':''} /> Tithe-deductible
       </label>
     </div></td>
-    <td><select id="eo-method-${id}">
-      <option value="bank"${e.method!=='cash'?' selected':''}>Bank</option>
-      <option value="cash"${e.method==='cash'?' selected':''}>Cash</option>
-    </select></td>
+    <td><select id="eo-method-${id}">${methodOptions}</select></td>
     <td><div class="row-actions">
       <button class="act-btn save" onclick="saveOther('${id}')">save</button>
       <button class="act-btn" onclick="render()">cancel</button>
@@ -1933,19 +1897,37 @@ function editOther(id) {
 
 function toggleEoTithe(id) {
   const wrap = document.getElementById('eo-tithe-wrap-'+id);
-  wrap.style.display = document.getElementById('eo-type-'+id).value === 'income' ? '' : 'none';
+  const type = document.getElementById('eo-type-'+id).value;
+  wrap.style.display = type === 'income' ? '' : 'none';
+  const sel = document.getElementById('eo-method-'+id);
+  if (type === 'transfer') {
+    sel.innerHTML = `<option value="bank-to-cash">Bank → Cash</option><option value="cash-to-bank">Cash → Bank</option>`;
+  } else if (sel.options[0] && sel.options[0].value === 'bank-to-cash') {
+    sel.innerHTML = `<option value="bank">Bank</option><option value="cash">Cash</option>`;
+  }
 }
 
 function saveOther(id) {
-  const date   = parseFlexibleDate(document.getElementById('eo-date-'+id).value);
-  const desc   = document.getElementById('eo-desc-'+id).value.trim();
-  const amount = parseFloat(document.getElementById('eo-amount-'+id).value);
-  const type   = document.getElementById('eo-type-'+id).value;
-  const method = document.getElementById('eo-method-'+id).value;
-  const titheDeductible = type === 'income' ? document.getElementById('eo-tithe-'+id).checked : false;
-  if (!desc || isNaN(amount) || amount < 0) { alert('All fields required.'); return; }
+  const date     = parseFlexibleDate(document.getElementById('eo-date-'+id).value);
+  const descRaw  = document.getElementById('eo-desc-'+id).value.trim();
+  const amount   = parseFloat(document.getElementById('eo-amount-'+id).value);
+  const type     = document.getElementById('eo-type-'+id).value;
+  const methodVal = document.getElementById('eo-method-'+id).value;
+  if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
   const old = otherMoney.find(e=>e.id===id);
-  otherMoney = otherMoney.map(e => e.id===id ? {...e, date, desc, amount, type, method, titheDeductible} : e);
+  let updated, desc;
+  if (type === 'transfer') {
+    const fromMethod = methodVal === 'bank-to-cash' ? 'bank' : 'cash';
+    const toMethod   = methodVal === 'bank-to-cash' ? 'cash' : 'bank';
+    desc = descRaw || 'Transfer';
+    updated = {...old, date, desc, amount, type, fromMethod, toMethod, method:null, titheDeductible:false};
+  } else {
+    if (!descRaw) { alert('Please enter a description.'); return; }
+    desc = descRaw;
+    const titheDeductible = type === 'income' ? document.getElementById('eo-tithe-'+id).checked : false;
+    updated = {...old, date, desc, amount, type, method:methodVal, titheDeductible, fromMethod:null, toMethod:null};
+  }
+  otherMoney = otherMoney.map(e => e.id===id ? updated : e);
   pendingOtherWrites.add(id);
   logHistory('other', `Edited entry — "${old.desc}" → "${desc}" $${amount.toFixed(2)}`, { job: null });
   save(); render(); toast('Entry updated ✓');
