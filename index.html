@@ -1178,7 +1178,7 @@ function jobOf(item) { return item.job || 'lawn_mowing'; }
 // A "pocket" is a named savings bucket linked to a wishlist item. Pocket
 // rules say "x% of every new event on job Y gets set aside into pocket Z" —
 // applied the moment an event is added (see addEvent / applyPocketRules).
-const POCKET_COLORS = ['#60A5FA','#C084FC','#F472B6','#34D399','#FBBF24','#FB923C','#22D3EE','#A78BFA'];
+const POCKET_COLORS = ['#00AAFF','#DD44FF','#FF2277','#00FF80','#FFCC00','#FF5500','#00DDFF','#AA44FF'];
 function getPocket(id) { return pockets.find(p => p.id === id); }
 function getWishlistItem(id) { return wishlist.find(w => w.id === id); }
 function getPocketColor(pocketId) {
