@@ -443,7 +443,7 @@ tr:hover td { background: var(--surface2); }
 .history-action { color: var(--text-muted); flex: 1; line-height: 1.5; }
 .history-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); white-space: nowrap; margin-top: 3px; }
 
-#history-body, #job-history-body { max-height: 340px; overflow-y: auto; }
+#history-body, #job-history-body, #it-history-body { max-height: 340px; overflow-y: auto; }
 
 .divider {
   height: 1px;
@@ -828,7 +828,106 @@ tr:hover td { background: var(--surface2); }
 
 </div>
 
-<div class="container" id="pockets-view" style="display:none">
+<div class="container" id="ca-it-view" style="display:none">
+
+  <div class="job-view-header">
+    <button class="pill-btn" onclick="closeCaIt()">← All jobs</button>
+    <div class="job-view-title">Collegedale Academy – IT</div>
+  </div>
+
+  <!-- Uncashed Checks (replaces Clients) -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        Uncashed Checks
+      </div>
+      <div class="header-actions">
+        <span id="it-uncashed-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
+      </div>
+    </div>
+    <div id="it-uncashed-wrap"><div class="empty-state">No uncashed checks.</div></div>
+  </section>
+
+  <!-- Paychecks / Add -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+        Paychecks
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn" style="color:#4ADE80;border-color:#0A3D1A;background:#052E16" onclick="toggleForm('it-check-form')">+ Add paycheck</button>
+      </div>
+    </div>
+    <div class="add-form" id="it-check-form">
+      <div class="form-grid">
+        <div><label>Pay Period Start</label>
+          <div class="date-field">
+            <input type="text" id="it-start" placeholder="MM/DD/YYYY" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('it-start')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="it-start-picker" class="date-picker-hidden" onchange="applyDatePicker('it-start')" tabindex="-1" />
+          </div>
+        </div>
+        <div><label>Pay Period End</label>
+          <div class="date-field">
+            <input type="text" id="it-end" placeholder="MM/DD/YYYY" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('it-end')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="it-end-picker" class="date-picker-hidden" onchange="applyDatePicker('it-end')" tabindex="-1" />
+          </div>
+        </div>
+        <div><label>Amount ($)</label><input type="number" id="it-amount" min="0" step="0.01" placeholder="0.00" /></div>
+        <div><label>Status</label>
+          <select id="it-status">
+            <option value="uncashed">Not Cashed</option>
+            <option value="cashed">Cashed</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);cursor:pointer;margin-right:auto">
+          <input type="checkbox" id="it-tithe" style="accent-color:var(--accent)"> Tithe deductible
+        </label>
+        <button class="btn btn-primary" onclick="addItCheck()">Add paycheck</button>
+        <button class="btn btn-ghost" onclick="toggleForm('it-check-form')">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cashed Checks -->
+  <section>
+    <div class="section-header" onclick="toggleSection('it-cashed-body')">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Cashed Checks
+      </div>
+      <div class="header-actions">
+        <span id="it-cashed-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
+        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearCashedChecks()">Clear all</button>
+      </div>
+    </div>
+    <div id="it-cashed-body" style="display:none">
+      <div id="it-cashed-wrap"><div class="empty-state">No cashed checks yet.</div></div>
+    </div>
+  </section>
+
+  <!-- IT History -->
+  <section>
+    <div class="section-header" onclick="toggleSection('it-history-body')">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        History
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearJobHistory('ca_it')">Clear</button>
+      </div>
+    </div>
+    <div id="it-history-body">
+      <div id="it-history-wrap"><div class="empty-state">No history yet.</div></div>
+    </div>
+  </section>
+
+</div>
 
   <div class="job-view-header">
     <button class="pill-btn" onclick="closePockets()">← Back</button>
@@ -1167,7 +1266,8 @@ let balances   = { bank: 0, cash: 0 };
 // Add more jobs here later — each gets its own square button on the main
 // page and its own scoped Clients / Events / Paid Events / History.
 const JOBS = [
-  { id: 'lawn_mowing', label: 'Lawn Mowing', icon: '<svg viewBox="0 0 24 24"><path d="M9 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M19 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M3 17V8l6-4 6 4h3a3 3 0 013 3v6"/><path d="M9 4v9"/></svg>' }
+  { id: 'lawn_mowing', label: 'Lawn Mowing', icon: '<svg viewBox="0 0 24 24"><path d="M9 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M19 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M3 17V8l6-4 6 4h3a3 3 0 013 3v6"/><path d="M9 4v9"/></svg>' },
+  { id: 'ca_it', label: 'CA – IT', icon: '<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8M12 17v4"/></svg>' }
 ];
 function getJob(id) { return JOBS.find(j => j.id === id); }
 // Items created before jobs existed have no .job field — they were all
@@ -1234,6 +1334,7 @@ function reversePocketAllocations(j, reason) {
 let currentJobId = null; // null = on the main page; otherwise the open job's id
 
 function openJob(id) {
+  if (id === 'ca_it') { openCaIt(); return; }
   currentJobId = id;
   document.getElementById('job-view-title').textContent = getJob(id).label;
   document.getElementById('main-view').style.display = 'none';
@@ -1248,6 +1349,22 @@ function closeJob() {
   currentJobId = null;
   document.getElementById('job-view').style.display = 'none';
   document.getElementById('main-view').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function openCaIt() {
+  currentJobId = 'ca_it';
+  document.getElementById('main-view').style.display = 'none';
+  document.getElementById('ca-it-view').style.display = 'block';
+  renderItChecks();
+  window.scrollTo(0, 0);
+}
+
+function closeCaIt() {
+  currentJobId = null;
+  document.getElementById('ca-it-view').style.display = 'none';
+  document.getElementById('main-view').style.display = 'block';
+  render();
   window.scrollTo(0, 0);
 }
 
@@ -1271,12 +1388,19 @@ function renderJobsGrid() {
   const grid = document.getElementById('jobs-grid');
   if (!grid) return;
   grid.innerHTML = JOBS.map(job => {
-    const openCount = lawnEvents.filter(j => jobOf(j) === job.id && j.status !== 'paid').length;
+    const openCount = job.id === 'ca_it'
+      ? lawnEvents.filter(j => jobOf(j) === job.id && j.status === 'uncashed').length
+      : lawnEvents.filter(j => jobOf(j) === job.id && j.status !== 'paid').length;
+    const subLabel = openCount > 0
+      ? (job.id === 'ca_it'
+          ? openCount + ' uncashed check' + (openCount > 1 ? 's' : '')
+          : openCount + ' open event' + (openCount > 1 ? 's' : ''))
+      : (job.id === 'ca_it' ? 'All clear' : 'All settled');
     return `
       <button class="job-btn" onclick="openJob('${job.id}')">
         <div class="job-btn-icon">${job.icon}</div>
         <div class="job-btn-label">${job.label}</div>
-        <div class="job-btn-sub">${openCount > 0 ? openCount + ' open event' + (openCount > 1 ? 's' : '') : 'All settled'}</div>
+        <div class="job-btn-sub">${subLabel}</div>
       </button>`;
   }).join('');
 }
@@ -1320,6 +1444,7 @@ function getRate(name) { const c = clients.find(c => c.name===name); return c ? 
 function eventAmount(j) { return j.amount !== undefined ? j.amount : getRate(j.client); }
 
 function fmt(d) { const [y,m,dy] = d.split('-'); return `${parseInt(m)}/${parseInt(dy)}/${y.slice(2)}`; }
+function itCheckLabel(j) { return `${fmt(j.dateStart)} – ${fmt(j.dateEnd)}`; }
 
 function todayISO() { return new Date().toISOString().slice(0,10); }
 
@@ -1386,6 +1511,10 @@ function logHistory(type, message, extra = {}) {
 function computeBalances() {
   let bank = 0, cash = 0;
   lawnEvents.forEach(j => {
+    if (j.job === 'ca_it') {
+      if (j.status === 'cashed') bank += eventAmount(j);
+      return;
+    }
     if (j.status !== 'paid' || !j.paymentMethod) return;
     const amt = eventAmount(j);
     if (j.paymentMethod === 'bank') bank += amt;
@@ -1415,6 +1544,8 @@ function computeTithe() {
   // Gift/birthday and expense entries are never eligible regardless.
   const bank = Math.round((
     lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && !j.tithePaid)
+            .reduce((s, j) => s + eventAmount(j), 0) +
+    lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'cashed' && j.titheDeductible && !j.tithePaid)
             .reduce((s, j) => s + eventAmount(j), 0) +
     otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method !== 'cash' && !e.tithePaid)
               .reduce((s, e) => s + parseFloat(e.amount), 0)
@@ -1592,18 +1723,21 @@ function render() {
   const unpaid   = lawnEvents.filter(j=>j.status==='unpaid').reduce((s,j)=>s+eventAmount(j),0);
   const check    = lawnEvents.filter(j=>j.status==='check').reduce((s,j)=>s+eventAmount(j),0);
   const paidJobs = lawnEvents.filter(j=>j.status==='paid').reduce((s,j)=>s+eventAmount(j),0);
+  const itUncashed = lawnEvents.filter(j=>j.status==='uncashed').reduce((s,j)=>s+eventAmount(j),0);
+  const itCashed   = lawnEvents.filter(j=>j.status==='cashed').reduce((s,j)=>s+eventAmount(j),0);
   const income   = otherMoney.filter(e=>e.type!=='expense' && e.type!=='transfer').reduce((s,e)=>s+parseFloat(e.amount),0);
   const expenses = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
   const tithe     = computeTithe();
   const titheOwed = tithe.total;
-  const netCash  = paidJobs + income - expenses - titheOwed;
+  const netCash  = paidJobs + itCashed + income - expenses - titheOwed;
   balances = computeBalances();
   lastNetCash = Math.round(netCash * 100) / 100;
 
+  const owedParts = [unpaid>0?'$'+unpaid.toFixed(2)+' unpaid':'', check>0?'$'+check.toFixed(2)+' by check':'', itUncashed>0?'$'+itUncashed.toFixed(2)+' uncashed':''].filter(Boolean);
   document.getElementById('summary').innerHTML = `
-    <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${netCash.toFixed(2)}</div><div class="metric-sub">paid + income − expenses − tithe</div></div>
-    <div class="metric amber"><div class="metric-label">Owed to you</div><div class="metric-value">$${unpaid+check}</div><div class="metric-sub">${unpaid>0?'$'+unpaid+' unpaid':''}${unpaid>0&&check>0?' · ':''}${check>0?'$'+check+' by check':''}</div></div>
-    <div class="metric blue"><div class="metric-label">Total earned</div><div class="metric-value">$${(paidJobs+income).toFixed(2)}</div><div class="metric-sub">events + other income</div></div>
+    <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${netCash.toFixed(2)}</div><div class="metric-sub">paid + payroll + income − expenses − tithe</div></div>
+    <div class="metric amber"><div class="metric-label">Owed to you</div><div class="metric-value">$${(unpaid+check+itUncashed).toFixed(2)}</div><div class="metric-sub">${owedParts.join(' · ') || '&nbsp;'}</div></div>
+    <div class="metric blue"><div class="metric-label">Total earned</div><div class="metric-value">$${(paidJobs+itCashed+income).toFixed(2)}</div><div class="metric-sub">events + payroll + other income</div></div>
     <div class="metric red"><div class="metric-label">Expenses</div><div class="metric-value">$${expenses.toFixed(2)}</div><div class="metric-sub">&nbsp;</div></div>
     <div class="metric tithe${titheOwed>0?' tithe-active':''}">
       <div class="metric-label">Tithe owed</div>
@@ -1627,6 +1761,7 @@ renderPaidEvents();
 renderWishlist();
 renderFundsDistribution();
 if (pocketsOpen) renderPocketsPage();
+if (currentJobId === 'ca_it') renderItChecks();
 renderAllHistory();
 }
 
@@ -1653,6 +1788,7 @@ function payTithe() {
   const affectedIds = [];
   lawnEvents = lawnEvents.map(j => {
     if (j.status === 'paid' && !j.tithePaid) { affectedIds.push(j.id); return {...j, tithePaid: true}; }
+    if (j.job === 'ca_it' && j.status === 'cashed' && j.titheDeductible && !j.tithePaid) { affectedIds.push(j.id); return {...j, tithePaid: true}; }
     return j;
   });
   affectedIds.forEach(id => pendingEventWrites.add(id));
@@ -1762,7 +1898,8 @@ function renderJobHistory() {
 // history modal in sync with whatever it's currently showing.
 function renderAllHistory() {
   renderHistory();
-  if (currentJobId) renderJobHistory();
+  if (currentJobId && currentJobId !== 'ca_it') renderJobHistory();
+  if (currentJobId === 'ca_it') renderItHistory();
   const modal = document.getElementById('full-history-modal');
   if (modal && modal.style.display !== 'none') showFullHistory(fullHistoryPage);
 }
@@ -2095,6 +2232,196 @@ function addEvent() {
   document.getElementById('le-date').value = '';
   prefillEventAmount();
   toast('Event added ✓');
+}
+
+// ── Collegedale Academy IT ────────────────────────────────────────────────────
+
+function itStatusBadge(s) {
+  return s === 'cashed'
+    ? '<span class="badge badge-paid">Cashed</span>'
+    : '<span class="badge badge-unpaid">Not Cashed</span>';
+}
+
+function renderItChecks() {
+  renderItUncashedChecks();
+  renderItCashedChecks();
+  renderItHistory();
+}
+
+function renderItUncashedChecks() {
+  const uncashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'uncashed')
+    .sort((a, b) => b.dateEnd.localeCompare(a.dateEnd));
+  const total = uncashed.reduce((s, j) => s + eventAmount(j), 0);
+  const summary = document.getElementById('it-uncashed-summary');
+  if (summary) summary.textContent = uncashed.length ? `${uncashed.length} check${uncashed.length > 1 ? 's' : ''} · $${total.toFixed(2)}` : '';
+  const wrap = document.getElementById('it-uncashed-wrap');
+  if (!wrap) return;
+  if (!uncashed.length) { wrap.innerHTML = '<div class="empty-state">No uncashed checks.</div>'; return; }
+  wrap.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Pay Period</th><th>Amount</th><th>Tithe</th><th></th></tr></thead>
+    <tbody>${uncashed.map(j => `
+      <tr id="it-row-${j.id}">
+        <td class="mono">${itCheckLabel(j)}</td>
+        <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}</td>
+        <td class="mono" style="font-size:11px;color:var(--text-faint)">${j.titheDeductible ? '✓ tithe' : '—'}</td>
+        <td><div class="row-actions">
+          <button class="act-btn edit" onclick="editItCheck('${j.id}')">edit</button>
+          <button class="act-btn success" onclick="markCheckCashed('${j.id}')">mark cashed</button>
+          <button class="act-btn danger" onclick="deleteItCheck('${j.id}')">delete</button>
+        </div></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function renderItCashedChecks() {
+  const cashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'cashed')
+    .sort((a, b) => b.dateEnd.localeCompare(a.dateEnd));
+  const total = cashed.reduce((s, j) => s + eventAmount(j), 0);
+  const summary = document.getElementById('it-cashed-summary');
+  if (summary) summary.textContent = cashed.length ? `${cashed.length} check${cashed.length > 1 ? 's' : ''} · $${total.toFixed(2)}` : '';
+  const wrap = document.getElementById('it-cashed-wrap');
+  if (!wrap) return;
+  if (!cashed.length) { wrap.innerHTML = '<div class="empty-state">No cashed checks yet.</div>'; return; }
+  wrap.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Pay Period</th><th>Amount</th><th>Tithe</th><th></th></tr></thead>
+    <tbody>${cashed.map(j => `
+      <tr>
+        <td class="mono">${itCheckLabel(j)}</td>
+        <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}</td>
+        <td class="mono" style="font-size:11px;color:var(--text-faint)">${j.titheDeductible ? '✓ tithe' : '—'}</td>
+        <td><div class="row-actions">
+          <button class="act-btn" style="color:#4ADE80;border-color:#0A3D1A" onclick="uncashCheck('${j.id}')">undo</button>
+          <button class="act-btn danger" onclick="deleteItCheck('${j.id}')">delete</button>
+        </div></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function renderItHistory() {
+  const wrap = document.getElementById('it-history-wrap');
+  if (!wrap) return;
+  const filtered = historyLog.filter(h => getEntryJob(h) === 'ca_it');
+  if (!filtered.length) {
+    wrap.innerHTML = allHistoryLoaded
+      ? '<div class="empty-state">No history yet.</div>'
+      : '<div class="empty-state" style="cursor:pointer" onclick="loadMoreHistory()">Loading history…</div>';
+    return;
+  }
+  wrap.innerHTML = filtered.slice(0, 30).map(historyEntryHTML).join('');
+  const extras = [];
+  if (filtered.length > 30) extras.push(`<button class="pill-btn" onclick="showFullHistory(1,'ca_it')">Full history — ${filtered.length}${allHistoryLoaded ? '' : '+'} entries</button>`);
+  if (!allHistoryLoaded) extras.push(`<button class="pill-btn" onclick="loadMoreHistory()">Load more…</button>`);
+  if (extras.length) wrap.innerHTML += `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center;display:flex;gap:8px;justify-content:center">${extras.join('')}</div>`;
+}
+
+function addItCheck() {
+  const dateStart = parseFlexibleDate(document.getElementById('it-start').value);
+  const dateEnd   = parseFlexibleDate(document.getElementById('it-end').value);
+  const amount    = parseFloat(document.getElementById('it-amount').value);
+  const status    = document.getElementById('it-status').value;
+  const titheDeductible = document.getElementById('it-tithe').checked;
+  if (!dateStart || !dateEnd) { alert('Enter a valid pay period.'); return; }
+  if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
+  const newCheck = { id: 'it' + Date.now(), job: 'ca_it', dateStart, dateEnd, amount, status, titheDeductible };
+  lawnEvents.push(newCheck);
+  pendingEventWrites.add(newCheck.id);
+  logHistory('add', `Added paycheck — ${itCheckLabel(newCheck)} ($${amount.toFixed(2)}, ${status === 'cashed' ? 'cashed' : 'not cashed'}${titheDeductible ? ', tithe' : ''})`, { job: 'ca_it' });
+  document.getElementById('it-start').value  = '';
+  document.getElementById('it-end').value    = '';
+  document.getElementById('it-amount').value = '';
+  document.getElementById('it-status').value = 'uncashed';
+  document.getElementById('it-tithe').checked = false;
+  document.getElementById('it-check-form').classList.remove('open');
+  save(); render(); renderJobsGrid(); toast('Paycheck added ✓');
+}
+
+function markCheckCashed(id) {
+  const j = lawnEvents.find(j => j.id === id);
+  if (!j) return;
+  const prev = j.status;
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed' } : jb);
+  pendingEventWrites.add(id);
+  logHistory('paid', `Marked paycheck cashed — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { jobId: id, prevStatus: prev, job: 'ca_it' });
+  save(); render(); renderJobsGrid(); toast('Check marked as cashed ✓');
+}
+
+function uncashCheck(id) {
+  const j = lawnEvents.find(j => j.id === id);
+  if (!j) return;
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', tithePaid: false } : jb);
+  pendingEventWrites.add(id);
+  logHistory('add', `Reversed cashed — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { job: 'ca_it' });
+  save(); render(); renderJobsGrid(); toast('Check moved back to uncashed');
+}
+
+function deleteItCheck(id) {
+  if (!confirm('Delete this paycheck?')) return;
+  const j = lawnEvents.find(j => j.id === id);
+  lawnEvents = lawnEvents.filter(jb => jb.id !== id);
+  pendingEventDeletes.add(id); pendingEventWrites.delete(id);
+  logHistory('delete', `Deleted paycheck — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { job: 'ca_it' });
+  save(); render(); renderJobsGrid(); toast('Paycheck deleted');
+}
+
+function clearCashedChecks() {
+  const toDelete = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'cashed');
+  if (!toDelete.length) return;
+  if (!confirm(`Delete all ${toDelete.length} cashed check${toDelete.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
+  const ids = toDelete.map(j => j.id);
+  lawnEvents = lawnEvents.filter(j => !ids.includes(j.id));
+  ids.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
+  logHistory('delete', `Cleared ${ids.length} cashed check${ids.length > 1 ? 's' : ''}`, { job: 'ca_it' });
+  save(); render(); renderJobsGrid(); toast(`${ids.length} cashed check${ids.length > 1 ? 's' : ''} cleared`);
+}
+
+function editItCheck(id) {
+  const j = lawnEvents.find(j => j.id === id);
+  const row = document.getElementById('it-row-' + id);
+  if (!row) return;
+  row.classList.add('edit-row');
+  const cal = `<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+  row.innerHTML = `
+    <td colspan="2"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <div class="date-field">
+        <input id="ite-start-${id}" type="text" value="${isoToDisplay(j.dateStart)}" placeholder="MM/DD/YYYY" style="width:100px" />
+        <button type="button" class="date-pick-btn" onclick="openDatePicker('ite-start-${id}')" aria-label="Pick start">${cal}</button>
+        <input type="date" id="ite-start-${id}-picker" class="date-picker-hidden" onchange="applyDatePicker('ite-start-${id}')" tabindex="-1" />
+      </div>
+      <span style="color:var(--text-faint)">–</span>
+      <div class="date-field">
+        <input id="ite-end-${id}" type="text" value="${isoToDisplay(j.dateEnd)}" placeholder="MM/DD/YYYY" style="width:100px" />
+        <button type="button" class="date-pick-btn" onclick="openDatePicker('ite-end-${id}')" aria-label="Pick end">${cal}</button>
+        <input type="date" id="ite-end-${id}-picker" class="date-picker-hidden" onchange="applyDatePicker('ite-end-${id}')" tabindex="-1" />
+      </div>
+    </div></td>
+    <td><input id="ite-amount-${id}" type="number" value="${eventAmount(j)}" min="0" step="0.01" style="width:90px" /></td>
+    <td>
+      <select id="ite-status-${id}">
+        <option value="uncashed"${j.status === 'uncashed' ? ' selected' : ''}>Not Cashed</option>
+        <option value="cashed"${j.status === 'cashed' ? ' selected' : ''}>Cashed</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);margin-top:4px;cursor:pointer">
+        <input type="checkbox" id="ite-tithe-${id}"${j.titheDeductible ? ' checked' : ''} style="accent-color:var(--accent)"> Tithe
+      </label>
+      <div class="row-actions" style="margin-top:6px">
+        <button class="act-btn save" onclick="saveItCheck('${id}')">save</button>
+        <button class="act-btn" onclick="renderItChecks()">cancel</button>
+      </div>
+    </td>`;
+}
+
+function saveItCheck(id) {
+  const dateStart = parseFlexibleDate(document.getElementById('ite-start-' + id).value);
+  const dateEnd   = parseFlexibleDate(document.getElementById('ite-end-' + id).value);
+  const amount    = parseFloat(document.getElementById('ite-amount-' + id).value);
+  const status    = document.getElementById('ite-status-' + id).value;
+  const titheDeductible = document.getElementById('ite-tithe-' + id).checked;
+  if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
+  const old = lawnEvents.find(j => j.id === id);
+  lawnEvents = lawnEvents.map(j => j.id === id ? { ...j, dateStart, dateEnd, amount, status, titheDeductible } : j);
+  pendingEventWrites.add(id);
+  logHistory('add', `Edited paycheck — ${itCheckLabel(old)} → ${fmt(dateStart)}–${fmt(dateEnd)}, $${amount.toFixed(2)}, ${status}`, { job: 'ca_it' });
+  save(); render(); renderJobsGrid(); toast('Paycheck updated ✓');
 }
 
 function updateOmFields() {
