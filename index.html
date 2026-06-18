@@ -435,7 +435,7 @@ tr:hover td { background: var(--surface2); }
 .history-action { color: var(--text-muted); flex: 1; line-height: 1.5; }
 .history-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); white-space: nowrap; margin-top: 3px; }
 
-#history-body { max-height: 340px; overflow-y: auto; }
+#history-body, #job-history-body { max-height: 340px; overflow-y: auto; }
 
 .divider {
   height: 1px;
@@ -488,6 +488,25 @@ tr:hover td { background: var(--surface2); }
 .btn-signout:hover { color:var(--red); }
 #auth-loading { font-size:12px; color:var(--text-muted); font-family:'JetBrains Mono',monospace; }
 .sync-dot { width:6px; height:6px; border-radius:50%; background:#4ADE80; display:inline-block; margin-right:5px; }
+
+/* Jobs grid */
+.jobs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; padding:1.25rem; }
+.job-btn {
+  aspect-ratio: 1;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+  background:var(--surface2); border:1px solid var(--border-mid); border-radius:var(--radius);
+  cursor:pointer; transition:border-color 0.15s, background 0.15s, transform 0.1s;
+  color:var(--text); font-family:'Inter',sans-serif; padding:1rem;
+}
+.job-btn:hover { border-color:var(--accent); background:var(--surface3); }
+.job-btn:active { transform:scale(0.98); }
+.job-btn-icon svg { width:34px; height:34px; stroke:var(--accent); fill:none; stroke-width:1.7; }
+.job-btn-label { font-family:'Syne',sans-serif; font-size:14px; font-weight:600; letter-spacing:-0.01em; text-align:center; }
+.job-btn-sub { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-faint); text-align:center; }
+
+/* Job detail view */
+.job-view-header { display:flex; align-items:center; gap:14px; margin-bottom:1.25rem; }
+.job-view-title { font-family:'Syne',sans-serif; font-size:1.3rem; font-weight:600; color:var(--text); letter-spacing:-0.01em; }
 </style>
 </head>
 <body>
@@ -501,9 +520,94 @@ tr:hover td { background: var(--surface2); }
   </div>
 </header>
 
-<div class="container">
+<div class="container" id="main-view">
 
   <div class="summary-grid" id="summary"></div>
+
+  <!-- Jobs -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Jobs
+      </div>
+    </div>
+    <div class="jobs-grid" id="jobs-grid"></div>
+  </section>
+
+  <!-- Income & Expenses -->
+  <section>
+    <div class="section-header" onclick="toggleForm('other-form', this)">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Income &amp; Expenses
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn" tabindex="-1">+ Add entry</button>
+      </div>
+    </div>
+    <div class="add-form" id="other-form">
+      <div class="form-grid">
+        <div><label>Description</label><input type="text" id="om-desc" placeholder="e.g. Birthday money" /></div>
+        <div><label>Date</label>
+          <div class="date-field">
+            <input type="text" id="om-date" placeholder="MM/DD/YYYY — blank = today" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('om-date')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="om-date-picker" class="date-picker-hidden" onchange="applyDatePicker('om-date')" tabindex="-1" />
+          </div>
+        </div>
+        <div><label>Category</label>
+          <select id="om-type" onchange="toggleOmTithe()">
+            <option value="gift">Gift / birthday</option>
+            <option value="income">Other income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+        <div><label>Method</label>
+          <select id="om-method">
+            <option value="bank">Bank</option>
+            <option value="cash">Cash</option>
+          </select>
+        </div>
+        <div><label>Amount ($)</label><input type="number" id="om-amount" placeholder="0.00" min="0" step="0.01" /></div>
+        <div id="om-tithe-wrap" style="display:none;align-self:end">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:0">
+            <input type="checkbox" id="om-tithe" checked /> Tithe-deductible
+          </label>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addOtherMoney()">Add entry</button>
+        <button class="btn btn-ghost" onclick="toggleForm('other-form')">Cancel</button>
+      </div>
+    </div>
+    <div id="other-wrap"><div class="empty-state">No entries yet.</div></div>
+  </section>
+
+  <!-- History -->
+  <section>
+    <div class="section-header" onclick="toggleSection('history-body')">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        History
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearHistory()">Clear</button>
+      </div>
+    </div>
+    <div id="history-body">
+      <div id="history-wrap"><div class="empty-state">No history yet.</div></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="container" id="job-view" style="display:none">
+
+  <div class="job-view-header">
+    <button class="pill-btn" onclick="closeJob()">← All jobs</button>
+    <div class="job-view-title" id="job-view-title"></div>
+  </div>
 
   <!-- Clients -->
   <section>
@@ -589,68 +693,19 @@ tr:hover td { background: var(--surface2); }
     </div>
   </section>
 
-  <!-- Income & Expenses -->
+  <!-- Job History -->
   <section>
-    <div class="section-header" onclick="toggleForm('other-form', this)">
-      <div class="section-title">
-        <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
-        Income &amp; Expenses
-      </div>
-      <div class="header-actions">
-        <button class="pill-btn" tabindex="-1">+ Add entry</button>
-      </div>
-    </div>
-    <div class="add-form" id="other-form">
-      <div class="form-grid">
-        <div><label>Description</label><input type="text" id="om-desc" placeholder="e.g. Birthday money" /></div>
-        <div><label>Date</label>
-          <div class="date-field">
-            <input type="text" id="om-date" placeholder="MM/DD/YYYY — blank = today" />
-            <button type="button" class="date-pick-btn" onclick="openDatePicker('om-date')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
-            <input type="date" id="om-date-picker" class="date-picker-hidden" onchange="applyDatePicker('om-date')" tabindex="-1" />
-          </div>
-        </div>
-        <div><label>Category</label>
-          <select id="om-type" onchange="toggleOmTithe()">
-            <option value="gift">Gift / birthday</option>
-            <option value="income">Other income</option>
-            <option value="expense">Expense</option>
-          </select>
-        </div>
-        <div><label>Method</label>
-          <select id="om-method">
-            <option value="bank">Bank</option>
-            <option value="cash">Cash</option>
-          </select>
-        </div>
-        <div><label>Amount ($)</label><input type="number" id="om-amount" placeholder="0.00" min="0" step="0.01" /></div>
-        <div id="om-tithe-wrap" style="display:none;align-self:end">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:0">
-            <input type="checkbox" id="om-tithe" checked /> Tithe-deductible
-          </label>
-        </div>
-      </div>
-      <div class="form-actions">
-        <button class="btn btn-primary" onclick="addOtherMoney()">Add entry</button>
-        <button class="btn btn-ghost" onclick="toggleForm('other-form')">Cancel</button>
-      </div>
-    </div>
-    <div id="other-wrap"><div class="empty-state">No entries yet.</div></div>
-  </section>
-
-  <!-- History -->
-  <section>
-    <div class="section-header" onclick="toggleSection('history-body')">
+    <div class="section-header" onclick="toggleSection('job-history-body')">
       <div class="section-title">
         <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         History
       </div>
       <div class="header-actions">
-        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearHistory()">Clear</button>
+        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearJobHistory(currentJobId)">Clear</button>
       </div>
     </div>
-    <div id="history-body">
-      <div id="history-wrap"><div class="empty-state">No history yet.</div></div>
+    <div id="job-history-body">
+      <div id="job-history-wrap"><div class="empty-state">No history yet.</div></div>
     </div>
   </section>
 
@@ -664,7 +719,7 @@ tr:hover td { background: var(--surface2); }
 <div id="full-history-modal" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.88);backdrop-filter:blur(4px);z-index:9998;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;">
   <div style="background:var(--surface);border:1px solid var(--border-mid);border-radius:var(--radius);width:100%;max-width:860px;display:flex;flex-direction:column;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:0.9rem 1.25rem;border-bottom:1px solid var(--border);background:var(--surface2);">
-      <div style="font-family:'Syne',sans-serif;font-size:12px;font-weight:500;letter-spacing:0.06em;color:var(--text-muted);text-transform:uppercase">Full History</div>
+      <div id="fh-title" style="font-family:'Syne',sans-serif;font-size:12px;font-weight:500;letter-spacing:0.06em;color:var(--text-muted);text-transform:uppercase">Full History</div>
       <button class="pill-btn" onclick="closeFullHistory()">✕ Close</button>
     </div>
     <div id="fh-entries" style="max-height:70vh;overflow-y:auto;"></div>
@@ -783,7 +838,7 @@ async function loadMoreHistory() {
     snap.docs.forEach(d => historyLog.push(d.data()));
     historyLog.sort((a, b) => b.ts.localeCompare(a.ts));
   }
-  renderHistory();
+  renderAllHistory();
 }
 
 async function saveToFirestore() {
@@ -875,6 +930,66 @@ let lawnEvents   = [];
 let otherMoney = [];
 let historyLog = [];          // in-memory loaded entries
 let balances   = { bank: 0, cash: 0 };
+
+// ── Jobs ──────────────────────────────────────────────────
+// Add more jobs here later — each gets its own square button on the main
+// page and its own scoped Clients / Events / Paid Events / History.
+const JOBS = [
+  { id: 'lawn_mowing', label: 'Lawn Mowing', icon: '<svg viewBox="0 0 24 24"><path d="M9 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M19 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M3 17V8l6-4 6 4h3a3 3 0 013 3v6"/><path d="M9 4v9"/></svg>' }
+];
+function getJob(id) { return JOBS.find(j => j.id === id); }
+// Items created before jobs existed have no .job field — they were all
+// lawn mowing, so that's the safe default rather than losing them.
+function jobOf(item) { return item.job || 'lawn_mowing'; }
+
+let currentJobId = null; // null = on the main page; otherwise the open job's id
+
+function openJob(id) {
+  currentJobId = id;
+  document.getElementById('job-view-title').textContent = getJob(id).label;
+  document.getElementById('main-view').style.display = 'none';
+  document.getElementById('job-view').style.display = 'block';
+  renderClients();
+  renderPaidEvents();
+  renderJobHistory();
+  window.scrollTo(0, 0);
+}
+
+function closeJob() {
+  currentJobId = null;
+  document.getElementById('job-view').style.display = 'none';
+  document.getElementById('main-view').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function renderJobsGrid() {
+  const grid = document.getElementById('jobs-grid');
+  if (!grid) return;
+  grid.innerHTML = JOBS.map(job => {
+    const openCount = lawnEvents.filter(j => jobOf(j) === job.id && j.status !== 'paid').length;
+    return `
+      <button class="job-btn" onclick="openJob('${job.id}')">
+        <div class="job-btn-icon">${job.icon}</div>
+        <div class="job-btn-label">${job.label}</div>
+        <div class="job-btn-sub">${openCount > 0 ? openCount + ' open event' + (openCount > 1 ? 's' : '') : 'All settled'}</div>
+      </button>`;
+  }).join('');
+}
+
+// Figures out which job a history entry belongs to. New entries carry an
+// explicit .job (a job id, or null for global entries like income/expenses
+// and tithe payments). Entries logged before this existed don't have the
+// field, so we infer it from their type/message — accurately, since the
+// underlying actions (addEvent, addClient, etc.) only ever happened in one
+// of these two buckets.
+function getEntryJob(h) {
+  if (h.job !== undefined) return h.job;
+  if (h.type === 'client' || h.type === 'paid') return 'lawn_mowing';
+  if (h.type === 'other') return null;
+  if (h.type === 'add') return h.message && h.message.startsWith('Tithe paid') ? null : 'lawn_mowing';
+  if (h.type === 'delete') return h.message && h.message.startsWith('Deleted entry') ? null : 'lawn_mowing';
+  return null;
+}
 
 let pendingHistoryEntries = []; // new entries not yet written to Firestore
 let lastHistoryDoc        = null;  // Firestore pagination cursor
@@ -1003,16 +1118,20 @@ function statusBadge(s) {
 
 function refreshClientDropdown() {
   const sel = document.getElementById('le-client');
-  sel.innerHTML = clients.map(c => `<option value="${c.name}">${c.name}${c.note?' ('+c.note+')':''} — $${c.rate}</option>`).join('');
+  if (!sel) return;
+  const jobClients = clients.filter(c => jobOf(c) === currentJobId);
+  sel.innerHTML = jobClients.map(c => `<option value="${c.name}">${c.name}${c.note?' ('+c.note+')':''} — $${c.rate}</option>`).join('');
   prefillEventAmount();
 }
 
 function renderClients() {
   const wrap = document.getElementById('clients-wrap');
-  if (!clients.length) { wrap.innerHTML = '<div class="empty-state">No clients yet.</div>'; refreshClientDropdown(); return; }
+  if (!currentJobId) return;
+  const jobClients = clients.filter(c => jobOf(c) === currentJobId);
+  if (!jobClients.length) { wrap.innerHTML = '<div class="empty-state">No clients yet.</div>'; refreshClientDropdown(); return; }
 
-  wrap.innerHTML = clients.map(c => {
-    const clientJobs = lawnEvents.filter(j => j.client === c.name && j.status !== 'paid')
+  wrap.innerHTML = jobClients.map(c => {
+    const clientJobs = lawnEvents.filter(j => j.client === c.name && jobOf(j) === currentJobId && j.status !== 'paid')
       .sort((a,b) => b.date.localeCompare(a.date));
     const jobCount = clientJobs.length;
     const owed = clientJobs.reduce((s,j) => s + eventAmount(j), 0);
@@ -1109,7 +1228,7 @@ function saveClient(id) {
   if ((old.note||'') !== note) changes.push(`note: "${old.note||''}" → "${note}"`);
   if (old.rate !== rate) changes.push(`rate: $${old.rate} → $${rate}/event`);
   const changeStr = changes.length ? changes.join(', ') : 'no changes';
-  logHistory('client', `Edited client — ${name} (${changeStr})`);
+  logHistory('client', `Edited client — ${name} (${changeStr})`, { job: currentJobId });
   save(); render(); toast('Client updated ✓');
 }
 
@@ -1119,7 +1238,8 @@ function reopenPanel(clientName) {
 }
 
 function render() {
-  renderClients();
+  renderJobsGrid();
+  if (currentJobId) renderClients();
 
   const omSorted = [...otherMoney].sort((a,b) => b.date.localeCompare(a.date));
   const omWrap = document.getElementById('other-wrap');
@@ -1178,7 +1298,7 @@ function render() {
   `;
 
 renderPaidEvents();
-renderHistory();
+renderAllHistory();
 }
 
 function historyEntryHTML(h) {
@@ -1229,7 +1349,7 @@ function payTithe() {
   const parts = [];
   if (tb>0) parts.push(`$${tb.toFixed(2)} from bank`);
   if (tc>0) parts.push(`$${tc.toFixed(2)} from cash`);
-  logHistory('add', `Tithe paid — $${total.toFixed(2)} (${parts.join(', ')})`);
+  logHistory('add', `Tithe paid — $${total.toFixed(2)} (${parts.join(', ')})`, { job: null });
   save(); render(); toast(`Tithe of $${total.toFixed(2)} paid ✓`);
 }
 
@@ -1238,7 +1358,7 @@ function unpayEvent(id) {
   if (!j) return;
   lawnEvents = lawnEvents.map(jb => jb.id === id ? {...jb, status: 'unpaid', paymentMethod: null, paymentAmount: null} : jb);
   pendingEventWrites.add(id);
-  logHistory('add', `Restored event to unpaid — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`);
+  logHistory('add', `Restored event to unpaid — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`, { job: currentJobId });
   save(); render(); reopenPanel(j.client); toast('Event moved back to unpaid ✓');
 }
 
@@ -1249,12 +1369,13 @@ function clearPaidEvents() {
   const paidIds = lawnEvents.filter(j => j.status === 'paid').map(j => j.id);
   lawnEvents = lawnEvents.filter(j => j.status !== 'paid');
   paidIds.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
-  logHistory('delete', `Cleared ${count} paid event${count>1?'s':''}`);
+  logHistory('delete', `Cleared ${count} paid event${count>1?'s':''}`, { job: currentJobId });
   save(); render(); toast(`${count} paid event${count>1?'s':''} cleared`);
 }
 
 function renderPaidEvents() {
-  const paid = lawnEvents.filter(j => j.status === 'paid').sort((a,b) => b.date.localeCompare(a.date));
+  if (!currentJobId) return;
+  const paid = lawnEvents.filter(j => jobOf(j) === currentJobId && j.status === 'paid').sort((a,b) => b.date.localeCompare(a.date));
   const total = paid.reduce((s,j) => s + eventAmount(j), 0);
   const summary = document.getElementById('paid-events-summary');
   if (summary) summary.textContent = paid.length ? `${paid.length} event${paid.length>1?'s':''} · $${total.toFixed(2)}` : '';
@@ -1286,24 +1407,51 @@ function renderHistory() {
   }
   wrap.innerHTML = historyLog.slice(0, 30).map(historyEntryHTML).join('');
   const extras = [];
-  if (historyLog.length > 30) extras.push(`<button class="pill-btn" onclick="showFullHistory(1)">Full history — ${historyLog.length}${allHistoryLoaded?'':'+' } entries</button>`);
+  if (historyLog.length > 30) extras.push(`<button class="pill-btn" onclick="showFullHistory(1, null)">Full history — ${historyLog.length}${allHistoryLoaded?'':'+' } entries</button>`);
   if (!allHistoryLoaded) extras.push(`<button class="pill-btn" onclick="loadMoreHistory()">Load more…</button>`);
   if (extras.length) wrap.innerHTML += `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center;display:flex;gap:8px;justify-content:center">${extras.join('')}</div>`;
-  // Refresh full history modal if open
+}
+
+function renderJobHistory() {
+  const wrap = document.getElementById('job-history-wrap');
+  if (!wrap || !currentJobId) return;
+  const filtered = historyLog.filter(h => getEntryJob(h) === currentJobId);
+  if (!filtered.length) {
+    wrap.innerHTML = allHistoryLoaded
+      ? '<div class="empty-state">No history yet.</div>'
+      : '<div class="empty-state" style="cursor:pointer" onclick="loadMoreHistory()">Loading history…</div>';
+    return;
+  }
+  wrap.innerHTML = filtered.slice(0, 30).map(historyEntryHTML).join('');
+  const extras = [];
+  if (filtered.length > 30) extras.push(`<button class="pill-btn" onclick="showFullHistory(1, '${currentJobId}')">Full history — ${filtered.length}${allHistoryLoaded?'':'+' } entries</button>`);
+  if (!allHistoryLoaded) extras.push(`<button class="pill-btn" onclick="loadMoreHistory()">Load more…</button>`);
+  if (extras.length) wrap.innerHTML += `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center;display:flex;gap:8px;justify-content:center">${extras.join('')}</div>`;
+}
+
+// Refreshes whichever history view(s) are relevant, and keeps the full
+// history modal in sync with whatever it's currently showing.
+function renderAllHistory() {
+  renderHistory();
+  if (currentJobId) renderJobHistory();
   const modal = document.getElementById('full-history-modal');
   if (modal && modal.style.display !== 'none') showFullHistory(fullHistoryPage);
 }
 
 let fullHistoryPage = 1;
 const FH_PAGE_SIZE = 50;
+let fhJobFilter; // undefined = not yet set; null = showing all jobs; job id = scoped to that job
 
-function showFullHistory(page) {
-  const totalPages = Math.ceil(historyLog.length / FH_PAGE_SIZE);
+function showFullHistory(page, jobFilter) {
+  if (jobFilter !== undefined) fhJobFilter = jobFilter;
+  const list = fhJobFilter ? historyLog.filter(h => getEntryJob(h) === fhJobFilter) : historyLog;
+  const totalPages = Math.ceil(list.length / FH_PAGE_SIZE);
   fullHistoryPage = Math.max(1, Math.min(page, Math.max(1, totalPages)));
   const start = (fullHistoryPage - 1) * FH_PAGE_SIZE;
-  const entries = historyLog.slice(start, start + FH_PAGE_SIZE);
+  const entries = list.slice(start, start + FH_PAGE_SIZE);
   const loadMoreBtn = !allHistoryLoaded
     ? `<button class="pill-btn" style="margin-top:8px" onclick="loadMoreHistory()">Load more from server…</button>` : '';
+  document.getElementById('fh-title').textContent = fhJobFilter ? `Full History — ${getJob(fhJobFilter).label}` : 'Full History — All Jobs';
   document.getElementById('fh-entries').innerHTML = (entries.length
     ? entries.map(historyEntryHTML).join('')
     : '<div class="empty-state">No entries.</div>') + loadMoreBtn;
@@ -1328,7 +1476,7 @@ function editHistory(id) {
     <div class="history-time">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}<br>${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
     <div class="row-actions" style="flex-shrink:0;margin-left:8px">
       <button class="act-btn save" onclick="saveHistory('${id}')">save</button>
-      <button class="act-btn" onclick="renderHistory()">cancel</button>
+      <button class="act-btn" onclick="renderAllHistory()">cancel</button>
     </div>`;
 }
 
@@ -1337,18 +1485,18 @@ async function saveHistory(id) {
   if (!msg) { alert('Message cannot be empty.'); return; }
   historyLog = historyLog.map(h => h.id===id ? {...h, message: msg} : h);
   if (currentUser) await historyCol().doc(id).update({ message: msg });
-  renderHistory(); toast('Log entry updated ✓');
+  renderAllHistory(); toast('Log entry updated ✓');
 }
 
 async function deleteHistory(id) {
   if (!confirm('Delete this log entry?')) return;
   historyLog = historyLog.filter(h=>h.id!==id);
   if (currentUser) await historyCol().doc(id).delete();
-  renderHistory(); toast('Log entry deleted');
+  renderAllHistory(); toast('Log entry deleted');
 }
 
 async function clearHistory() {
-  if (!confirm('Clear all history? This cannot be undone.')) return;
+  if (!confirm('Clear ALL history? This includes every job, not just one, and cannot be undone.')) return;
   historyLog = []; pendingHistoryEntries = []; lastHistoryDoc = null; allHistoryLoaded = true;
   if (currentUser) {
     let snap = await historyCol().limit(50).get();
@@ -1359,7 +1507,26 @@ async function clearHistory() {
       snap = await historyCol().limit(50).get();
     }
   }
-  renderHistory(); toast('History cleared');
+  renderAllHistory(); toast('History cleared');
+}
+
+async function clearJobHistory(jobId) {
+  const job = getJob(jobId);
+  if (!confirm(`Clear all history for ${job.label}? This cannot be undone.`)) return;
+  while (!allHistoryLoaded) await loadMoreHistory(); // make sure nothing on the server is missed
+  const toDelete = historyLog.filter(h => getEntryJob(h) === jobId);
+  if (!toDelete.length) { toast('No history to clear'); return; }
+  const ids = toDelete.map(h => h.id);
+  historyLog = historyLog.filter(h => !ids.includes(h.id));
+  pendingHistoryEntries = pendingHistoryEntries.filter(h => !ids.includes(h.id));
+  if (currentUser) {
+    for (let i = 0; i < ids.length; i += 50) {
+      const batch = db.batch();
+      ids.slice(i, i + 50).forEach(id => batch.delete(historyCol().doc(id)));
+      await batch.commit();
+    }
+  }
+  renderAllHistory(); toast(`${ids.length} entries cleared`);
 }
 
 function toggleForm(id) { document.getElementById(id).classList.toggle('open'); }
@@ -1370,11 +1537,11 @@ function addClient() {
   const note=document.getElementById('cl-note').value.trim();
   const rate=parseFloat(document.getElementById('cl-rate').value);
   if (!name||isNaN(rate)||rate<=0) { alert('Please enter a name and rate.'); return; }
-  if (clients.find(c=>c.name.toLowerCase()===name.toLowerCase())) { alert('Client already exists.'); return; }
-  const newClient = {id:'c'+Date.now(),name,note,rate};
+  if (clients.find(c=>jobOf(c)===currentJobId && c.name.toLowerCase()===name.toLowerCase())) { alert('Client already exists.'); return; }
+  const newClient = {id:'c'+Date.now(),name,note,rate,job:currentJobId};
   clients.push(newClient);
   pendingClientWrites.add(newClient.id);
-  logHistory('client',`Added client — ${name}${note?' ('+note+')':''} at $${rate}/event`);
+  logHistory('client',`Added client — ${name}${note?' ('+note+')':''} at $${rate}/event`, { job: currentJobId });
   document.getElementById('client-form').classList.remove('open');
   save(); renderClients();
   document.getElementById('cl-name').value='';
@@ -1388,7 +1555,7 @@ function deleteClient(id) {
   if (!confirm(`Remove ${c.name}?`)) return;
   clients=clients.filter(c=>c.id!==id);
   pendingClientDeletes.add(id);
-  logHistory('delete',`Removed client — ${c.name}`);
+  logHistory('delete',`Removed client — ${c.name}`, { job: currentJobId });
   save(); render(); toast('Client removed');
 }
 
@@ -1426,7 +1593,7 @@ async function bulkMarkPaid() {
       const prev = j.status;
       lawnEvents = lawnEvents.map(jb => jb.id===j.id ? {...jb, status:'paid', paymentMethod:m, paymentAmount:amount} : jb);
       pendingEventWrites.add(j.id);
-      logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${m})`, { jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount });
+      logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${m})`, { jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount, job: currentJobId });
     }
     save(); render(); updateBulkBar(); toast(`Events marked as paid ✓`);
     return;
@@ -1452,7 +1619,8 @@ async function bulkMarkPaid() {
       bulkJobIds: jobIds,
       prevStatuses: Object.fromEntries(cJobs.map(j=>[j.id, j.status])),
       paymentMethod: method,
-      paymentAmount: total
+      paymentAmount: total,
+      job: currentJobId
     });
   });
 
@@ -1467,7 +1635,7 @@ function bulkDelete() {
   const ids = checked.map(c => c.dataset.id);
   const jobs = ids.map(id => lawnEvents.find(j => j.id === id)).filter(Boolean);
   if (!confirm(`Delete ${jobs.length} selected event${jobs.length > 1 ? 's' : ''}?`)) return;
-  jobs.forEach(j => logHistory('delete', `Deleted event — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`));
+  jobs.forEach(j => logHistory('delete', `Deleted event — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`, { job: currentJobId }));
   lawnEvents = lawnEvents.filter(j => !ids.includes(j.id));
   ids.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
   save(); render(); updateBulkBar(); toast(`${jobs.length} event${jobs.length > 1 ? 's' : ''} deleted`);
@@ -1505,7 +1673,7 @@ async function markPaid(id) {
   const amount=eventAmount(j);
   lawnEvents=lawnEvents.map(j=>j.id===id?{...j,status:'paid',paymentMethod:method,paymentAmount:amount}:j);
   pendingEventWrites.add(id);
-  logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${method})`, { jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount });
+  logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${method})`, { jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount, job: currentJobId });
   save(); render(); reopenPanel(j.client); toast('Marked as paid ✓');
 }
 
@@ -1522,7 +1690,7 @@ async function undoPaid(hid) {
     pendingEventWrites.add(h.jobId);
     historyLog = historyLog.filter(h=>h.id!==hid);
     if (currentUser) await historyCol().doc(hid).delete();
-    logHistory('add', `Undid payment — ${job.client} event (${fmt(job.date)}) restored to ${restore}`);
+    logHistory('add', `Undid payment — ${job.client} event (${fmt(job.date)}) restored to ${restore}`, { job: getEntryJob(h) });
   }
 
   // Bulk undo
@@ -1534,7 +1702,7 @@ async function undoPaid(hid) {
     });
     historyLog = historyLog.filter(h=>h.id!==hid);
     if (currentUser) await historyCol().doc(hid).delete();
-    logHistory('add', `Undid bulk payment — ${h.bulkJobIds.length} events restored`);
+    logHistory('add', `Undid bulk payment — ${h.bulkJobIds.length} events restored`, { job: getEntryJob(h) });
   }
 
   save(); render(); toast('Payment undone ✓');
@@ -1545,7 +1713,7 @@ function deleteEvent(id) {
   const j=lawnEvents.find(j=>j.id===id);
   lawnEvents=lawnEvents.filter(j=>j.id!==id);
   pendingEventDeletes.add(id); pendingEventWrites.delete(id);
-  logHistory('delete',`Deleted event — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`);
+  logHistory('delete',`Deleted event — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`, { job: currentJobId });
   save(); render(); reopenPanel(j.client); toast('Event deleted');
 }
 
@@ -1562,10 +1730,10 @@ function addEvent() {
   const status = document.getElementById('le-status').value;
   const raw    = document.getElementById('le-amount').value;
   const amount = raw !== '' ? parseFloat(raw) : getRate(client);
-  const newJob = {id:'l'+Date.now(), client, date, status, amount};
+  const newJob = {id:'l'+Date.now(), client, date, status, amount, job: currentJobId};
   lawnEvents.push(newJob);
   pendingEventWrites.add(newJob.id);
-  logHistory('add', `Added event — ${client} on ${fmt(date)}, ${status} ($${amount})`);
+  logHistory('add', `Added event — ${client} on ${fmt(date)}, ${status} ($${amount})`, { job: currentJobId });
   save(); render();
   document.getElementById('event-form').classList.remove('open');
   document.getElementById('le-date').value = '';
@@ -1590,7 +1758,7 @@ function addOtherMoney() {
   const newEntry = {id:'o'+Date.now(),desc,date,type,amount,method,titheDeductible};
   otherMoney.push(newEntry);
   pendingOtherWrites.add(newEntry.id);
-  logHistory('other',`Added ${type} — "${desc}" $${amount.toFixed(2)} on ${fmt(date)} (${method})`);
+  logHistory('other',`Added ${type} — "${desc}" $${amount.toFixed(2)} on ${fmt(date)} (${method})`, { job: null });
   save(); render();
   document.getElementById('om-desc').value='';
   document.getElementById('om-date').value='';
@@ -1607,7 +1775,7 @@ function deleteOther(id) {
   const e=otherMoney.find(e=>e.id===id);
   otherMoney=otherMoney.filter(e=>e.id!==id);
   pendingOtherDeletes.add(id); pendingOtherWrites.delete(id);
-  logHistory('delete',`Deleted entry — "${e.desc}" $${parseFloat(e.amount).toFixed(2)}`);
+  logHistory('delete',`Deleted entry — "${e.desc}" $${parseFloat(e.amount).toFixed(2)}`, { job: null });
   save(); render(); toast('Entry deleted');
 }
 
@@ -1645,7 +1813,7 @@ function saveEvent(id) {
   const old = lawnEvents.find(j=>j.id===id);
   lawnEvents = lawnEvents.map(j => j.id===id ? {...j, date, client, status, amount} : j);
   pendingEventWrites.add(id);
-  logHistory('add', `Edited event — ${old.client} ${fmt(old.date)} → ${client} ${fmt(date)}, $${amount}, ${status}`);
+  logHistory('add', `Edited event — ${old.client} ${fmt(old.date)} → ${client} ${fmt(date)}, $${amount}, ${status}`, { job: currentJobId });
   save();
   render();
   const c = clients.find(c => c.name === client) || clients.find(c => c.name === old.client);
@@ -1701,7 +1869,7 @@ function saveOther(id) {
   const old = otherMoney.find(e=>e.id===id);
   otherMoney = otherMoney.map(e => e.id===id ? {...e, date, desc, amount, type, method, titheDeductible} : e);
   pendingOtherWrites.add(id);
-  logHistory('other', `Edited entry — "${old.desc}" → "${desc}" $${amount.toFixed(2)}`);
+  logHistory('other', `Edited entry — "${old.desc}" → "${desc}" $${amount.toFixed(2)}`, { job: null });
   save(); render(); toast('Entry updated ✓');
 }
 
