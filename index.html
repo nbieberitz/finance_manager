@@ -2306,10 +2306,10 @@ function renderFundsDistribution(barId = 'funds-bar-wrap', legendId = 'funds-leg
 
   let segments;
   if (total <= 0) {
-    segments = [{ label: 'Savings', amount: 0, color: 'var(--text-faint)' }];
+    segments = [{ label: 'Savings', amount: 0, color: '#4ADE80' }];
   } else {
     const free = freeAmount();
-    segments = [{ label: 'Savings', amount: free, color: 'var(--text-faint)' }];
+    segments = [{ label: 'Savings', amount: free, color: '#4ADE80' }];
     pockets.forEach(p => {
       if ((p.balance || 0) <= 0) return;
       segments.push({ label: p.name, amount: p.balance, color: getPocketColor(p.id) });
@@ -2322,7 +2322,7 @@ function renderFundsDistribution(barId = 'funds-bar-wrap', legendId = 'funds-leg
     const pctRound = Math.round(pct);
     const isFree = i === 0;
     return `<div class="funds-seg${isFree ? ' seg-free' : ''}" data-key="seg-${i}" data-target-width="${pct.toFixed(2)}%" style="width:0%;background-color:${s.color}" title="${s.label} — $${s.amount.toFixed(2)} (${pctRound}%)">${
-      pct >= 9 ? `<span class="funds-seg-pct ${isFree ? 'on-dark' : 'on-light'}">${pctRound}%</span>` : ''
+      pct >= 9 ? `<span class="funds-seg-pct on-light">${pctRound}%</span>` : ''
     }</div>`;
   }).join('')}</div>`;
 
