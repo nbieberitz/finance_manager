@@ -795,6 +795,20 @@ tr:hover td { background: var(--surface2); }
 
   <div class="summary-grid" id="pockets-summary"></div>
 
+  <!-- Distribution of Funds (pockets page) -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
+        Distribution of Funds
+      </div>
+    </div>
+    <div style="padding:1.1rem 1.25rem">
+      <div id="pk-funds-bar-wrap"></div>
+      <div class="funds-legend" id="pk-funds-legend"></div>
+    </div>
+  </section>
+
   <!-- Move Money -->
   <section>
     <div class="section-header static">
@@ -2265,9 +2279,9 @@ function toast(msg) {
 }
 
 // ── Distribution of Funds bar (above Jobs) ───────────────────
-function renderFundsDistribution() {
-  const wrap = document.getElementById('funds-bar-wrap');
-  const legend = document.getElementById('funds-legend');
+function renderFundsDistribution(barId = 'funds-bar-wrap', legendId = 'funds-legend') {
+  const wrap = document.getElementById(barId);
+  const legend = document.getElementById(legendId);
   if (!wrap || !legend) return;
   const sumPockets = sumPocketBalances();
   const total = Math.max(lastNetCash, sumPockets, 0);
@@ -2317,6 +2331,7 @@ function renderPocketsPage() {
   if (moveOptions.find(o => o.id === prevFrom)) fromSel.value = prevFrom;
   if (moveOptions.find(o => o.id === prevTo))   toSel.value = prevTo;
 
+  renderFundsDistribution('pk-funds-bar-wrap', 'pk-funds-legend');
   renderPocketsList();
   renderPocketRulesList();
   renderPocketHistory();
