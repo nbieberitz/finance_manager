@@ -3123,12 +3123,14 @@ function addPocket() {
   if (!wishlistItemId) { alert('Add a wishlist item first, then link this pocket to it.'); return; }
   let startBal = startBalRaw !== '' ? parseFloat(startBalRaw) : 0;
   if (isNaN(startBal) || startBal < 0) startBal = 0;
+  const item = getWishlistItem(wishlistItemId);
+  const itemPrice = item ? parseFloat(item.price) || 0 : 0;
+  if (startBal > itemPrice) { alert(`Starting balance can't exceed the linked item's price ($${itemPrice.toFixed(2)}).`); return; }
   const freeNow = freeAmount();
   if (startBal > freeNow) { alert(`Only $${freeNow.toFixed(2)} is currently free to dedicate.`); return; }
   const newPocket = { id: 'pk' + Date.now(), name, wishlistItemId, balance: startBal, createdAt: new Date().toISOString() };
   pockets.push(newPocket);
   pendingPocketWrites.add(newPocket.id);
-  const item = getWishlistItem(wishlistItemId);
   logHistory('pocket', `Added pocket — "${name}"${item ? ` (→ ${item.title})` : ''}${startBal > 0 ? ` with $${startBal.toFixed(2)} from Free` : ''}`, { job: null, pocketId: newPocket.id });
   save(); render(); toast('Pocket added ✓');
   document.getElementById('pocket-form').classList.remove('open');
@@ -3156,6 +3158,9 @@ function savePocket(id) {
   const wishlistItemId = document.getElementById('epk-wishlist-' + id).value;
   if (!name) { alert('Name required.'); return; }
   const old = pockets.find(p => p.id === id);
+  const newItem = getWishlistItem(wishlistItemId);
+  const newItemPrice = newItem ? parseFloat(newItem.price) || 0 : 0;
+  if ((old.balance || 0) > newItemPrice) { alert(`Can't link to "${newItem ? newItem.title : 'that item'}" — its price ($${newItemPrice.toFixed(2)}) is less than this pocket's current balance ($${(old.balance || 0).toFixed(2)}).`); return; }
   pockets = pockets.map(p => p.id === id ? { ...p, name, wishlistItemId } : p);
   pendingPocketWrites.add(id);
   logHistory('pocket', `Edited pocket — "${old.name}" → "${name}"`, { job: null, pocketId: id });
