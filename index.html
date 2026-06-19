@@ -2478,7 +2478,8 @@ function addItCheck() {
   const titheDeductible = document.getElementById('it-tithe').checked;
   if (!dateStart || !dateEnd) { alert('Enter a valid pay period.'); return; }
   if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
-  const newCheck = { id: 'it' + Date.now(), job: 'ca_it', dateStart, dateEnd, amount, status, titheDeductible };
+  const allocations = status === 'cashed' ? applyPocketRules('ca_it', amount) : [];
+  const newCheck = { id: 'it' + Date.now(), job: 'ca_it', dateStart, dateEnd, amount, status, titheDeductible, ...(allocations.length ? { pocketAllocations: allocations } : {}) };
   lawnEvents.push(newCheck);
   pendingEventWrites.add(newCheck.id);
   logHistory('add', `Added paycheck — ${itCheckLabel(newCheck)} ($${amount.toFixed(2)}, ${status === 'cashed' ? 'cashed' : 'not cashed'}${titheDeductible ? ', tithe' : ''})`, { job: 'ca_it' });
@@ -2495,7 +2496,9 @@ function markCheckCashed(id) {
   const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
   const prev = j.status;
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed' } : jb);
+  const amount = eventAmount(j);
+  const allocations = applyPocketRules('ca_it', amount);
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
   pendingEventWrites.add(id);
   logHistory('paid', `Marked paycheck cashed — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { jobId: id, prevStatus: prev, job: 'ca_it' });
   save(); render(); renderJobsGrid(); toast('Check marked as cashed ✓');
@@ -2504,7 +2507,8 @@ function markCheckCashed(id) {
 function uncashCheck(id) {
   const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', tithePaid: false } : jb);
+  reversePocketAllocations(j, 'check moved back to not cashed');
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', tithePaid: false, pocketAllocations: [] } : jb);
   pendingEventWrites.add(id);
   logHistory('add', `Reversed cashed — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { job: 'ca_it' });
   save(); render(); renderJobsGrid(); toast('Check moved back to uncashed');
@@ -2513,6 +2517,7 @@ function uncashCheck(id) {
 function deleteItCheck(id) {
   if (!confirm('Delete this paycheck?')) return;
   const j = lawnEvents.find(j => j.id === id);
+  if (j.status === 'cashed') reversePocketAllocations(j, 'paycheck deleted');
   lawnEvents = lawnEvents.filter(jb => jb.id !== id);
   pendingEventDeletes.add(id); pendingEventWrites.delete(id);
   logHistory('delete', `Deleted paycheck — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { job: 'ca_it' });
@@ -2523,6 +2528,7 @@ function clearCashedChecks() {
   const toDelete = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'cashed');
   if (!toDelete.length) return;
   if (!confirm(`Delete all ${toDelete.length} cashed check${toDelete.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
+  toDelete.forEach(j => reversePocketAllocations(j, 'cashed checks cleared'));
   const ids = toDelete.map(j => j.id);
   lawnEvents = lawnEvents.filter(j => !ids.includes(j.id));
   ids.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
@@ -2574,7 +2580,14 @@ function saveItCheck(id) {
   const titheDeductible = document.getElementById('ite-tithe-' + id).checked;
   if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
   const old = lawnEvents.find(j => j.id === id);
-  lawnEvents = lawnEvents.map(j => j.id === id ? { ...j, dateStart, dateEnd, amount, status, titheDeductible } : j);
+  let pocketAllocations = old.pocketAllocations || [];
+  if (old.status !== 'cashed' && status === 'cashed') {
+    pocketAllocations = applyPocketRules('ca_it', amount);
+  } else if (old.status === 'cashed' && status !== 'cashed') {
+    reversePocketAllocations(old, 'paycheck edited back to not cashed');
+    pocketAllocations = [];
+  }
+  lawnEvents = lawnEvents.map(j => j.id === id ? { ...j, dateStart, dateEnd, amount, status, titheDeductible, pocketAllocations } : j);
   pendingEventWrites.add(id);
   logHistory('add', `Edited paycheck — ${itCheckLabel(old)} → ${fmt(dateStart)}–${fmt(dateEnd)}, $${amount.toFixed(2)}, ${status}`, { job: 'ca_it' });
   save(); render(); renderJobsGrid(); toast('Paycheck updated ✓');
