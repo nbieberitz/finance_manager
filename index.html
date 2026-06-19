@@ -1867,7 +1867,7 @@ function renderClients() {
 
   wrap.innerHTML = jobClients.map(c => {
     const clientJobs = lawnEvents.filter(j => j.client === c.name && jobOf(j) === currentJobId && j.status !== 'paid')
-      .sort((a,b) => b.date.localeCompare(a.date));
+      .sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
     const jobCount = clientJobs.length;
     const owed = clientJobs.reduce((s,j) => s + eventAmount(j), 0);
 
@@ -1976,7 +1976,7 @@ function render() {
   renderJobsGrid();
   if (currentJobId) renderClients();
 
-  const omSorted = [...otherMoney].sort((a,b) => b.date.localeCompare(a.date));
+  const omSorted = [...otherMoney].sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
   const omWrap = document.getElementById('other-wrap');
   if (!omSorted.length) {
     omWrap.innerHTML = '<div class="empty-state">No entries yet.</div>';
@@ -2128,7 +2128,7 @@ function clearPaidEvents() {
 
 function renderPaidEvents() {
   if (!currentJobId) return;
-  const paid = lawnEvents.filter(j => jobOf(j) === currentJobId && j.status === 'paid').sort((a,b) => b.date.localeCompare(a.date));
+  const paid = lawnEvents.filter(j => jobOf(j) === currentJobId && j.status === 'paid').sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
   const total = paid.reduce((s,j) => s + eventAmount(j), 0);
   const summary = document.getElementById('paid-events-summary');
   if (summary) summary.textContent = paid.length ? `${paid.length} event${paid.length>1?'s':''} · $${total.toFixed(2)}` : '';
@@ -2547,7 +2547,7 @@ function renderItChecks() {
 
 function renderItUncashedChecks() {
   const uncashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'uncashed')
-    .sort((a, b) => b.dateEnd.localeCompare(a.dateEnd));
+    .sort((a, b) => b.dateEnd.localeCompare(a.dateEnd) || b.id.localeCompare(a.id));
   const total = uncashed.reduce((s, j) => s + eventAmount(j), 0);
   const summary = document.getElementById('it-uncashed-summary');
   if (summary) summary.textContent = uncashed.length ? `${uncashed.length} check${uncashed.length > 1 ? 's' : ''} · $${total.toFixed(2)}` : '';
@@ -2572,7 +2572,7 @@ function renderItUncashedChecks() {
 
 function renderItCashedChecks() {
   const cashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'cashed')
-    .sort((a, b) => b.dateEnd.localeCompare(a.dateEnd));
+    .sort((a, b) => b.dateEnd.localeCompare(a.dateEnd) || b.id.localeCompare(a.id));
   const total = cashed.reduce((s, j) => s + eventAmount(j), 0);
   const summary = document.getElementById('it-cashed-summary');
   if (summary) summary.textContent = cashed.length ? `${cashed.length} check${cashed.length > 1 ? 's' : ''} · $${total.toFixed(2)}` : '';
@@ -3275,7 +3275,7 @@ function normalizeUrl(url) {
 function renderWishlist() {
   const wrap = document.getElementById('wishlist-wrap');
   if (!wrap) return;
-  const sorted = [...wishlist].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  const sorted = [...wishlist].sort((a,b) => (b.date||'').localeCompare(a.date||'') || b.id.localeCompare(a.id));
   if (!sorted.length) {
     wrap.innerHTML = '<div class="empty-state">No items yet.</div>';
     return;
