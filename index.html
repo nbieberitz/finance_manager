@@ -624,6 +624,102 @@ body.test-mode-active { padding-top: calc(2rem + 46px) !important; }
   white-space: nowrap;
 }
 .test-mode-btn:hover { border-color: #ea580c; color: #fb923c; background: rgba(234,88,12,0.08); }
+
+/* ── Pocket Goal Congrats Modal ─────────────────────────── */
+.congrats-card {
+  background: linear-gradient(145deg, #0a1a0d, #0d1f12);
+  border: 1px solid rgba(74,222,128,0.3);
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 0 70px rgba(74,222,128,0.1), 0 24px 48px rgba(0,0,0,0.65);
+  position: relative;
+  overflow: hidden;
+}
+.congrats-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at top, rgba(74,222,128,0.07) 0%, transparent 65%);
+  pointer-events: none;
+}
+.congrats-emoji { font-size: 3.5rem; margin-bottom: 1rem; display: block; animation: pop-in 0.55s cubic-bezier(.34,1.56,.64,1); }
+@keyframes pop-in { from { transform: scale(0) rotate(-20deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+.congrats-title {
+  font-family: 'Syne', sans-serif; font-size: 1.45rem; font-weight: 600;
+  color: #4ADE80; margin-bottom: 0.35rem; letter-spacing: -0.02em;
+}
+.congrats-pocket-name { font-family: 'Syne', sans-serif; font-size: 1rem; color: var(--text); margin-bottom: 0.25rem; }
+.congrats-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); margin-bottom: 1.4rem; }
+.congrats-excess-pill {
+  display: inline-block; background: rgba(245,158,11,0.12);
+  border: 1px solid rgba(245,158,11,0.3); color: var(--amber);
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  padding: 4px 14px; border-radius: 20px; margin-bottom: 1.4rem;
+}
+.congrats-actions { display: flex; flex-direction: column; gap: 10px; }
+.congrats-dup-btn {
+  width: 100%; padding: 13px;
+  font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600;
+  background: #4ADE80; color: #000; border: none; border-radius: 10px;
+  cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+}
+.congrats-dup-btn:hover { opacity: 0.86; }
+.congrats-dup-btn:active { transform: scale(0.97); }
+.congrats-skip-btn {
+  background: none; border: none; color: var(--text-faint);
+  font-size: 12px; font-family: 'JetBrains Mono', monospace;
+  cursor: pointer; padding: 6px; transition: color 0.15s;
+}
+.congrats-skip-btn:hover { color: var(--text-muted); }
+
+/* ── Purchase Celebration Popup ─────────────────────────── */
+.celebration-card {
+  background: linear-gradient(145deg, #1a0f08, #18150a);
+  border: 1px solid rgba(245,158,11,0.35);
+  border-radius: 20px; padding: 2.5rem 2rem;
+  max-width: 360px; width: 100%; text-align: center;
+  box-shadow: 0 0 70px rgba(245,158,11,0.1), 0 24px 48px rgba(0,0,0,0.65);
+  position: relative; overflow: hidden;
+}
+.celebration-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at top, rgba(245,158,11,0.07) 0%, transparent 65%);
+  pointer-events: none;
+}
+.celebration-emoji { font-size: 3.5rem; margin-bottom: 1rem; display: block; animation: pop-in 0.55s cubic-bezier(.34,1.56,.64,1); }
+.celebration-title {
+  font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 600;
+  color: var(--accent); margin-bottom: 0.5rem;
+}
+.celebration-item {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  color: var(--text-muted); margin-bottom: 1.75rem; line-height: 1.6;
+}
+.celebration-close {
+  width: 100%; padding: 12px;
+  font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
+  background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.4);
+  color: var(--accent); border-radius: 10px; cursor: pointer; transition: background 0.15s;
+}
+.celebration-close:hover { background: rgba(245,158,11,0.28); }
+
+/* ── Purchase button on completed pockets ───────────────── */
+.pocket-purchase-btn {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  padding: 4px 14px; border-radius: 20px;
+  border: 1px solid rgba(245,158,11,0.45);
+  background: rgba(245,158,11,0.13); color: var(--accent);
+  cursor: pointer; transition: background 0.15s; white-space: nowrap;
+}
+.pocket-purchase-btn:hover { background: rgba(245,158,11,0.28); }
+.pocket-complete-badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  padding: 2px 8px; border-radius: 20px;
+  background: rgba(74,222,128,0.12); border: 1px solid rgba(74,222,128,0.3);
+  color: #4ADE80; white-space: nowrap;
+}
 </style>
 </head>
 <body>
@@ -1107,6 +1203,33 @@ body.test-mode-active { padding-top: calc(2rem + 46px) !important; }
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- ── Pocket Goal Congratulations Modal ───────────────── -->
+<div id="pocket-congrats-modal" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.92);backdrop-filter:blur(8px);z-index:10000;align-items:center;justify-content:center;padding:1.5rem;">
+  <div class="congrats-card">
+    <span class="congrats-emoji" id="congrats-emoji">🎉</span>
+    <div class="congrats-title">Savings Goal Reached!</div>
+    <div class="congrats-pocket-name" id="congrats-pocket-name"></div>
+    <div class="congrats-meta" id="congrats-meta"></div>
+    <div id="congrats-excess-wrap" style="display:none;margin-bottom:1.4rem">
+      <span class="congrats-excess-pill" id="congrats-excess-text"></span>
+    </div>
+    <div class="congrats-actions">
+      <button class="congrats-dup-btn" id="congrats-duplicate-btn">+ Add duplicate pocket</button>
+      <button class="congrats-skip-btn" id="congrats-skip-btn">No thanks — I'm done with this goal</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Purchase Celebration Popup ─────────────────────── -->
+<div id="purchase-celebration" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.92);backdrop-filter:blur(8px);z-index:10001;align-items:center;justify-content:center;padding:1.5rem;">
+  <div class="celebration-card">
+    <span class="celebration-emoji">🛍️</span>
+    <div class="celebration-title">Congrats on your purchase!</div>
+    <div class="celebration-item" id="celebration-item-text"></div>
+    <button class="celebration-close" onclick="closePurchaseCelebration()">Done &nbsp;🎊</button>
+  </div>
+</div>
 
 <script>
 // ── Firebase ──────────────────────────────────────────────
@@ -2208,6 +2331,7 @@ async function bulkMarkPaid() {
 
   if (method === 'individual') {
     // Prompt cash/bank for each event one at a time
+    const affectedPocketIds = [];
     for (const j of jobs) {
       const m = await promptPaymentMethod(false, j);
       if (!m) continue; // skip this event if cancelled
@@ -2217,8 +2341,10 @@ async function bulkMarkPaid() {
       lawnEvents = lawnEvents.map(jb => jb.id===j.id ? {...jb, status:'paid', paymentMethod:m, paymentAmount:amount, ...(allocations.length?{pocketAllocations:allocations}:{})} : jb);
       pendingEventWrites.add(j.id);
       logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${m})`, { jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount, job: currentJobId });
+      affectedPocketIds.push(...allocations.map(a => a.pocketId));
     }
     save(); render(); updateBulkBar(); toast(`Events marked as paid ✓`);
+    if (affectedPocketIds.length) await checkPocketsForGoalCompletion(affectedPocketIds);
     return;
   }
 
@@ -2233,9 +2359,13 @@ async function bulkMarkPaid() {
   // record for later undo/delete) even though the history entry below is
   // grouped per client for readability.
   const allocationsByJobId = {};
+  const affectedPocketIds = [];
   jobs.forEach(j => {
     const allocations = applyPocketRules(jobOf(j), eventAmount(j));
-    if (allocations.length) allocationsByJobId[j.id] = allocations;
+    if (allocations.length) {
+      allocationsByJobId[j.id] = allocations;
+      affectedPocketIds.push(...allocations.map(a => a.pocketId));
+    }
   });
 
   const hid = Date.now();
@@ -2259,6 +2389,7 @@ async function bulkMarkPaid() {
   lawnEvents = lawnEvents.map(j => ids.includes(j.id) ? {...j, status:'paid', paymentMethod:method, ...(allocationsByJobId[j.id]?{pocketAllocations:allocationsByJobId[j.id]}:{})} : j);
   ids.forEach(id => pendingEventWrites.add(id));
   save(); render(); updateBulkBar(); toast(`${jobs.length} events marked as paid ✓`);
+  if (affectedPocketIds.length) await checkPocketsForGoalCompletion(affectedPocketIds);
 }
 
 function bulkDelete() {
@@ -2317,6 +2448,7 @@ async function markPaid(id) {
   pendingEventWrites.add(id);
   logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${method})`, { jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount, job: currentJobId });
   save(); render(); reopenPanel(j.client); toast('Marked as paid ✓');
+  if (allocations.length) await checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
 }
 
 async function undoPaid(hid) {
@@ -2490,6 +2622,7 @@ function addItCheck() {
   document.getElementById('it-tithe').checked = false;
   document.getElementById('it-check-form').classList.remove('open');
   save(); render(); renderJobsGrid(); toast('Paycheck added ✓');
+  if (allocations.length) checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
 }
 
 function markCheckCashed(id) {
@@ -2502,6 +2635,7 @@ function markCheckCashed(id) {
   pendingEventWrites.add(id);
   logHistory('paid', `Marked paycheck cashed — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { jobId: id, prevStatus: prev, job: 'ca_it' });
   save(); render(); renderJobsGrid(); toast('Check marked as cashed ✓');
+  if (allocations.length) checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
 }
 
 function uncashCheck(id) {
@@ -2591,6 +2725,9 @@ function saveItCheck(id) {
   pendingEventWrites.add(id);
   logHistory('add', `Edited paycheck — ${itCheckLabel(old)} → ${fmt(dateStart)}–${fmt(dateEnd)}, $${amount.toFixed(2)}, ${status}`, { job: 'ca_it' });
   save(); render(); renderJobsGrid(); toast('Paycheck updated ✓');
+  if (old.status !== 'cashed' && status === 'cashed' && pocketAllocations.length) {
+    checkPocketsForGoalCompletion(pocketAllocations.map(a => a.pocketId));
+  }
 }
 
 function updateOmFields() {
@@ -2897,7 +3034,9 @@ function renderPocketsList() {
   wrap.innerHTML = pockets.map(p => {
     const item = getWishlistItem(p.wishlistItemId);
     const price = item ? parseFloat(item.price) : null;
-    const pct = price ? Math.min(100, Math.round((p.balance || 0) / price * 100)) : null;
+    const rawPct = price ? Math.round((p.balance || 0) / price * 100) : null;
+    const pct = rawPct !== null ? Math.min(100, rawPct) : null;
+    const isComplete = price && (p.balance || 0) >= price;
     const color = getPocketColor(p.id);
     const rulesForPocket = pocketRules.filter(r => r.pocketId === p.id);
     const rulesHtml = rulesForPocket.length
@@ -2914,20 +3053,22 @@ function renderPocketsList() {
         }).join('')
       : `<div class="pocket-rule-empty">No rules yet — money only moves here when you add one or move funds manually.</div>`;
     return `
-      <div id="pocket-row-${p.id}" style="padding:12px 1.25rem;border-bottom:1px solid var(--border)">
+      <div id="pocket-row-${p.id}" style="padding:12px 1.25rem;border-bottom:1px solid var(--border)${isComplete ? ';background:rgba(74,222,128,0.02)' : ''}">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <span class="funds-swatch" style="background:${color}"></span>
+          <span class="funds-swatch" style="background:${isComplete ? '#4ADE80' : color}${isComplete ? ';box-shadow:0 0 6px rgba(74,222,128,0.5)' : ''}"></span>
           <div style="font-weight:500">${p.name}</div>
+          ${isComplete ? `<span class="pocket-complete-badge">✓ GOAL MET</span>` : ''}
           <div style="flex:1"></div>
           <div class="mono" style="color:var(--text-muted);font-size:12px">${item ? `→ ${item.title}` : '(linked item removed)'}</div>
-          <div class="mono" style="font-size:13px;color:${color}">$${(p.balance || 0).toFixed(2)}${price ? ` / $${price.toFixed(2)}` : ''}${pct !== null ? ` (${pct}%)` : ''}</div>
+          <div class="mono" style="font-size:13px;color:${isComplete ? '#4ADE80' : color}">$${(p.balance || 0).toFixed(2)}${price ? ` / $${price.toFixed(2)}` : ''}${pct !== null ? ` (${pct}%)` : ''}</div>
           <div class="row-actions" style="margin:0">
+            ${isComplete ? `<button class="pocket-purchase-btn" onclick="showPocketPurchaseFlow('${p.id}')">🛍️ Purchase</button>` : ''}
             <button class="act-btn" onclick="toggleForm('rule-form-${p.id}')">+ rule</button>
             <button class="act-btn edit" onclick="editPocket('${p.id}')">edit</button>
             <button class="act-btn danger" onclick="deletePocket('${p.id}')">delete</button>
           </div>
         </div>
-        ${price ? `<div class="pocket-progress-track" style="margin-top:8px"><div class="pocket-progress-fill" style="width:${pct}%;background:${color}"></div></div>` : ''}
+        ${price ? `<div class="pocket-progress-track" style="margin-top:8px"><div class="pocket-progress-fill" style="width:${pct}%;background:${isComplete ? '#4ADE80' : color}${isComplete ? ';box-shadow:0 0 8px rgba(74,222,128,0.45)' : ''}"></div></div>` : ''}
         <div class="pocket-rules-list" id="pocket-rules-${p.id}">${rulesHtml}</div>
         <div class="add-form pocket-rule-form" id="rule-form-${p.id}">
           <div class="form-grid">
@@ -3072,6 +3213,8 @@ function executeMoveFunds() {
   logHistory('pocket', `Moved $${amount.toFixed(2)} — ${fromLabel} → ${toLabel}`, { job: null });
   save(); render(); toast('Money moved ✓');
   document.getElementById('mv-amount').value = '';
+  // Check if the destination pocket just hit its goal
+  if (to !== 'free') checkPocketsForGoalCompletion([to]);
 }
 
 function renderPocketHistory() {
@@ -3178,6 +3321,252 @@ function saveWishlistItem(id) {
   pendingWishlistWrites.add(id);
   logHistory('other', `Edited wishlist item — "${old.title}" → "${title}" $${price.toFixed(2)}`, { job: null });
   save(); render(); toast('Item updated ✓');
+}
+
+// ── Pocket Goal Completion ────────────────────────────────
+let _pocketCongratsQueue = [];
+let _processingCongratsQueue = false;
+
+async function checkPocketsForGoalCompletion(pocketIds) {
+  const uniqueIds = [...new Set(pocketIds)];
+  const newCompletions = [];
+
+  for (const pocketId of uniqueIds) {
+    const pocket = getPocket(pocketId);
+    if (!pocket) continue;
+
+    // Only trigger for pockets that HAVE rules
+    const rulesForPocket = pocketRules.filter(r => r.pocketId === pocketId);
+    if (!rulesForPocket.length) continue;
+
+    const wishItem = getWishlistItem(pocket.wishlistItemId);
+    if (!wishItem) continue;
+
+    const price = parseFloat(wishItem.price);
+    if (!price || price <= 0) continue;
+
+    const balance = pocket.balance || 0;
+    if (balance < price) continue; // Not at 100% yet
+
+    // Already queued? Skip to avoid double-trigger
+    if (_pocketCongratsQueue.some(q => q.pocketId === pocketId)) continue;
+
+    newCompletions.push({
+      pocketId,
+      savedRules: JSON.parse(JSON.stringify(rulesForPocket)),
+      excess: Math.round((balance - price) * 100) / 100
+    });
+  }
+
+  if (!newCompletions.length) return;
+  _pocketCongratsQueue.push(...newCompletions);
+
+  if (!_processingCongratsQueue) {
+    await _processPocketCongratsQueue();
+  }
+}
+
+async function _processPocketCongratsQueue() {
+  _processingCongratsQueue = true;
+  while (_pocketCongratsQueue.length > 0) {
+    const item = _pocketCongratsQueue.shift();
+    await _showPocketCongrats(item.pocketId, item.savedRules, item.excess);
+  }
+  _processingCongratsQueue = false;
+}
+
+async function _showPocketCongrats(pocketId, savedRules, excess) {
+  const pocket = getPocket(pocketId);
+  if (!pocket) return;
+
+  const wishItem = getWishlistItem(pocket.wishlistItemId);
+  const price = wishItem ? parseFloat(wishItem.price) : 0;
+
+  // ── Background: delete all rules for this pocket immediately ──
+  pocketRules = pocketRules.filter(r => r.pocketId !== pocketId);
+  savedRules.forEach(r => { pendingRuleDeletes.add(r.id); pendingRuleWrites.delete(r.id); });
+
+  // Trim the pocket to exactly 100% if there's overshoot
+  if (excess > 0) {
+    pockets = pockets.map(p => p.id === pocketId
+      ? { ...p, balance: Math.round((p.balance - excess) * 100) / 100 }
+      : p);
+    pendingPocketWrites.add(pocketId);
+  }
+
+  save(); render();
+
+  return new Promise(resolve => {
+    // Populate modal fields
+    document.getElementById('congrats-pocket-name').textContent = pocket.name;
+    document.getElementById('congrats-meta').textContent = wishItem
+      ? `"${wishItem.title}" — $${price.toFixed(2)} fully saved`
+      : `$${price.toFixed(2)} fully saved`;
+
+    const excessWrap = document.getElementById('congrats-excess-wrap');
+    if (excess > 0) {
+      document.getElementById('congrats-excess-text').textContent =
+        `$${excess.toFixed(2)} over goal → goes to duplicate or Free`;
+      excessWrap.style.display = '';
+    } else {
+      excessWrap.style.display = 'none';
+    }
+
+    // Rotate through a few celebratory emojis for variety
+    const emojis = ['🎉', '🏆', '🥳', '⭐', '🎯'];
+    document.getElementById('congrats-emoji').textContent =
+      emojis[Math.floor(Math.random() * emojis.length)];
+
+    document.getElementById('pocket-congrats-modal').style.display = 'flex';
+
+    document.getElementById('congrats-duplicate-btn').onclick = async () => {
+      document.getElementById('pocket-congrats-modal').style.display = 'none';
+      await _handleCongratsDuplicate(pocketId, savedRules, excess);
+      resolve();
+    };
+
+    document.getElementById('congrats-skip-btn').onclick = () => {
+      document.getElementById('pocket-congrats-modal').style.display = 'none';
+      _handleCongratsNoDuplicate(pocketId, excess);
+      resolve();
+    };
+  });
+}
+
+async function _handleCongratsDuplicate(pocketId, savedRules, excess) {
+  const pocket = getPocket(pocketId);
+  if (!pocket) return;
+
+  const newPocketId = 'pk' + Date.now();
+  const newPocket = {
+    id: newPocketId,
+    name: pocket.name,
+    wishlistItemId: pocket.wishlistItemId,
+    balance: excess > 0 ? excess : 0,
+    createdAt: new Date().toISOString()
+  };
+  pockets.push(newPocket);
+  pendingPocketWrites.add(newPocketId);
+
+  // Re-create the same rules on the new pocket
+  savedRules.forEach((r, i) => {
+    const newRule = {
+      ...r,
+      id: 'rl' + (Date.now() + i + 1),
+      pocketId: newPocketId,
+      createdAt: new Date().toISOString()
+    };
+    pocketRules.push(newRule);
+    pendingRuleWrites.add(newRule.id);
+  });
+
+  const msg = excess > 0
+    ? `Goal reached on "${pocket.name}" — duplicated with $${excess.toFixed(2)} carried over, ${savedRules.length} rule${savedRules.length !== 1 ? 's' : ''} re-applied`
+    : `Goal reached on "${pocket.name}" — duplicated with same rules for next round`;
+  logHistory('pocket', msg, { job: null, pocketId: newPocketId });
+  save(); render();
+  toast(`"${pocket.name}" duplicated — ready for round 2 ✓`);
+}
+
+function _handleCongratsNoDuplicate(pocketId, excess) {
+  // Excess was already trimmed from the pocket in _showPocketCongrats,
+  // so it now naturally lives in Free / Savings. Just log it.
+  if (excess > 0) {
+    const pocket = getPocket(pocketId);
+    logHistory('pocket',
+      `Goal reached on "${pocket ? pocket.name : 'pocket'}" — $${excess.toFixed(2)} excess returned to Free / Savings`,
+      { job: null, pocketId }
+    );
+    save(); render();
+  }
+}
+
+// ── Pocket Purchase Flow ──────────────────────────────────
+async function showPocketPurchaseFlow(pocketId) {
+  const pocket = getPocket(pocketId);
+  if (!pocket) return;
+
+  const method = await _promptPurchaseMethod(pocket);
+  if (!method) return;
+
+  _completePurchase(pocketId, method);
+}
+
+function _promptPurchaseMethod(pocket) {
+  return new Promise(resolve => {
+    const modal  = document.getElementById('payment-modal');
+    const indBtn = document.getElementById('pm-individual');
+    const jobInfo = document.getElementById('pm-job-info');
+
+    indBtn.style.display = 'none';
+    jobInfo.style.display = 'block';
+    jobInfo.innerHTML =
+      `<span style="color:var(--text);font-size:12px">Purchasing:</span><br>` +
+      `<strong style="color:var(--text)">${pocket.name}</strong><br>` +
+      `<span style="color:#4ADE80;font-family:'JetBrains Mono',monospace">$${(pocket.balance || 0).toFixed(2)}</span>`;
+
+    // Relabel buttons to fit "purchase" context
+    document.getElementById('pm-cash').textContent = 'Cash';
+    document.getElementById('pm-bank').textContent = 'Bank';
+
+    modal.style.display = 'flex';
+
+    const close = val => { modal.style.display = 'none'; resolve(val); };
+    document.getElementById('pm-cash').onclick   = () => close('cash');
+    document.getElementById('pm-bank').onclick   = () => close('bank');
+    document.getElementById('pm-cancel').onclick = () => close(null);
+  });
+}
+
+function _completePurchase(pocketId, method) {
+  const pocket = getPocket(pocketId);
+  if (!pocket) return;
+
+  const pocketName     = pocket.name;
+  const purchaseAmount = pocket.balance || 0;
+  const today          = todayISO();
+
+  // Add expense entry matching the pocket
+  const expId = 'o' + Date.now();
+  const expEntry = {
+    id: expId,
+    desc: pocketName,
+    date: today,
+    type: 'expense',
+    amount: purchaseAmount,
+    method
+  };
+  otherMoney.push(expEntry);
+  pendingOtherWrites.add(expId);
+
+  // Delete the pocket's rules
+  const orphanRules = pocketRules.filter(r => r.pocketId === pocketId);
+  pocketRules = pocketRules.filter(r => r.pocketId !== pocketId);
+  orphanRules.forEach(r => { pendingRuleDeletes.add(r.id); pendingRuleWrites.delete(r.id); });
+
+  // Delete the pocket itself
+  pockets = pockets.filter(p => p.id !== pocketId);
+  pendingPocketDeletes.add(pocketId);
+  pendingPocketWrites.delete(pocketId);
+
+  logHistory('pocket',
+    `Purchased "${pocketName}" — $${purchaseAmount.toFixed(2)} (${method}) · pocket closed, expense recorded`,
+    { job: null }
+  );
+  save(); render();
+
+  _showPurchaseCelebration(pocketName, purchaseAmount, method);
+}
+
+function _showPurchaseCelebration(name, amount, method) {
+  document.getElementById('celebration-item-text').innerHTML =
+    `<strong style="color:var(--text);font-size:14px;font-family:'Syne',sans-serif">${name}</strong><br>` +
+    `<span style="margin-top:5px;display:inline-block">$${amount.toFixed(2)} logged as a ${method} expense</span>`;
+  document.getElementById('purchase-celebration').style.display = 'flex';
+}
+
+function closePurchaseCelebration() {
+  document.getElementById('purchase-celebration').style.display = 'none';
 }
 </script>
 </body>
