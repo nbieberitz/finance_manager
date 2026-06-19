@@ -1293,9 +1293,11 @@ function loadFromFirestore() {
     else if (initialRenderDone) render();
   }));
 
-  // Clients
+  // Clients — sorted alphabetically so the list order is stable regardless
+  // of whatever order Firestore happens to hand back documents in.
   unsubscribers.push(userDoc().collection('clients').onSnapshot(snap => {
-    clients = snap.docs.map(d => d.data());
+    clients = snap.docs.map(d => d.data())
+      .sort((a,b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
     if (!ready.clients) { ready.clients = true; checkReady(); }
     else if (initialRenderDone) render();
   }));
@@ -1321,16 +1323,20 @@ function loadFromFirestore() {
     else if (initialRenderDone) render();
   }));
 
-  // Pockets
+  // Pockets — sorted by creation time so list order (and pocket *colors*,
+  // which are assigned by array position in getPocketColor) stay stable
+  // across reloads instead of drifting with Firestore's snapshot order.
   unsubscribers.push(userDoc().collection('pockets').onSnapshot(snap => {
-    pockets = snap.docs.map(d => d.data());
+    pockets = snap.docs.map(d => d.data())
+      .sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||'') || a.id.localeCompare(b.id));
     if (!ready.pockets) { ready.pockets = true; checkReady(); }
     else if (initialRenderDone) render();
   }));
 
-  // Pocket Rules
+  // Pocket Rules — same stability fix as Pockets above.
   unsubscribers.push(userDoc().collection('pocketRules').onSnapshot(snap => {
-    pocketRules = snap.docs.map(d => d.data());
+    pocketRules = snap.docs.map(d => d.data())
+      .sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||'') || a.id.localeCompare(b.id));
     if (!ready.pocketRules) { ready.pocketRules = true; checkReady(); }
     else if (initialRenderDone) render();
   }));
@@ -1957,6 +1963,7 @@ function saveClient(id) {
   if (!name || isNaN(rate) || rate < 0) { alert('Name and valid rate required.'); return; }
   const old = clients.find(c=>c.id===id);
   clients = clients.map(c => c.id===id ? {...c, name, note, rate} : c);
+  clients.sort((a,b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   pendingClientWrites.add(id);
   const changes = [];
   if (old.name !== name) changes.push(`name: ${old.name} → ${name}`);
@@ -2294,6 +2301,7 @@ function addClient() {
   if (clients.find(c=>jobOf(c)===currentJobId && c.name.toLowerCase()===name.toLowerCase())) { alert('Client already exists.'); return; }
   const newClient = {id:'c'+Date.now(),name,note,rate,job:currentJobId};
   clients.push(newClient);
+  clients.sort((a,b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   pendingClientWrites.add(newClient.id);
   logHistory('client',`Added client — ${name}${note?' ('+note+')':''} at $${rate}/event`, { job: currentJobId });
   document.getElementById('client-form').classList.remove('open');
