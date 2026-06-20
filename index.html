@@ -503,7 +503,7 @@ tr:hover td { background: var(--surface2); }
 .wl-link:hover { text-decoration: underline; color: var(--blue-bright); }
 .wl-desc { color: var(--text-muted); font-size: 12px; }
 
-.row-actions { display: flex; gap: 5px; justify-content: flex-end; }
+.row-actions { display: flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap; }
 
 .act-btn {
   font-size: 11px;
@@ -526,6 +526,8 @@ tr:hover td { background: var(--surface2); }
 .act-btn.edit:hover { background: var(--blue-pale); }
 .act-btn.save { color: var(--accent); border-color: var(--gold-border); }
 .act-btn.save:hover { background: var(--accent-pale); }
+.act-btn.repeat { color: var(--purple); border-color: var(--purple-border); }
+.act-btn.repeat:hover { background: var(--purple-pale); }
 
 /* Inline edit row */
 .edit-row td { padding: 8px 1.25rem; background: var(--surface2); }
@@ -567,6 +569,7 @@ tr:hover td { background: var(--surface2); }
 .dot-other { background: var(--purple); box-shadow: 0 0 6px -1px rgba(192,132,252,0.5); }
 .dot-client { background: var(--amber); box-shadow: 0 0 6px -1px rgba(252,211,77,0.5); }
 .dot-pocket { background: var(--purple); box-shadow: 0 0 6px -1px rgba(192,132,252,0.5); }
+.dot-recurring { background: var(--green); box-shadow: 0 0 6px -1px var(--green-glow); }
 
 .history-action { color: var(--text-muted); flex: 1; line-height: 1.5; }
 .history-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); white-space: nowrap; margin-top: 3px; }
@@ -999,6 +1002,22 @@ body.test-mode-active { padding-top: calc(2rem + 46px) !important; }
     </div>
   </section>
 
+  <!-- Recurring -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Recurring
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn" onclick="openRecurring()">Manage recurring →</button>
+      </div>
+    </div>
+    <div class="funds-section-body" onclick="openRecurring()" style="padding:1rem 1.25rem;cursor:pointer">
+      <div id="recurring-summary" style="font-size:12px;color:var(--text-muted)">No recurring rules yet.</div>
+    </div>
+  </section>
+
   <!-- Jobs -->
   <section>
     <div class="section-header static">
@@ -1410,6 +1429,72 @@ body.test-mode-active { padding-top: calc(2rem + 46px) !important; }
 
 </div>
 
+<div class="container" id="recurring-view" style="display:none">
+
+  <div class="job-view-header">
+    <button class="pill-btn" onclick="closeRecurring()">← Back</button>
+    <div class="job-view-title">Recurring</div>
+  </div>
+
+  <!-- Recurring Rules -->
+  <section>
+    <div class="section-header" onclick="toggleForm('recurring-form', this)">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Recurring Rules
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn success" tabindex="-1">+ Add rule</button>
+      </div>
+    </div>
+    <div class="add-form" id="recurring-form">
+      <div class="form-grid">
+        <div>
+          <label>Type</label>
+          <select id="rec-kind" onchange="updateRecurringFields()">
+            <option value="lawn">Lawn mowing client</option>
+            <option value="it">CA IT paycheck</option>
+            <option value="other">Other income / expense</option>
+          </select>
+        </div>
+        <div id="rec-lawn-client-wrap"><label>Client</label><select id="rec-client"></select></div>
+        <div id="rec-other-type-wrap" style="display:none">
+          <label>Category</label>
+          <select id="rec-other-type" onchange="updateRecurringFields()">
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+        <div id="rec-other-desc-wrap" style="display:none"><label>Description</label><input type="text" id="rec-desc" placeholder="e.g. Netflix" /></div>
+        <div id="rec-amount-wrap"><label id="rec-amount-label">Amount ($) <span style="font-size:10px;color:var(--text-faint);text-transform:none">— blank = client rate</span></label><input type="number" id="rec-amount" min="0" step="0.01" placeholder="0.00" /></div>
+        <div id="rec-method-wrap" style="display:none">
+          <label>Method</label>
+          <select id="rec-method"><option value="bank">Bank</option><option value="cash">Cash</option></select>
+        </div>
+        <div id="rec-tithe-wrap" style="display:none;align-self:end">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:0">
+            <input type="checkbox" id="rec-tithe" checked /> Tithe-deductible
+          </label>
+        </div>
+        <div><label>Repeat every (days)</label><input type="number" id="rec-interval" min="1" step="1" placeholder="e.g. 7" /></div>
+        <div><label>Next date</label>
+          <div class="date-field">
+            <input type="text" id="rec-next" placeholder="MM/DD/YYYY — blank = today" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('rec-next')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="rec-next-picker" class="date-picker-hidden" onchange="applyDatePicker('rec-next')" tabindex="-1" />
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addRecurringRuleFromForm()">Add recurring rule</button>
+        <button class="btn btn-ghost" onclick="toggleForm('recurring-form')">Cancel</button>
+      </div>
+    </div>
+    <div id="recurring-wrap"><div class="empty-state">No recurring rules yet.</div></div>
+  </section>
+
+</div>
+
 <div id="loading-overlay">
   <div class="loading-spinner"></div>
   <div class="loading-text">LOADING…</div>
@@ -1500,8 +1585,8 @@ function loadFromFirestore() {
   historyLog = []; lastHistoryDoc = null; allHistoryLoaded = false;
   pendingHistoryEntries = [];
 
-  // Track first fire of all 5 listeners before doing initial render
-  const ready = { main: false, clients: false, events: false, other: false, wishlist: false, pockets: false, pocketRules: false };
+  // Track first fire of all listeners before doing initial render
+  const ready = { main: false, clients: false, events: false, other: false, wishlist: false, pockets: false, pocketRules: false, recurring: false };
   let initialRenderDone = false;
 
   async function checkReady() {
@@ -1510,6 +1595,7 @@ function loadFromFirestore() {
     await loadMoreHistory();
     if (overlay) overlay.style.display = 'none';
     render();
+    await processRecurringRules();
   }
 
   // Main doc (balances)
@@ -1574,6 +1660,15 @@ function loadFromFirestore() {
     if (!ready.pocketRules) { ready.pocketRules = true; checkReady(); }
     else if (initialRenderDone) render();
   }));
+
+  // Recurring rules — sorted by next-due date so the management list and
+  // any auto-generation logic see a stable, predictable order.
+  unsubscribers.push(userDoc().collection('recurring').onSnapshot(snap => {
+    recurringRules = snap.docs.map(d => d.data())
+      .sort((a,b) => (a.nextDate||'').localeCompare(b.nextDate||'') || a.id.localeCompare(b.id));
+    if (!ready.recurring) { ready.recurring = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
 }
 
 let saveTimer;
@@ -1634,12 +1729,14 @@ async function saveToFirestore() {
   await upsertItems('wishlist', pendingWishlistWrites, wishlist);
   await upsertItems('pockets', pendingPocketWrites, pockets);
   await upsertItems('pocketRules', pendingRuleWrites, pocketRules);
+  await upsertItems('recurring', pendingRecurringWrites, recurringRules);
   await deleteItems('clients', pendingClientDeletes);
   await deleteItems('jobs',    pendingEventDeletes);
   await deleteItems('other',   pendingOtherDeletes);
   await deleteItems('wishlist', pendingWishlistDeletes);
   await deleteItems('pockets', pendingPocketDeletes);
   await deleteItems('pocketRules', pendingRuleDeletes);
+  await deleteItems('recurring', pendingRecurringDeletes);
 
   // History entries (unchanged)
   while (pendingHistoryEntries.length > 0) {
@@ -1693,7 +1790,9 @@ let otherMoney = [];
 let wishlist   = [];
 let pockets      = [];
 let pocketRules  = [];
+let recurringRules = [];
 let pocketsOpen  = false;
+let recurringOpen = false;
 let lastNetCash  = 0;
 let historyLog = [];          // in-memory loaded entries
 let balances   = { bank: 0, cash: 0 };
@@ -1709,6 +1808,219 @@ function getJob(id) { return JOBS.find(j => j.id === id); }
 // Items created before jobs existed have no .job field — they were all
 // lawn mowing, so that's the safe default rather than losing them.
 function jobOf(item) { return item.job || 'lawn_mowing'; }
+
+// ── Recurring ─────────────────────────────────────────────
+// A "recurring rule" auto-generates an entry every N days — a lawn client
+// mowed on a schedule, a CA IT paycheck on a pay period, or a recurring
+// other-money income/expense (e.g. a subscription). Generation happens once
+// per load (see checkReady → processRecurringRules), catching up on any
+// occurrences missed while the app was closed, capped to avoid runaway
+// generation if it's been unused a long time.
+
+// Adds `days` to an ISO 'YYYY-MM-DD' date string, returning a new ISO date.
+function addDaysISO(iso, days) {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function ruleLabel(r) {
+  if (r.kind === 'lawn') return `${r.client} (lawn mowing)`;
+  if (r.kind === 'it') return 'CA IT paycheck';
+  return `"${r.desc}" (${r.type === 'expense' ? 'expense' : 'income'})`;
+}
+
+function ruleAmountDisplay(r) {
+  if (r.kind === 'lawn' && r.amount === undefined) return `$${getRate(r.client)}/event (rate)`;
+  return `$${parseFloat(r.amount).toFixed(2)}`;
+}
+
+function addRecurringRule(data) {
+  const rule = { id: 'rec' + Date.now(), active: true, createdAt: new Date().toISOString(), ...data };
+  recurringRules.push(rule);
+  pendingRecurringWrites.add(rule.id);
+  logHistory('recurring', `Set up recurring — ${ruleLabel(rule)} every ${rule.intervalDays} day${rule.intervalDays > 1 ? 's' : ''}, starting ${fmt(rule.nextDate)}`, { job: rule.job ?? null });
+  save();
+  return rule;
+}
+
+function generateLawnEventFromRule(rule, date) {
+  const amount = rule.amount !== undefined ? rule.amount : getRate(rule.client);
+  const newJob = { id: 'l' + Date.now() + Math.floor(Math.random() * 1000), client: rule.client, date, status: 'unpaid', amount, job: rule.job || 'lawn_mowing', recurringId: rule.id };
+  lawnEvents.push(newJob);
+  pendingEventWrites.add(newJob.id);
+  logHistory('add', `Auto-added recurring event — ${rule.client} on ${fmt(date)} ($${amount})`, { job: rule.job || 'lawn_mowing' });
+}
+
+function generateItCheckFromRule(rule, dateStart) {
+  const dateEnd = addDaysISO(dateStart, rule.intervalDays - 1);
+  const newCheck = { id: 'it' + Date.now() + Math.floor(Math.random() * 1000), job: 'ca_it', dateStart, dateEnd, amount: rule.amount, status: 'uncashed', titheDeductible: !!rule.titheDeductible, recurringId: rule.id };
+  lawnEvents.push(newCheck);
+  pendingEventWrites.add(newCheck.id);
+  logHistory('add', `Auto-added recurring paycheck — ${itCheckLabel(newCheck)} ($${rule.amount.toFixed(2)})`, { job: 'ca_it' });
+}
+
+function generateOtherFromRule(rule, date) {
+  const newEntry = { id: 'o' + Date.now() + Math.floor(Math.random() * 1000), desc: rule.desc, date, type: rule.type, amount: rule.amount, method: rule.method, recurringId: rule.id, ...(rule.type === 'income' ? { titheDeductible: !!rule.titheDeductible } : {}) };
+  otherMoney.push(newEntry);
+  pendingOtherWrites.add(newEntry.id);
+  logHistory('other', `Auto-added recurring ${rule.type} — "${rule.desc}" $${parseFloat(rule.amount).toFixed(2)} on ${fmt(date)}`, { job: null });
+}
+
+// Runs once per app load (after all collections are in). Catches each active
+// rule up to today, generating one entry per missed interval (capped per
+// rule so a long-unused account doesn't flood in thousands of entries).
+async function processRecurringRules() {
+  if (testMode) return;
+  const today = todayISO();
+  const MAX_PER_RULE = 25;
+  let totalGenerated = 0;
+
+  recurringRules.forEach(rule => {
+    if (!rule.active || !rule.nextDate) return;
+    let next = rule.nextDate;
+    const dates = [];
+    while (next <= today && dates.length < MAX_PER_RULE) {
+      dates.push(next);
+      next = addDaysISO(next, rule.intervalDays);
+    }
+    if (!dates.length) return;
+    dates.forEach(date => {
+      if (rule.kind === 'lawn') generateLawnEventFromRule(rule, date);
+      else if (rule.kind === 'it') generateItCheckFromRule(rule, date);
+      else generateOtherFromRule(rule, date);
+    });
+    totalGenerated += dates.length;
+    rule.nextDate = next;
+    rule.lastGeneratedDate = dates[dates.length - 1];
+    pendingRecurringWrites.add(rule.id);
+  });
+
+  if (totalGenerated > 0) {
+    save();
+    render();
+    toast(`${totalGenerated} recurring entr${totalGenerated > 1 ? 'ies' : 'y'} auto-added ✓`);
+  }
+}
+
+function updateRecurringFields() {
+  const kind = document.getElementById('rec-kind');
+  if (!kind) return;
+  const isLawn = kind.value === 'lawn', isIt = kind.value === 'it', isOther = kind.value === 'other';
+  document.getElementById('rec-lawn-client-wrap').style.display = isLawn ? '' : 'none';
+  document.getElementById('rec-other-type-wrap').style.display = isOther ? '' : 'none';
+  document.getElementById('rec-other-desc-wrap').style.display = isOther ? '' : 'none';
+  const otherType = document.getElementById('rec-other-type').value;
+  document.getElementById('rec-method-wrap').style.display = isOther ? '' : 'none';
+  document.getElementById('rec-tithe-wrap').style.display = (isIt || (isOther && otherType === 'income')) ? '' : 'none';
+  document.getElementById('rec-amount-label').innerHTML = isLawn
+    ? 'Amount ($) <span style="font-size:10px;color:var(--text-faint);text-transform:none">— blank = client rate</span>'
+    : 'Amount ($)';
+  if (isLawn) refreshRecurringClientDropdown();
+}
+
+function refreshRecurringClientDropdown() {
+  const sel = document.getElementById('rec-client');
+  if (!sel) return;
+  const lawnClients = clients.filter(c => jobOf(c) === 'lawn_mowing');
+  sel.innerHTML = lawnClients.length
+    ? lawnClients.map(c => `<option value="${c.name}">${c.name} — $${c.rate}/event</option>`).join('')
+    : '<option value="">No lawn clients yet</option>';
+}
+
+function addRecurringRuleFromForm() {
+  const kind = document.getElementById('rec-kind').value;
+  const intervalDays = parseInt(document.getElementById('rec-interval').value, 10);
+  if (!intervalDays || intervalDays < 1) { alert('Enter a repeat interval of at least 1 day.'); return; }
+  const nextDate = parseFlexibleDate(document.getElementById('rec-next').value);
+  const amountRaw = document.getElementById('rec-amount').value;
+
+  let data;
+  if (kind === 'lawn') {
+    const client = document.getElementById('rec-client').value;
+    if (!client) { alert('Add a lawn client first.'); return; }
+    data = { kind: 'lawn', job: 'lawn_mowing', client, intervalDays, nextDate, ...(amountRaw !== '' ? { amount: parseFloat(amountRaw) } : {}) };
+  } else if (kind === 'it') {
+    const amount = parseFloat(amountRaw);
+    if (isNaN(amount) || amount <= 0) { alert('Enter a valid paycheck amount.'); return; }
+    data = { kind: 'it', job: 'ca_it', amount, intervalDays, nextDate, titheDeductible: document.getElementById('rec-tithe').checked };
+  } else {
+    const desc = document.getElementById('rec-desc').value.trim();
+    const amount = parseFloat(amountRaw);
+    const type = document.getElementById('rec-other-type').value;
+    const method = document.getElementById('rec-method').value;
+    if (!desc) { alert('Enter a description.'); return; }
+    if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
+    data = { kind: 'other', job: null, desc, amount, type, method, intervalDays, nextDate, ...(type === 'income' ? { titheDeductible: document.getElementById('rec-tithe').checked } : {}) };
+  }
+
+  addRecurringRule(data);
+  document.getElementById('recurring-form').classList.remove('open');
+  document.getElementById('rec-interval').value = '';
+  document.getElementById('rec-next').value = '';
+  document.getElementById('rec-amount').value = '';
+  document.getElementById('rec-desc').value = '';
+  renderRecurringPage();
+  toast('Recurring rule added ✓');
+}
+
+function toggleRecurringActive(id) {
+  const r = recurringRules.find(r => r.id === id);
+  if (!r) return;
+  const wasActive = r.active;
+  recurringRules = recurringRules.map(x => x.id === id ? { ...x, active: !wasActive } : x);
+  pendingRecurringWrites.add(id);
+  logHistory('recurring', `${wasActive ? 'Paused' : 'Resumed'} recurring — ${ruleLabel(r)}`, { job: r.job ?? null });
+  save(); renderRecurringList(); renderRecurringSummary();
+  toast(wasActive ? 'Recurring rule paused' : 'Recurring rule resumed ✓');
+}
+
+function deleteRecurringRule(id) {
+  const r = recurringRules.find(r => r.id === id);
+  if (!r) return;
+  if (!confirm(`Delete recurring rule — ${ruleLabel(r)}?`)) return;
+  recurringRules = recurringRules.filter(x => x.id !== id);
+  pendingRecurringDeletes.add(id); pendingRecurringWrites.delete(id);
+  logHistory('recurring', `Deleted recurring — ${ruleLabel(r)}`, { job: r.job ?? null });
+  save(); renderRecurringList(); renderRecurringSummary();
+  toast('Recurring rule deleted');
+}
+
+function renderRecurringList() {
+  const wrap = document.getElementById('recurring-wrap');
+  if (!wrap) return;
+  if (!recurringRules.length) { wrap.innerHTML = '<div class="empty-state">No recurring rules yet.</div>'; return; }
+  const sorted = [...recurringRules].sort((a, b) => a.nextDate.localeCompare(b.nextDate) || a.id.localeCompare(b.id));
+  wrap.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>What</th><th>Amount</th><th>Every</th><th>Next</th><th>Status</th><th></th></tr></thead>
+    <tbody>${sorted.map(r => `
+      <tr id="rec-row-${r.id}">
+        <td>${ruleLabel(r)}</td>
+        <td class="mono">${ruleAmountDisplay(r)}</td>
+        <td class="mono">${r.intervalDays} day${r.intervalDays > 1 ? 's' : ''}</td>
+        <td class="mono">${fmt(r.nextDate)}</td>
+        <td>${r.active ? '<span class="badge badge-paid">Active</span>' : '<span class="badge badge-unpaid">Paused</span>'}</td>
+        <td><div class="row-actions">
+          <button class="act-btn ${r.active ? '' : 'success'}" onclick="toggleRecurringActive('${r.id}')">${r.active ? 'pause' : 'resume'}</button>
+          <button class="act-btn danger" onclick="deleteRecurringRule('${r.id}')">delete</button>
+        </div></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function renderRecurringSummary() {
+  const el = document.getElementById('recurring-summary');
+  if (!el) return;
+  const active = recurringRules.filter(r => r.active);
+  if (!active.length) { el.textContent = 'No recurring rules yet.'; return; }
+  const soonest = [...active].sort((a, b) => a.nextDate.localeCompare(b.nextDate))[0];
+  el.textContent = `${active.length} active rule${active.length > 1 ? 's' : ''} · next: ${ruleLabel(soonest)} on ${fmt(soonest.nextDate)}`;
+}
+
+function renderRecurringPage() {
+  refreshRecurringClientDropdown();
+  renderRecurringList();
+}
 
 // ── Pockets ───────────────────────────────────────────────
 // A "pocket" is a named savings bucket, optionally linked to a wishlist item
@@ -1846,6 +2158,25 @@ function closePockets() {
   window.scrollTo(0, 0);
 }
 
+function openRecurring() {
+  recurringOpen = true;
+  document.getElementById('main-view').style.display = 'none';
+  document.getElementById('job-view').style.display = 'none';
+  document.getElementById('pockets-view').style.display = 'none';
+  document.getElementById('recurring-view').style.display = 'block';
+  document.getElementById('rec-kind').value = 'lawn';
+  updateRecurringFields();
+  renderRecurringPage();
+  window.scrollTo(0, 0);
+}
+
+function closeRecurring() {
+  recurringOpen = false;
+  document.getElementById('recurring-view').style.display = 'none';
+  document.getElementById('main-view').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
 function renderJobsGrid() {
   const grid = document.getElementById('jobs-grid');
   if (!grid) return;
@@ -1899,6 +2230,8 @@ let pendingPocketWrites  = new Set();
 let pendingPocketDeletes = new Set();
 let pendingRuleWrites    = new Set();
 let pendingRuleDeletes   = new Set();
+let pendingRecurringWrites  = new Set();
+let pendingRecurringDeletes = new Set();
 
 function historyCol() { return db.collection('users').doc(currentUser.uid).collection('history'); }
 
@@ -1928,6 +2261,7 @@ function enterTestMode() {
     wishlist:         JSON.parse(JSON.stringify(wishlist)),
     pockets:          JSON.parse(JSON.stringify(pockets)),
     pocketRules:      JSON.parse(JSON.stringify(pocketRules)),
+    recurringRules:   JSON.parse(JSON.stringify(recurringRules)),
     historyLog:       JSON.parse(JSON.stringify(historyLog)),
     lastNetCash:      lastNetCash,
     allHistoryLoaded: allHistoryLoaded,
@@ -1954,6 +2288,7 @@ function exitTestMode() {
   wishlist         = testModeSnapshot.wishlist;
   pockets          = testModeSnapshot.pockets;
   pocketRules      = testModeSnapshot.pocketRules;
+  recurringRules   = testModeSnapshot.recurringRules || [];
   historyLog       = testModeSnapshot.historyLog;
   lastNetCash      = testModeSnapshot.lastNetCash;
   allHistoryLoaded = testModeSnapshot.allHistoryLoaded;
@@ -2143,6 +2478,7 @@ function renderClients() {
         <td class="mono amount-pos">$${eventAmount(j)}</td>
         <td>${statusBadge(j.status)}</td>
         <td><div class="row-actions">
+          <button class="act-btn repeat" onclick="quickRepeatEvent('${j.id}')" title="Add another event for today, same client &amp; amount">↻ repeat</button>
           <button class="act-btn edit" onclick="editEvent('${j.id}')">edit</button>
           <button class="act-btn success" onclick="markPaid('${j.id}')">mark paid</button>
           <button class="act-btn danger" onclick="deleteEvent('${j.id}')">delete</button>
@@ -2161,6 +2497,7 @@ function renderClients() {
           <div style="color:var(--text-muted);font-size:12px">${c.note||''}</div>
           <div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--text-muted)">$${c.rate}/event</div>
           <div class="row-actions" style="margin:0">
+            <button class="act-btn repeat" onclick="quickAddEventForClient('${c.id}')" title="Log today's visit for ${c.name} at $${c.rate}">↻ today</button>
             <button class="act-btn edit" onclick="editClient('${c.id}')">edit</button>
             <button class="act-btn danger" onclick="deleteClient('${c.id}')">remove</button>
           </div>
@@ -2266,6 +2603,7 @@ function render() {
           <td><span class="badge ${cls}">${lbl}</span>${e.type==='income'&&e.titheDeductible===false?' <span class="mono" style="font-size:10px;color:var(--text-faint)">no tithe</span>':''}</td>
           ${methodCell}
           <td><div class="row-actions">
+            ${isTransfer ? '' : `<button class="act-btn repeat" onclick="quickRepeatOther('${e.id}')" title="Add the same entry for today">↻ repeat</button>`}
             <button class="act-btn edit" onclick="editOther('${e.id}')">edit</button>
             <button class="act-btn danger" onclick="deleteOther('${e.id}')">delete</button>
           </div></td>
@@ -2313,14 +2651,16 @@ function render() {
 renderPaidEvents();
 renderWishlist();
 renderFundsDistribution();
+renderRecurringSummary();
 renderTrends();
 if (pocketsOpen) renderPocketsPage();
+if (recurringOpen) renderRecurringList();
 if (currentJobId === 'ca_it') renderItChecks();
 renderAllHistory();
 }
 
 function historyEntryHTML(h) {
-  const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client',pocket:'dot-pocket'}[h.type]||'dot-add';
+  const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client',pocket:'dot-pocket',recurring:'dot-recurring'}[h.type]||'dot-add';
   const d = new Date(h.ts);
   return `<div class="history-entry" id="hrow-${h.id}">
     <div class="history-dot ${dc}"></div>
@@ -2488,7 +2828,7 @@ function closeFullHistory() {
 function editHistory(id) {
   const h = historyLog.find(h=>h.id===id);
   const row = document.getElementById('hrow-'+id);
-  const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client',pocket:'dot-pocket'}[h.type]||'dot-add';
+  const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client',pocket:'dot-pocket',recurring:'dot-recurring'}[h.type]||'dot-add';
   const d = new Date(h.ts);
   row.innerHTML = `
     <div class="history-dot ${dc}"></div>
@@ -2798,6 +3138,37 @@ function addEvent() {
   toast('Event added ✓');
 }
 
+// One tap, no form: logs today's visit for a client at their standard rate.
+// Lives on the client row itself so it works even when that client has no
+// open events to copy from.
+function quickAddEventForClient(clientId) {
+  const c = clients.find(c => c.id === clientId);
+  if (!c) return;
+  const today = todayISO();
+  const newJob = { id: 'l' + Date.now(), client: c.name, date: today, status: 'unpaid', amount: c.rate, job: jobOf(c) };
+  lawnEvents.push(newJob);
+  pendingEventWrites.add(newJob.id);
+  logHistory('add', `Quick-added event — ${c.name} on ${fmt(today)} ($${c.rate})`, { job: jobOf(c) });
+  save(); render(); reopenPanel(c.name);
+  toast(`Logged today's visit for ${c.name} ✓`);
+}
+
+// Duplicates an existing event for today — same client and amount, status
+// reset to unpaid. Useful for repeating a one-off without setting up a
+// full recurring rule.
+function quickRepeatEvent(id) {
+  const j = lawnEvents.find(j => j.id === id);
+  if (!j) return;
+  const today = todayISO();
+  const amount = eventAmount(j);
+  const newJob = { id: 'l' + Date.now(), client: j.client, date: today, status: 'unpaid', amount, job: jobOf(j) };
+  lawnEvents.push(newJob);
+  pendingEventWrites.add(newJob.id);
+  logHistory('add', `Repeated event — ${j.client} on ${fmt(today)} ($${amount})`, { job: jobOf(j) });
+  save(); render(); reopenPanel(j.client);
+  toast('Event repeated for today ✓');
+}
+
 // ── Collegedale Academy IT ────────────────────────────────────────────────────
 
 function itStatusBadge(s) {
@@ -2829,6 +3200,7 @@ function renderItUncashedChecks() {
         <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}</td>
         <td class="mono" style="font-size:11px;color:var(--text-faint)">${j.titheDeductible ? '✓ tithe' : '—'}</td>
         <td><div class="row-actions">
+          <button class="act-btn repeat" onclick="quickRepeatItCheck('${j.id}')" title="Add another paycheck starting today, same amount &amp; period length">↻ repeat</button>
           <button class="act-btn edit" onclick="editItCheck('${j.id}')">edit</button>
           <button class="act-btn success" onclick="markCheckCashed('${j.id}')">mark cashed</button>
           <button class="act-btn danger" onclick="deleteItCheck('${j.id}')">delete</button>
@@ -2854,6 +3226,7 @@ function renderItCashedChecks() {
         <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}</td>
         <td class="mono" style="font-size:11px;color:var(--text-faint)">${j.titheDeductible ? '✓ tithe' : '—'}</td>
         <td><div class="row-actions">
+          <button class="act-btn repeat" onclick="quickRepeatItCheck('${j.id}')" title="Add another paycheck starting today, same amount &amp; period length">↻ repeat</button>
           <button class="act-btn success" onclick="uncashCheck('${j.id}')">undo</button>
           <button class="act-btn danger" onclick="deleteItCheck('${j.id}')">delete</button>
         </div></td>
@@ -2899,6 +3272,23 @@ function addItCheck() {
   document.getElementById('it-check-form').classList.remove('open');
   save(); render(); renderJobsGrid(); toast('Paycheck added ✓');
   if (allocations.length) checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
+}
+
+// Duplicates a paycheck's amount and pay-period length, starting today —
+// for repeating the last check without re-entering the dates by hand.
+function quickRepeatItCheck(id) {
+  const j = lawnEvents.find(j => j.id === id);
+  if (!j) return;
+  const today = todayISO();
+  const periodDays = Math.round((new Date(j.dateEnd + 'T00:00:00') - new Date(j.dateStart + 'T00:00:00')) / 86400000) + 1;
+  const dateEnd = addDaysISO(today, periodDays - 1);
+  const amount = eventAmount(j);
+  const newCheck = { id: 'it' + Date.now(), job: 'ca_it', dateStart: today, dateEnd, amount, status: 'uncashed', titheDeductible: !!j.titheDeductible };
+  lawnEvents.push(newCheck);
+  pendingEventWrites.add(newCheck.id);
+  logHistory('add', `Repeated paycheck — ${itCheckLabel(newCheck)} ($${amount.toFixed(2)})`, { job: 'ca_it' });
+  save(); render(); renderJobsGrid();
+  toast('Paycheck repeated for today ✓');
 }
 
 function markCheckCashed(id) {
@@ -3070,6 +3460,22 @@ function addOtherMoney() {
   updateOmFields();
   document.getElementById('om-tithe').checked=true;
   toast(type==='transfer' ? 'Transfer added ✓' : 'Entry added ✓');
+}
+
+// Duplicates an income/expense/gift entry for today (transfers aren't
+// repeatable this way — direction and amount usually differ each time).
+function quickRepeatOther(id) {
+  const e = otherMoney.find(e => e.id === id);
+  if (!e) return;
+  if (e.type === 'transfer') { toast("Transfers can't be quick-repeated — add a new one"); return; }
+  const today = todayISO();
+  const amount = parseFloat(e.amount);
+  const newEntry = { id: 'o' + Date.now(), desc: e.desc, date: today, type: e.type, amount, method: e.method, ...(e.type === 'income' ? { titheDeductible: e.titheDeductible !== false } : {}) };
+  otherMoney.push(newEntry);
+  pendingOtherWrites.add(newEntry.id);
+  logHistory('other', `Repeated ${e.type} — "${e.desc}" $${amount.toFixed(2)} on ${fmt(today)}`, { job: null });
+  save(); render();
+  toast('Entry repeated for today ✓');
 }
 
 function deleteOther(id) {
