@@ -1,0 +1,4061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Finance Manager</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0B0D0B" />
+<link rel="icon" href="icon-192.png" />
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+:root {
+  --bg: #0B0D0B;
+  --surface: #141714;
+  --surface2: #1C201C;
+  --surface3: #232823;
+  --surface-grad: linear-gradient(160deg, #181C18 0%, #131613 100%);
+
+  --accent: #F59E0B;
+  --accent-bright: #FBBF24;
+  --accent-dim: #D97706;
+  --accent-pale: #1C1000;
+  --accent-glow: rgba(245,158,11,0.35);
+
+  --green: #4ADE80;
+  --green-bright: #86EFAC;
+  --green-dim: #16A34A;
+  --green-pale: #052E16;
+  --green-border: #0A3D1A;
+  --green-glow: rgba(74,222,128,0.35);
+
+  --text: #EDF2EE;
+  --text-muted: #7A8C7D;
+  --text-faint: #3D4D3F;
+  --border: #1F261F;
+  --border-mid: #2A352A;
+
+  --red: #F87171;
+  --red-bright: #FCA5A5;
+  --red-dim: #DC2626;
+  --red-pale: #2A0A0A;
+  --red-border: #3D0A0A;
+
+  --amber: #FCD34D;
+  --amber-bright: #FDE68A;
+  --amber-pale: #271A00;
+  --gold-border: #3D2800;
+
+  --blue: #60A5FA;
+  --blue-bright: #93C5FD;
+  --blue-dim: #3B82F6;
+  --blue-pale: #0A1628;
+  --blue-border: #0F2040;
+
+  --purple: #C084FC;
+  --purple-bright: #D8B4FE;
+  --purple-dim: #A855F7;
+  --purple-pale: #1A0A2A;
+  --purple-border: #2A1040;
+
+  --grad-accent: linear-gradient(135deg, var(--accent-bright), var(--accent) 60%, var(--accent-dim));
+  --grad-green:  linear-gradient(135deg, var(--green-bright), var(--green) 60%, var(--green-dim));
+  --grad-blue:   linear-gradient(135deg, var(--blue-bright), var(--blue) 60%, var(--blue-dim));
+  --grad-red:    linear-gradient(135deg, var(--red-bright), var(--red) 60%, var(--red-dim));
+  --grad-purple: linear-gradient(135deg, var(--purple-bright), var(--purple) 60%, var(--purple-dim));
+
+  --shadow-card: 0 1px 0 rgba(255,255,255,0.035) inset, 0 14px 32px -22px rgba(0,0,0,0.7);
+  --shadow-pop: 0 24px 60px -20px rgba(0,0,0,0.75);
+
+  --ease: cubic-bezier(.16,.84,.32,1);
+  --ease-spring: cubic-bezier(.34,1.56,.64,1);
+
+  --radius: 13px;
+  --radius-sm: 7px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scrollbar-color: var(--border-mid) transparent; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background:
+    radial-gradient(ellipse 900px 520px at 12% -8%, rgba(245,158,11,0.07), transparent 60%),
+    radial-gradient(ellipse 900px 600px at 105% 4%, rgba(74,222,128,0.055), transparent 55%),
+    radial-gradient(ellipse 1100px 700px at 50% 115%, rgba(96,165,250,0.04), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+  color: var(--text);
+  min-height: 100vh;
+  padding: 2rem 1rem 4rem;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 20px; border: 2px solid var(--surface); }
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+header {
+  max-width: 900px;
+  margin: 0 auto 2.5rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding-bottom: 1.25rem;
+  position: relative;
+  animation: viewFadeIn 0.5s var(--ease);
+}
+
+header::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--green) 0%, var(--accent) 45%, var(--border-mid) 75%);
+  opacity: 0.55;
+}
+
+.logo { display: flex; flex-direction: column; gap: 4px; }
+
+.logo h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  background: linear-gradient(100deg, var(--green-bright) 0%, var(--green) 35%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 18px rgba(74,222,128,0.18));
+}
+
+.logo span {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+#last-updated {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-faint);
+  text-align: right;
+  line-height: 1.7;
+}
+
+.container { max-width: 900px; margin: 0 auto; animation: viewFadeIn 0.4s var(--ease); }
+
+@keyframes viewFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 10px;
+  margin-bottom: 2rem;
+}
+
+.metric {
+  background: var(--surface-grad);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.25rem 1rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.25s var(--ease), transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+}
+
+.metric::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2.5px;
+  background: var(--mv-grad, linear-gradient(90deg, var(--text-faint), var(--text-faint)));
+  opacity: 0.85;
+}
+
+.metric:hover { border-color: var(--border-mid); transform: translateY(-2px); }
+.metric.green  { --mv-grad: var(--grad-green); }
+.metric.amber  { --mv-grad: linear-gradient(90deg, var(--amber-bright), var(--amber)); }
+.metric.blue   { --mv-grad: var(--grad-blue); }
+.metric.red    { --mv-grad: var(--grad-red); }
+.metric.purple { --mv-grad: var(--grad-purple); }
+.metric.green:hover  { box-shadow: var(--shadow-card), 0 10px 26px -16px var(--green-glow); }
+.metric.amber:hover  { box-shadow: var(--shadow-card), 0 10px 26px -16px rgba(252,211,77,0.35); }
+.metric.blue:hover   { box-shadow: var(--shadow-card), 0 10px 26px -16px rgba(96,165,250,0.35); }
+.metric.red:hover    { box-shadow: var(--shadow-card), 0 10px 26px -16px rgba(248,113,113,0.3); }
+.metric.purple:hover { box-shadow: var(--shadow-card), 0 10px 26px -16px rgba(192,132,252,0.3); }
+
+.metric.tithe { --mv-grad: var(--grad-accent); }
+.metric.tithe .metric-value { color: var(--accent); }
+.metric.tithe-active { border-color: var(--accent-glow); }
+.metric.tithe-active:hover { box-shadow: var(--shadow-card), 0 10px 26px -16px var(--accent-glow); }
+.tithe-pay-btn { margin-top:8px; padding:4px 12px; font-size:11px; font-family:'JetBrains Mono',monospace; background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.4); color:var(--accent); border-radius:var(--radius-pill); cursor:pointer; transition:background 0.18s var(--ease), transform 0.15s var(--ease); }
+.tithe-pay-btn:hover { background:rgba(245,158,11,0.28); transform: translateY(-1px); }
+.transfer-btn { margin-top:8px; padding:4px 12px; font-size:11px; font-family:'JetBrains Mono',monospace; background:rgba(96,165,250,0.13); border:1px solid rgba(96,165,250,0.4); color:var(--blue); border-radius:var(--radius-pill); cursor:pointer; transition:background 0.18s var(--ease), transform 0.15s var(--ease); }
+.transfer-btn:hover { background:rgba(96,165,250,0.26); transform: translateY(-1px); }
+
+.metric-label {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
+
+.metric-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.6rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.metric.green .metric-value { color: var(--green); }
+.metric.amber .metric-value { color: var(--amber); }
+.metric.blue .metric-value { color: var(--blue); }
+.metric.red .metric-value { color: var(--red); }
+.metric.purple .metric-value { color: var(--purple); }
+
+.metric-sub {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+section {
+  background: var(--surface-grad);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.25s var(--ease);
+}
+
+section:hover { border-color: var(--border-mid); }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  gap: 12px;
+  transition: background 0.18s var(--ease);
+}
+
+.section-header:hover { background: rgba(255,255,255,0.015); }
+
+#loading-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(11,13,11,0.85);
+  backdrop-filter: blur(6px);
+  z-index: 9999;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.loading-spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, var(--green), var(--accent), var(--blue), var(--green));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px));
+  animation: spin 0.85s linear infinite;
+  filter: drop-shadow(0 0 10px rgba(74,222,128,0.35));
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+}
+
+.section-header.static { cursor: default; }
+.section-header.static:hover { background: transparent; }
+
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
+
+.header-actions { display: flex; gap: 6px; }
+
+.pill-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-mid);
+  background: var(--surface2);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease), border-color 0.18s var(--ease), transform 0.15s var(--ease), box-shadow 0.18s var(--ease);
+  white-space: nowrap;
+}
+
+.pill-btn:hover { background: var(--surface3); color: var(--text); border-color: var(--text-faint); transform: translateY(-1px); }
+.pill-btn:active { transform: translateY(0) scale(0.97); }
+.pill-btn.danger:hover { color: var(--red); border-color: var(--red-border); background: var(--red-pale); }
+.pill-btn.success { color: var(--green); border-color: var(--green-border); background: var(--green-pale); }
+.pill-btn.success:hover { background: rgba(74,222,128,0.22); box-shadow: 0 6px 16px -10px var(--green-glow); }
+
+.add-form {
+  padding: 1.1rem 1.25rem;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  display: none;
+}
+
+.add-form.open { display: block; animation: formReveal 0.3s var(--ease); }
+
+@keyframes formReveal {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+
+label {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-faint);
+  margin-bottom: 5px;
+}
+
+input:not([type="checkbox"]), select {
+  width: 100%;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.18s var(--ease), box-shadow 0.18s var(--ease);
+  -webkit-appearance: none;
+}
+
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px;
+  cursor: pointer;
+  border: 1.5px solid var(--border-mid);
+  border-radius: 4px;
+  background: var(--surface2);
+  transition: background 0.18s var(--ease), border-color 0.18s var(--ease);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+input[type="checkbox"]:hover { border-color: var(--green); }
+input[type="checkbox"]:checked {
+  background: var(--grad-green);
+  border-color: var(--green);
+  box-shadow: 0 0 8px -2px var(--green-glow);
+}
+input[type="checkbox"]:checked::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 7px;
+  border: 2px solid #0a0a0a;
+  border-top: none;
+  border-left: none;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+
+input:not([type="checkbox"]):focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(245,158,11,0.13); }
+input:not([type="checkbox"])::placeholder { color: var(--text-faint); }
+
+select option { background: var(--surface); }
+
+.date-field { position: relative; }
+.date-field input[type="text"] { padding-right: 32px; }
+.date-pick-btn {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 24px; height: 24px; padding: 0; border: none; background: none;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  border-radius: 4px; transition: background 0.15s var(--ease);
+}
+.date-pick-btn:hover { background: var(--surface3); }
+.date-pick-btn svg { width: 14px; height: 14px; stroke: var(--text-faint); fill: none; stroke-width: 2; display: block; transition: stroke 0.15s var(--ease); }
+.date-pick-btn:hover svg { stroke: var(--accent); }
+.date-picker-hidden { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; opacity: 0; pointer-events: none; }
+
+.form-actions { margin-top: 12px; display: flex; gap: 8px; }
+
+.btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.18s var(--ease), transform 0.15s var(--ease), box-shadow 0.18s var(--ease);
+}
+
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--grad-accent); color: #1A1100; font-weight: 600; box-shadow: 0 6px 18px -10px var(--accent-glow); }
+.btn-primary:hover { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 10px 22px -10px var(--accent-glow); }
+.btn-ghost { background: var(--surface3); color: var(--text-muted); border: 1px solid var(--border-mid); }
+.btn-ghost:hover { color: var(--text); border-color: var(--text-faint); }
+
+table { width: 100%; border-collapse: collapse; }
+
+th {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  padding: 8px 1.25rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+}
+
+td {
+  font-size: 13px;
+  padding: 10px 1.25rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  color: var(--text);
+  transition: background 0.12s var(--ease);
+}
+
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--surface2); }
+
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+.badge {
+  display: inline-block;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.02em;
+}
+
+.badge-unpaid { background: var(--amber-pale); color: var(--amber); border: 1px solid var(--gold-border); }
+.badge-check { background: var(--blue-pale); color: var(--blue); border: 1px solid var(--blue-border); }
+.badge-paid { background: var(--accent-pale); color: var(--accent); border: 1px solid var(--gold-border); }
+.badge-gift { background: var(--purple-pale); color: var(--purple); border: 1px solid var(--purple-border); }
+.badge-expense { background: var(--red-pale); color: var(--red); border: 1px solid var(--red-border); }
+.badge-income { background: var(--accent-pale); color: var(--accent); border: 1px solid var(--gold-border); }
+.badge-transfer { background: var(--blue-pale); color: var(--blue); border: 1px solid var(--blue-border); }
+.badge-witem { background: var(--blue-pale); color: var(--blue); border: 1px solid var(--blue-border); }
+.badge-wother { background: var(--purple-pale); color: var(--purple); border: 1px solid var(--purple-border); }
+.wl-link { color: var(--blue); text-decoration: none; font-family: 'JetBrains Mono', monospace; font-size: 11px; white-space: nowrap; transition: color 0.15s var(--ease); }
+.wl-link:hover { text-decoration: underline; color: var(--blue-bright); }
+.wl-desc { color: var(--text-muted); font-size: 12px; }
+
+.row-actions { display: flex; gap: 5px; justify-content: flex-end; flex-wrap: wrap; }
+
+.act-btn {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-mid);
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: background 0.15s var(--ease), color 0.15s var(--ease), border-color 0.15s var(--ease), transform 0.12s var(--ease);
+}
+
+.act-btn:hover { background: var(--surface3); color: var(--text); transform: translateY(-1px); }
+.act-btn.danger { color: var(--red); border-color: var(--red-border); }
+.act-btn.danger:hover { background: var(--red-pale); }
+.act-btn.success { color: var(--green); border-color: var(--green-border); }
+.act-btn.success:hover { background: var(--green-pale); }
+.act-btn.edit { color: var(--blue); border-color: var(--blue-border); }
+.act-btn.edit:hover { background: var(--blue-pale); }
+.act-btn.save { color: var(--accent); border-color: var(--gold-border); }
+.act-btn.save:hover { background: var(--accent-pale); }
+.act-btn.repeat { color: var(--purple); border-color: var(--purple-border); }
+.act-btn.repeat:hover { background: var(--purple-pale); }
+
+/* Inline edit row */
+.edit-row td { padding: 8px 1.25rem; background: var(--surface2); }
+.edit-row input, .edit-row select {
+  font-size: 12px;
+  padding: 5px 8px;
+  width: 100%;
+  min-width: 60px;
+}
+.edit-row .row-actions { margin-top: 0; }
+
+.empty-state {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-faint);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.table-wrap { overflow-x: auto; }
+
+.history-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 9px 1.25rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  transition: background 0.15s var(--ease);
+}
+
+.history-entry:last-child { border-bottom: none; }
+.history-entry:hover { background: var(--surface2); }
+
+.history-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(255,255,255,0.03); }
+.dot-add { background: var(--accent); box-shadow: 0 0 6px -1px var(--accent-glow); }
+.dot-paid { background: var(--blue); box-shadow: 0 0 6px -1px rgba(96,165,250,0.5); }
+.dot-delete { background: var(--red); box-shadow: 0 0 6px -1px rgba(248,113,113,0.5); }
+.dot-other { background: var(--purple); box-shadow: 0 0 6px -1px rgba(192,132,252,0.5); }
+.dot-client { background: var(--amber); box-shadow: 0 0 6px -1px rgba(252,211,77,0.5); }
+.dot-pocket { background: var(--purple); box-shadow: 0 0 6px -1px rgba(192,132,252,0.5); }
+.dot-recurring { background: var(--green); box-shadow: 0 0 6px -1px var(--green-glow); }
+
+.history-action { color: var(--text-muted); flex: 1; line-height: 1.5; }
+.history-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); white-space: nowrap; margin-top: 3px; }
+
+#history-body, #job-history-body, #it-history-body { max-height: 340px; overflow-y: auto; animation: formReveal 0.3s var(--ease); }
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0.5rem 0;
+}
+
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  background: var(--surface3);
+  border: 1px solid var(--border-mid);
+  border-left: 3px solid var(--green);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-pop);
+  opacity: 0;
+  transform: translateY(8px) scale(0.98);
+  transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+  pointer-events: none;
+  z-index: 10002;
+}
+
+.toast.show { opacity: 1; transform: translateY(0) scale(1); }
+
+.amount-pos { color: var(--green); }
+.amount-neg { color: var(--red); }
+
+@media (max-width: 600px) {
+  header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  th:nth-child(4), td:nth-child(4) { display: none; }
+}
+
+/* Client event dropdown */
+.client-events-toggle { background:none; border:none; color:var(--text-muted); font-size:11px; cursor:pointer; padding:2px 8px; border-radius:4px; font-family:'JetBrains Mono',monospace; white-space:nowrap; transition: color 0.15s var(--ease), background 0.15s var(--ease); }
+.client-events-toggle:hover { color:var(--text); background:var(--surface3); }
+.client-events-panel { display:none; background:var(--surface2); border-top:1px solid var(--border); }
+.client-events-panel.open { display:block; }
+.client-events-panel table { width:100%; }
+.client-events-panel th { font-size:10px; padding:6px 1rem; color:var(--text-muted); background:transparent; }
+.client-events-panel td { padding:6px 1rem; font-size:12px; }
+.client-events-panel tr:not(:last-child) td { border-bottom:1px solid var(--border); }
+.auth-area { display:flex; align-items:center; gap:10px; }
+.auth-user { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text-muted); }
+.auth-user img { width:28px; height:28px; border-radius:50%; border:1px solid var(--border-mid); }
+.btn-signin { display:flex; align-items:center; gap:8px; padding:7px 14px; background:var(--surface2); border:1px solid var(--border-mid); border-radius:var(--radius-sm); color:var(--text); font-size:13px; cursor:pointer; transition:background .18s var(--ease), border-color .18s var(--ease), transform .15s var(--ease); font-family:'Inter',sans-serif; }
+.btn-signin:hover { background:var(--surface3); border-color:var(--text-faint); transform:translateY(-1px); }
+.btn-signout { background:none; border:none; color:var(--text-muted); font-size:11px; cursor:pointer; padding:2px 6px; border-radius:4px; font-family:'Inter',sans-serif; transition:color .15s var(--ease); }
+.btn-signout:hover { color:var(--red); }
+#auth-loading { font-size:12px; color:var(--text-muted); font-family:'JetBrains Mono',monospace; }
+.sync-dot { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 6px -1px var(--green-glow); display:inline-block; margin-right:5px; }
+
+/* Jobs grid */
+.jobs-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; padding:1.25rem; }
+.job-btn {
+  aspect-ratio: 1;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+  background:var(--surface-grad); border:1px solid var(--border-mid); border-radius:var(--radius);
+  cursor:pointer; transition:border-color 0.2s var(--ease), transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  color:var(--text); font-family:'Inter',sans-serif; padding:1rem;
+}
+.job-btn:hover { border-color:var(--accent); transform:translateY(-2px); box-shadow: var(--shadow-card), 0 12px 26px -16px var(--accent-glow); }
+.job-btn:active { transform:scale(0.98); }
+.job-btn-icon {
+  width:52px; height:52px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  background: radial-gradient(circle at 35% 30%, rgba(245,158,11,0.22), rgba(245,158,11,0.05) 70%);
+  transition: background 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.job-btn:hover .job-btn-icon { background: radial-gradient(circle at 35% 30%, rgba(245,158,11,0.32), rgba(245,158,11,0.08) 70%); transform: scale(1.06); }
+.job-btn-icon svg { width:30px; height:30px; stroke:var(--accent); fill:none; stroke-width:1.7; }
+.job-btn-label { font-family:'Syne',sans-serif; font-size:14px; font-weight:600; letter-spacing:-0.01em; text-align:center; }
+.job-btn-sub { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-faint); text-align:center; }
+
+/* Job detail view */
+.job-view-header { display:flex; align-items:center; gap:14px; margin-bottom:1.25rem; }
+.job-view-title { font-family:'Syne',sans-serif; font-size:1.3rem; font-weight:600; color:var(--text); letter-spacing:-0.01em; }
+
+/* Distribution of funds */
+.funds-section-body { padding:1.1rem 1.25rem; cursor:pointer; transition:background 0.18s var(--ease); }
+.funds-section-body:hover { background:var(--surface2); }
+
+.funds-bar-track { display:flex; width:100%; height:32px; gap:3px; }
+
+.funds-seg {
+  position:relative;
+  height:100%;
+  min-width:8px;
+  border-radius: var(--radius-pill);
+  overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,0.14), inset 0 -4px 7px rgba(0,0,0,0.28), 0 4px 12px -8px rgba(0,0,0,0.5);
+  transition: width 0.7s var(--ease), filter 0.18s var(--ease), transform 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
+.funds-seg::before {
+  content:'';
+  position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(255,255,255,0.28), rgba(255,255,255,0) 42%, rgba(0,0,0,0.18) 100%);
+  pointer-events:none;
+}
+.funds-seg.seg-free { background-image: repeating-linear-gradient(135deg, rgba(255,255,255,0.07) 0 6px, transparent 6px 12px); }
+.funds-seg:hover { filter:brightness(1.18) saturate(1.08); transform:translateY(-2px) scale(1.01); box-shadow: inset 0 1px 1px rgba(255,255,255,0.14), inset 0 -4px 7px rgba(0,0,0,0.28), 0 10px 18px -10px rgba(0,0,0,0.55); }
+.funds-seg.is-dim { filter:brightness(0.45) saturate(0.55); }
+
+.funds-seg-pct { position:relative; font-family:'JetBrains Mono',monospace; font-size:10.5px; font-weight:600; letter-spacing:0.01em; white-space:nowrap; pointer-events:none; }
+.funds-seg-pct.on-light { color:rgba(13,15,14,0.82); text-shadow:0 1px 0 rgba(255,255,255,0.3); }
+.funds-seg-pct.on-dark { color:rgba(232,237,233,0.62); text-shadow:0 1px 1px rgba(0,0,0,0.4); }
+
+.funds-legend { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.funds-legend-item {
+  display:flex; align-items:center; gap:7px;
+  background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-pill);
+  padding:5px 12px 5px 8px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-muted);
+  transition: opacity 0.18s var(--ease), border-color 0.18s var(--ease), transform 0.18s var(--ease), box-shadow 0.18s var(--ease);
+}
+.funds-legend-item:hover { border-color:var(--border-mid); transform:translateY(-1px); box-shadow: 0 6px 14px -10px rgba(0,0,0,0.6); }
+.funds-legend-item.is-dim { opacity:0.4; }
+.funds-legend-name { font-family:'Inter',sans-serif; font-weight:500; color:var(--text); }
+.funds-legend-pct { font-weight:600; }
+.funds-swatch { width:9px; height:9px; border-radius:50%; flex-shrink:0; display:inline-block; box-shadow: 0 0 0 2px rgba(255,255,255,0.05); }
+.funds-overflow-note {
+  display:flex; align-items:center; gap:7px; width:100%;
+  font-size:11px; color:var(--amber); font-family:'JetBrains Mono',monospace;
+  margin-top:10px; padding:7px 11px; background:var(--amber-pale);
+  border:1px solid rgba(252,211,77,0.25); border-radius:8px;
+}
+
+/* Pockets page */
+.pocket-progress-track { width:100%; height:7px; border-radius:var(--radius-pill); background:var(--surface3); overflow:hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.4); }
+.pocket-progress-fill { height:100%; border-radius:var(--radius-pill); transition:width 0.5s var(--ease), box-shadow 0.3s var(--ease); }
+.pocket-rules-list { margin-top:8px; display:flex; flex-direction:column; gap:4px; }
+.pocket-rule-row { display:flex; align-items:center; gap:10px; font-size:12px; color:var(--text-muted); padding:4px 0; }
+.pocket-rule-empty { font-size:12px; color:var(--text-faint); padding:2px 0; }
+.pocket-rule-form { margin-top:10px; padding:10px; background:var(--surface3); border-radius:8px; border-bottom:none; }
+.pocket-row { transition: background 0.2s var(--ease); }
+.pocket-row:hover { background: rgba(255,255,255,0.015); }
+
+/* ── Pocket Goal Congrats Modal ─────────────────────────── */
+.congrats-card {
+  background: linear-gradient(145deg, #0a1a0d, #0d1f12);
+  border: 1px solid rgba(74,222,128,0.3);
+  border-radius: var(--radius-lg);
+  padding: 2.5rem 2rem;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 0 70px rgba(74,222,128,0.1), var(--shadow-pop);
+  position: relative;
+  overflow: hidden;
+}
+.congrats-card::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at top, rgba(74,222,128,0.07) 0%, transparent 65%);
+  pointer-events: none;
+}
+.congrats-emoji { font-size: 3.5rem; margin-bottom: 1rem; display: block; animation: pop-in 0.55s var(--ease-spring); }
+@keyframes pop-in { from { transform: scale(0) rotate(-20deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+.congrats-title {
+  font-family: 'Syne', sans-serif; font-size: 1.45rem; font-weight: 600;
+  color: var(--green); margin-bottom: 0.35rem; letter-spacing: -0.02em;
+}
+.congrats-pocket-name { font-family: 'Syne', sans-serif; font-size: 1rem; color: var(--text); margin-bottom: 0.25rem; }
+.congrats-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); margin-bottom: 1.4rem; }
+.congrats-excess-pill {
+  display: inline-block; background: rgba(245,158,11,0.12);
+  border: 1px solid rgba(245,158,11,0.3); color: var(--amber);
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  padding: 4px 14px; border-radius: var(--radius-pill); margin-bottom: 1.4rem;
+}
+.congrats-actions { display: flex; flex-direction: column; gap: 10px; }
+.congrats-dup-btn {
+  width: 100%; padding: 13px;
+  font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600;
+  background: var(--grad-green); color: var(--green-pale); border: none; border-radius: 10px;
+  cursor: pointer; transition: opacity 0.18s var(--ease), transform 0.15s var(--ease), box-shadow 0.18s var(--ease);
+  box-shadow: 0 8px 20px -10px var(--green-glow);
+}
+.congrats-dup-btn:hover { opacity: 0.92; transform: translateY(-1px); }
+.congrats-dup-btn:active { transform: scale(0.97); }
+.congrats-skip-btn {
+  background: none; border: none; color: var(--text-faint);
+  font-size: 12px; font-family: 'JetBrains Mono', monospace;
+  cursor: pointer; padding: 6px; transition: color 0.18s var(--ease);
+}
+.congrats-skip-btn:hover { color: var(--text-muted); }
+
+/* ── Purchase Celebration Popup ─────────────────────────── */
+.celebration-card {
+  background: linear-gradient(145deg, #1a0f08, #18150a);
+  border: 1px solid rgba(245,158,11,0.35);
+  border-radius: var(--radius-lg); padding: 2.5rem 2rem;
+  max-width: 360px; width: 100%; text-align: center;
+  box-shadow: 0 0 70px rgba(245,158,11,0.1), var(--shadow-pop);
+  position: relative; overflow: hidden;
+}
+.celebration-card::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at top, rgba(245,158,11,0.07) 0%, transparent 65%);
+  pointer-events: none;
+}
+.celebration-emoji { font-size: 3.5rem; margin-bottom: 1rem; display: block; animation: pop-in 0.55s var(--ease-spring); }
+.celebration-title {
+  font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 600;
+  color: var(--accent); margin-bottom: 0.5rem;
+}
+.celebration-item {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  color: var(--text-muted); margin-bottom: 1.75rem; line-height: 1.6;
+}
+.celebration-close {
+  width: 100%; padding: 12px;
+  font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500;
+  background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.4);
+  color: var(--accent); border-radius: 10px; cursor: pointer; transition: background 0.18s var(--ease), transform 0.15s var(--ease);
+}
+.celebration-close:hover { background: rgba(245,158,11,0.28); transform: translateY(-1px); }
+
+/* ── Purchase button on completed pockets ───────────────── */
+.pocket-purchase-btn {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  padding: 4px 14px; border-radius: var(--radius-pill);
+  border: 1px solid rgba(245,158,11,0.45);
+  background: rgba(245,158,11,0.13); color: var(--accent);
+  cursor: pointer; transition: background 0.18s var(--ease), transform 0.15s var(--ease); white-space: nowrap;
+}
+.pocket-purchase-btn:hover { background: rgba(245,158,11,0.28); transform: translateY(-1px); }
+.pocket-complete-badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  padding: 2px 8px; border-radius: var(--radius-pill);
+  background: var(--green-pale); border: 1px solid rgba(74,222,128,0.3);
+  color: var(--green); white-space: nowrap;
+}
+
+/* ── Modal entrance motion (applies whenever JS toggles display) ── */
+#full-history-modal, #payment-modal, #pocket-congrats-modal, #purchase-celebration {
+  animation: modalFade 0.2s var(--ease);
+}
+#full-history-modal > div, #payment-modal > div {
+  animation: modalPop 0.3s var(--ease-spring);
+  box-shadow: var(--shadow-pop);
+}
+@keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalPop { from { opacity: 0; transform: scale(0.94) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:14px">
+    <div class="logo">
+      <h1>Finance Manager</h1>
+    </div>
+  </div>
+  <div class="auth-area" id="auth-area">
+    <span id="auth-loading">connecting…</span>
+  </div>
+</header>
+
+<div class="container" id="main-view">
+
+  <div class="summary-grid" id="summary"></div>
+
+  <!-- Distribution of Funds -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
+        Distribution of Funds
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn" onclick="openPockets()">Manage pockets →</button>
+      </div>
+    </div>
+    <div class="funds-section-body" onclick="openPockets()">
+      <div class="funds-bar-wrap" id="funds-bar-wrap"></div>
+      <div class="funds-legend" id="funds-legend"></div>
+    </div>
+  </section>
+
+  <!-- Recurring -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Recurring
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn" onclick="openRecurring()">Manage recurring →</button>
+      </div>
+    </div>
+    <div class="funds-section-body" onclick="openRecurring()" style="padding:1rem 1.25rem;cursor:pointer">
+      <div id="recurring-summary" style="font-size:12px;color:var(--text-muted)">No recurring rules yet.</div>
+    </div>
+  </section>
+
+  <!-- Jobs -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Jobs
+      </div>
+    </div>
+    <div class="jobs-grid" id="jobs-grid"></div>
+  </section>
+
+  <!-- Income & Expenses -->
+  <section>
+    <div class="section-header" onclick="toggleForm('other-form', this)">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Income &amp; Expenses
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn" tabindex="-1">+ Add entry</button>
+      </div>
+    </div>
+    <div class="add-form" id="other-form">
+      <div class="form-grid">
+        <div><label>Description</label><input type="text" id="om-desc" placeholder="e.g. Birthday money" /></div>
+        <div><label>Date</label>
+          <div class="date-field">
+            <input type="text" id="om-date" placeholder="MM/DD/YYYY — blank = today" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('om-date')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="om-date-picker" class="date-picker-hidden" onchange="applyDatePicker('om-date')" tabindex="-1" />
+          </div>
+        </div>
+        <div><label>Category</label>
+          <select id="om-type" onchange="updateOmFields()">
+            <option value="gift">Gift / birthday</option>
+            <option value="income">Other income</option>
+            <option value="expense">Expense</option>
+            <option value="transfer">Transfer (bank ⇄ cash)</option>
+          </select>
+        </div>
+        <div><label id="om-method-label">Method</label>
+          <select id="om-method">
+            <option value="bank">Bank</option>
+            <option value="cash">Cash</option>
+          </select>
+        </div>
+        <div><label>Amount ($)</label><input type="number" id="om-amount" placeholder="0.00" min="0" step="0.01" /></div>
+        <div id="om-tithe-wrap" style="display:none;align-self:end">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:0">
+            <input type="checkbox" id="om-tithe" checked /> Tithe-deductible
+          </label>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addOtherMoney()">Add entry</button>
+        <button class="btn btn-ghost" onclick="toggleForm('other-form')">Cancel</button>
+      </div>
+    </div>
+    <div id="other-wrap"><div class="empty-state">No entries yet.</div></div>
+  </section>
+
+  <!-- Wishlist -->
+  <section>
+    <div class="section-header" onclick="toggleForm('wishlist-form', this)">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M6 2l-3 4v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        Wishlist
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn" tabindex="-1">+ Add item</button>
+      </div>
+    </div>
+    <div class="add-form" id="wishlist-form">
+      <div class="form-grid">
+        <div><label>Title</label><input type="text" id="wl-title" placeholder="e.g. New mower" /></div>
+        <div><label>Price ($)</label><input type="number" id="wl-price" placeholder="0.00" min="0" step="0.01" /></div>
+        <div><label>Category</label>
+          <select id="wl-category">
+            <option value="item">Item</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div><label>Link (optional)</label><input type="text" id="wl-link" placeholder="https://…" /></div>
+        <div><label>Description (optional)</label><input type="text" id="wl-desc" placeholder="A few notes" /></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addWishlistItem()">Add item</button>
+        <button class="btn btn-ghost" onclick="toggleForm('wishlist-form')">Cancel</button>
+      </div>
+    </div>
+    <div id="wishlist-wrap"><div class="empty-state">No items yet.</div></div>
+  </section>
+
+  <!-- History -->
+  <section>
+    <div class="section-header" onclick="toggleSection('history-body')">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        History
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearHistory()">Clear</button>
+      </div>
+    </div>
+    <div id="history-body">
+      <div id="history-wrap"><div class="empty-state">No history yet.</div></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="container" id="job-view" style="display:none">
+
+  <div class="job-view-header">
+    <button class="pill-btn" onclick="closeJob()">← All jobs</button>
+    <div class="job-view-title" id="job-view-title"></div>
+  </div>
+
+  <!-- Clients -->
+  <section>
+    <div class="section-header" onclick="toggleForm('client-form', this)">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        Clients
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn success" tabindex="-1">+ Add client</button>
+      </div>
+    </div>
+    <div class="add-form" id="client-form">
+      <div class="form-grid">
+        <div><label>Name / nickname</label><input type="text" id="cl-name" placeholder="e.g. Mr. Johnson" /></div>
+        <div><label>Note (optional)</label><input type="text" id="cl-note" placeholder="e.g. Oak St." /></div>
+        <div><label>Rate per event ($)</label><input type="number" id="cl-rate" placeholder="0.00" min="0" step="0.01" /></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addClient()">Add client</button>
+        <button class="btn btn-ghost" onclick="toggleForm('client-form')">Cancel</button>
+      </div>
+    </div>
+    <div id="clients-wrap"><div class="empty-state">No clients yet.</div></div>
+    <div id="bulk-bar" style="display:none;padding:8px 1.25rem;background:var(--surface2);border-top:1px solid var(--border);align-items:center;gap:10px">
+      <span id="bulk-count" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted)"></span>
+      <button class="act-btn success" onclick="bulkMarkPaid()" style="font-size:12px;padding:4px 14px">mark selected as paid</button>
+      <button class="act-btn danger" onclick="bulkDelete()" style="font-size:12px;padding:4px 14px">delete selected</button>
+    </div>
+  </section>
+
+  <!-- Add Event -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+        Events
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn success" onclick="toggleForm('event-form')">+ Add event</button>
+      </div>
+    </div>
+    <div class="add-form" id="event-form">
+      <div class="form-grid">
+        <div><label>Client</label><select id="le-client" onchange="prefillEventAmount()"></select></div>
+        <div><label>Date</label>
+          <div class="date-field">
+            <input type="text" id="le-date" placeholder="MM/DD/YYYY — blank = today" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('le-date')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="le-date-picker" class="date-picker-hidden" onchange="applyDatePicker('le-date')" tabindex="-1" />
+          </div>
+        </div>
+        <div><label>Amount ($)</label><input type="number" id="le-amount" min="0" step="0.01" placeholder="auto" /></div>
+        <div><label>Status</label>
+          <select id="le-status">
+            <option value="unpaid">Unpaid</option>
+            <option value="check">Check coming</option>
+            <option value="paid">Paid</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addEvent()">Add event</button>
+        <button class="btn btn-ghost" onclick="toggleForm('event-form')">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Paid Events -->
+  <section>
+    <div class="section-header" onclick="toggleSection('paid-events-body')">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Paid Events
+      </div>
+      <div class="header-actions">
+        <span id="paid-events-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
+        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearPaidEvents()">Clear all</button>
+      </div>
+    </div>
+    <div id="paid-events-body" style="display:none">
+      <div id="paid-events-wrap"><div class="empty-state">No paid events yet.</div></div>
+    </div>
+  </section>
+
+  <!-- Job History -->
+  <section>
+    <div class="section-header" onclick="toggleSection('job-history-body')">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        History
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearJobHistory(currentJobId)">Clear</button>
+      </div>
+    </div>
+    <div id="job-history-body">
+      <div id="job-history-wrap"><div class="empty-state">No history yet.</div></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="container" id="ca-it-view" style="display:none">
+
+  <div class="job-view-header">
+    <button class="pill-btn" onclick="closeCaIt()">← All jobs</button>
+    <div class="job-view-title">Collegedale Academy – IT</div>
+  </div>
+
+  <!-- Uncashed Checks (replaces Clients) -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        Uncashed Checks
+      </div>
+      <div class="header-actions">
+        <span id="it-uncashed-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
+      </div>
+    </div>
+    <div id="it-uncashed-wrap"><div class="empty-state">No uncashed checks.</div></div>
+  </section>
+
+  <!-- Paychecks / Add -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+        Paychecks
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn success" onclick="toggleForm('it-check-form')">+ Add paycheck</button>
+      </div>
+    </div>
+    <div class="add-form" id="it-check-form">
+      <div class="form-grid">
+        <div><label>Pay Period Start</label>
+          <div class="date-field">
+            <input type="text" id="it-start" placeholder="MM/DD/YYYY" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('it-start')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="it-start-picker" class="date-picker-hidden" onchange="applyDatePicker('it-start')" tabindex="-1" />
+          </div>
+        </div>
+        <div><label>Pay Period End</label>
+          <div class="date-field">
+            <input type="text" id="it-end" placeholder="MM/DD/YYYY" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('it-end')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="it-end-picker" class="date-picker-hidden" onchange="applyDatePicker('it-end')" tabindex="-1" />
+          </div>
+        </div>
+        <div><label>Amount ($)</label><input type="number" id="it-amount" min="0" step="0.01" placeholder="0.00" /></div>
+        <div><label>Status</label>
+          <select id="it-status">
+            <option value="uncashed">Not Cashed</option>
+            <option value="cashed">Cashed</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);cursor:pointer;margin-right:auto">
+          <input type="checkbox" id="it-tithe" style="accent-color:var(--accent)"> Tithe deductible
+        </label>
+        <button class="btn btn-primary" onclick="addItCheck()">Add paycheck</button>
+        <button class="btn btn-ghost" onclick="toggleForm('it-check-form')">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cashed Checks -->
+  <section>
+    <div class="section-header" onclick="toggleSection('it-cashed-body')">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Cashed Checks
+      </div>
+      <div class="header-actions">
+        <span id="it-cashed-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
+        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearCashedChecks()">Clear all</button>
+      </div>
+    </div>
+    <div id="it-cashed-body" style="display:none">
+      <div id="it-cashed-wrap"><div class="empty-state">No cashed checks yet.</div></div>
+    </div>
+  </section>
+
+  <!-- IT History -->
+  <section>
+    <div class="section-header" onclick="toggleSection('it-history-body')">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        History
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearJobHistory('ca_it')">Clear</button>
+      </div>
+    </div>
+    <div id="it-history-body">
+      <div id="it-history-wrap"><div class="empty-state">No history yet.</div></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="container" id="pockets-view" style="display:none">
+
+  <div class="job-view-header">
+    <button class="pill-btn" onclick="closePockets()">← Back</button>
+    <div class="job-view-title">Pockets</div>
+  </div>
+
+  <div class="summary-grid" id="pockets-summary"></div>
+
+  <!-- Distribution of Funds (pockets page) -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
+        Distribution of Funds
+      </div>
+    </div>
+    <div style="padding:1.1rem 1.25rem">
+      <div id="pk-funds-bar-wrap"></div>
+      <div class="funds-legend" id="pk-funds-legend"></div>
+    </div>
+  </section>
+
+  <!-- Move Money -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><line x1="17" y1="3" x2="17" y2="21"/><polyline points="13 7 17 3 21 7"/><polyline points="11 17 7 21 3 17"/><line x1="7" y1="21" x2="7" y2="3"/></svg>
+        Move Money
+      </div>
+    </div>
+    <div style="padding:1.1rem 1.25rem">
+      <div class="form-grid">
+        <div><label>From</label><select id="mv-from"></select></div>
+        <div><label>To</label><select id="mv-to"></select></div>
+        <div><label>Amount ($)</label><input type="number" id="mv-amount" min="0" step="0.01" placeholder="0.00" /></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="executeMoveFunds()">Move</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pockets & Rules (combined) -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0016.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 002 8.5c0 2.29 1.51 4.04 3 5.5l7 7z"/></svg>
+        Pockets
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn" onclick="toggleForm('pocket-form')" tabindex="-1">+ Add pocket</button>
+      </div>
+    </div>
+    <div class="add-form" id="pocket-form">
+      <div class="form-grid">
+        <div><label>Name</label><input type="text" id="pk-name" placeholder="e.g. New mower fund" /></div>
+        <div><label>Linked wishlist item (optional)</label><select id="pk-wishlist"></select></div>
+        <div>
+          <label style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+            <span>Seed from Free / Savings</span>
+            <span id="pk-free-avail" style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-faint);font-weight:400;text-transform:none;letter-spacing:0"></span>
+          </label>
+          <input type="number" id="pk-balance" min="0" step="0.01" placeholder="0.00 — optional" oninput="updatePkFreeHint()" />
+          <div id="pk-free-hint" style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text-faint);margin-top:4px;display:none"></div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addPocket()">Add pocket</button>
+        <button class="btn btn-ghost" onclick="toggleForm('pocket-form')">Cancel</button>
+      </div>
+    </div>
+    <div id="pockets-wrap"><div class="empty-state">No pockets yet.</div></div>
+  </section>
+
+  <!-- Pockets History -->
+  <section>
+    <div class="section-header" onclick="toggleSection('pocket-history-body')">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Pockets History
+      </div>
+    </div>
+    <div id="pocket-history-body">
+      <div id="pocket-history-wrap"><div class="empty-state">No pocket changes yet.</div></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="container" id="recurring-view" style="display:none">
+
+  <div class="job-view-header">
+    <button class="pill-btn" onclick="closeRecurring()">← Back</button>
+    <div class="job-view-title">Recurring</div>
+  </div>
+
+  <!-- Recurring Rules -->
+  <section>
+    <div class="section-header" onclick="toggleForm('recurring-form', this)">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Recurring Rules
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn success" tabindex="-1">+ Add rule</button>
+      </div>
+    </div>
+    <div class="add-form" id="recurring-form">
+      <div class="form-grid">
+        <div>
+          <label>Type</label>
+          <select id="rec-kind" onchange="updateRecurringFields()">
+            <option value="lawn">Lawn mowing client</option>
+            <option value="it">CA IT paycheck</option>
+            <option value="other">Other income / expense</option>
+          </select>
+        </div>
+        <div id="rec-lawn-client-wrap"><label>Client</label><select id="rec-client"></select></div>
+        <div id="rec-other-type-wrap" style="display:none">
+          <label>Category</label>
+          <select id="rec-other-type" onchange="updateRecurringFields()">
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+          </select>
+        </div>
+        <div id="rec-other-desc-wrap" style="display:none"><label>Description</label><input type="text" id="rec-desc" placeholder="e.g. Netflix" /></div>
+        <div id="rec-amount-wrap"><label id="rec-amount-label">Amount ($) <span style="font-size:10px;color:var(--text-faint);text-transform:none">— blank = client rate</span></label><input type="number" id="rec-amount" min="0" step="0.01" placeholder="0.00" /></div>
+        <div id="rec-method-wrap" style="display:none">
+          <label>Method</label>
+          <select id="rec-method"><option value="bank">Bank</option><option value="cash">Cash</option></select>
+        </div>
+        <div id="rec-tithe-wrap" style="display:none;align-self:end">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:0">
+            <input type="checkbox" id="rec-tithe" checked /> Tithe-deductible
+          </label>
+        </div>
+        <div><label>Repeat every (days)</label><input type="number" id="rec-interval" min="1" step="1" placeholder="e.g. 7" /></div>
+        <div><label>Next date</label>
+          <div class="date-field">
+            <input type="text" id="rec-next" placeholder="MM/DD/YYYY — blank = today" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('rec-next')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="rec-next-picker" class="date-picker-hidden" onchange="applyDatePicker('rec-next')" tabindex="-1" />
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addRecurringRuleFromForm()">Add recurring rule</button>
+        <button class="btn btn-ghost" onclick="toggleForm('recurring-form')">Cancel</button>
+      </div>
+    </div>
+    <div id="recurring-wrap"><div class="empty-state">No recurring rules yet.</div></div>
+  </section>
+
+</div>
+
+<div id="loading-overlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">LOADING…</div>
+</div>
+
+<div id="full-history-modal" style="display:none;position:fixed;inset:0;background:rgba(11,13,11,0.88);backdrop-filter:blur(6px);z-index:9998;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;">
+  <div style="background:var(--surface-grad);border:1px solid var(--border-mid);border-radius:var(--radius-lg);width:100%;max-width:860px;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0.9rem 1.25rem;border-bottom:1px solid var(--border);background:var(--surface2);">
+      <div id="fh-title" style="font-family:'Syne',sans-serif;font-size:12px;font-weight:500;letter-spacing:0.06em;color:var(--text-muted);text-transform:uppercase">Full History</div>
+      <button class="pill-btn" onclick="closeFullHistory()">✕ Close</button>
+    </div>
+    <div id="fh-entries" style="max-height:70vh;overflow-y:auto;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 1.25rem;border-top:1px solid var(--border);background:var(--surface2);">
+      <button class="pill-btn" id="fh-prev" onclick="showFullHistory(fullHistoryPage-1)">← Prev</button>
+      <span id="fh-page-info" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
+      <button class="pill-btn" id="fh-next" onclick="showFullHistory(fullHistoryPage+1)">Next →</button>
+    </div>
+  </div>
+</div>
+
+<div id="payment-modal" style="display:none;position:fixed;inset:0;background:rgba(11,13,11,0.88);backdrop-filter:blur(6px);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface-grad);border:1px solid var(--border-mid);border-radius:var(--radius-lg);padding:1.75rem 1.5rem;min-width:260px;display:flex;flex-direction:column;gap:1.25rem;">
+    <div id="pm-job-info" style="display:none;background:var(--surface3);border:1px solid var(--border-mid);border-radius:var(--radius-sm);padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);line-height:1.8;"></div>
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:var(--text);letter-spacing:0.04em">How was this paid?</div>
+    <div style="display:flex;gap:8px;">
+      <button id="pm-cash" class="btn btn-ghost" style="flex:1;color:var(--green);border-color:var(--green-border)">Cash</button>
+      <button id="pm-bank" class="btn btn-ghost" style="flex:1;color:var(--purple);border-color:var(--purple-border)">Bank</button>
+    </div>
+    <button id="pm-individual" class="btn btn-ghost" style="display:none;color:var(--blue);border-color:var(--blue-border);width:100%">Prompt each individually</button>
+    <button id="pm-cancel" style="background:none;border:none;color:var(--text-faint);font-size:11px;cursor:pointer;font-family:'JetBrains Mono',monospace;text-align:center;transition:color 0.18s var(--ease);">cancel</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ── Pocket Goal Congratulations Modal ───────────────── -->
+<div id="pocket-congrats-modal" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.92);backdrop-filter:blur(8px);z-index:10000;align-items:center;justify-content:center;padding:1.5rem;">
+  <div class="congrats-card">
+    <span class="congrats-emoji" id="congrats-emoji">🎉</span>
+    <div class="congrats-title">Savings Goal Reached!</div>
+    <div class="congrats-pocket-name" id="congrats-pocket-name"></div>
+    <div class="congrats-meta" id="congrats-meta"></div>
+    <div id="congrats-excess-wrap" style="display:none;margin-bottom:1.4rem">
+      <span class="congrats-excess-pill" id="congrats-excess-text"></span>
+    </div>
+    <div class="congrats-actions">
+      <button class="congrats-dup-btn" id="congrats-duplicate-btn">+ Add duplicate pocket</button>
+      <button class="congrats-skip-btn" id="congrats-skip-btn">No thanks — I'm done with this goal</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Purchase Celebration Popup ─────────────────────── -->
+<div id="purchase-celebration" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.92);backdrop-filter:blur(8px);z-index:10001;align-items:center;justify-content:center;padding:1.5rem;">
+  <div class="celebration-card">
+    <span class="celebration-emoji">🛍️</span>
+    <div class="celebration-title">Congrats on your purchase!</div>
+    <div class="celebration-item" id="celebration-item-text"></div>
+    <button class="celebration-close" onclick="closePurchaseCelebration()">Done &nbsp;🎊</button>
+  </div>
+</div>
+
+<script>
+// ── Firebase ──────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyCbN_krdSpUY3fB6lXYwK7dwyo4HiXY_Ks",
+  authDomain: "finance-manager-56a03.firebaseapp.com",
+  projectId: "finance-manager-56a03",
+  storageBucket: "finance-manager-56a03.firebasestorage.app",
+  messagingSenderId: "812739334467",
+  appId: "1:812739334467:web:12cf4972c373ebad09dff6"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+let currentUser = null;
+
+function userDoc() { return db.collection('users').doc(currentUser.uid); }
+
+function loadFromFirestore() {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.style.display = 'flex';
+
+  detachListeners();
+
+  historyLog = []; lastHistoryDoc = null; allHistoryLoaded = false;
+  pendingHistoryEntries = [];
+
+  // Track first fire of all listeners before doing initial render
+  const ready = { main: false, clients: false, events: false, other: false, wishlist: false, pockets: false, pocketRules: false, recurring: false };
+  let initialRenderDone = false;
+
+  async function checkReady() {
+    if (initialRenderDone || !Object.values(ready).every(Boolean)) return;
+    initialRenderDone = true;
+    await loadMoreHistory();
+    if (overlay) overlay.style.display = 'none';
+    render();
+    await processRecurringRules();
+  }
+
+  // Main doc (balances)
+  unsubscribers.push(userDoc().onSnapshot(snap => {
+    if (snap.exists) {
+      const d = snap.data();
+      balances = d.balances || { bank: 0, cash: 0 };
+      delete balances.tithe_bank;
+      delete balances.tithe_cash;
+    } else {
+      balances = { bank: 0, cash: 0 };
+      userDoc().set({ balances });
+    }
+    if (!ready.main) { ready.main = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
+
+  // Clients — sorted alphabetically so the list order is stable regardless
+  // of whatever order Firestore happens to hand back documents in.
+  unsubscribers.push(userDoc().collection('clients').onSnapshot(snap => {
+    clients = snap.docs.map(d => d.data())
+      .sort((a,b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+    if (!ready.clients) { ready.clients = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
+
+  // Events
+  unsubscribers.push(userDoc().collection('jobs').onSnapshot(snap => {
+    lawnEvents = snap.docs.map(d => d.data());
+    if (!ready.events) { ready.events = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
+
+  // Other
+  unsubscribers.push(userDoc().collection('other').onSnapshot(snap => {
+    otherMoney = snap.docs.map(d => d.data());
+    if (!ready.other) { ready.other = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
+
+  // Wishlist
+  unsubscribers.push(userDoc().collection('wishlist').onSnapshot(snap => {
+    wishlist = snap.docs.map(d => d.data());
+    if (!ready.wishlist) { ready.wishlist = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
+
+  // Pockets — sorted by creation time so list order (and pocket *colors*,
+  // which are assigned by array position in getPocketColor) stay stable
+  // across reloads instead of drifting with Firestore's snapshot order.
+  unsubscribers.push(userDoc().collection('pockets').onSnapshot(snap => {
+    pockets = snap.docs.map(d => d.data())
+      .sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||'') || a.id.localeCompare(b.id));
+    if (!ready.pockets) { ready.pockets = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
+
+  // Pocket Rules — same stability fix as Pockets above.
+  unsubscribers.push(userDoc().collection('pocketRules').onSnapshot(snap => {
+    pocketRules = snap.docs.map(d => d.data())
+      .sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||'') || a.id.localeCompare(b.id));
+    if (!ready.pocketRules) { ready.pocketRules = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
+
+  // Recurring rules — sorted by next-due date so the management list and
+  // any auto-generation logic see a stable, predictable order.
+  unsubscribers.push(userDoc().collection('recurring').onSnapshot(snap => {
+    recurringRules = snap.docs.map(d => d.data())
+      .sort((a,b) => (a.nextDate||'').localeCompare(b.nextDate||'') || a.id.localeCompare(b.id));
+    if (!ready.recurring) { ready.recurring = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
+}
+
+let saveTimer;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveToFirestore, 800);
+}
+
+async function loadMoreHistory() {
+  if (allHistoryLoaded) return;
+  let query = historyCol().orderBy('ts', 'desc').limit(50);
+  if (lastHistoryDoc) query = query.startAfter(lastHistoryDoc);
+  const snap = await query.get();
+  if (snap.empty || snap.docs.length < 50) allHistoryLoaded = true;
+  if (!snap.empty) {
+    lastHistoryDoc = snap.docs[snap.docs.length - 1];
+    snap.docs.forEach(d => historyLog.push(d.data()));
+    historyLog.sort((a, b) => b.ts.localeCompare(a.ts));
+  }
+  renderAllHistory();
+}
+
+async function saveToFirestore() {
+  if (!currentUser) return;
+
+  // Main doc holds only balances now
+  await userDoc().set({ balances });
+
+  // Upsert only changed records into their subcollection
+  const upsertItems = async (colName, ids, dataArr) => {
+    if (!ids.size) return;
+    const items = dataArr.filter(i => ids.has(i.id));
+    ids.clear();
+    for (let i = 0; i < items.length; i += 50) {
+      const batch = db.batch();
+      items.slice(i, i + 50).forEach(item =>
+        batch.set(userDoc().collection(colName).doc(item.id), item));
+      await batch.commit();
+    }
+  };
+
+  // Delete removed records from their subcollection
+  const deleteItems = async (colName, ids) => {
+    if (!ids.size) return;
+    const arr = [...ids];
+    ids.clear();
+    for (let i = 0; i < arr.length; i += 50) {
+      const batch = db.batch();
+      arr.slice(i, i + 50).forEach(id =>
+        batch.delete(userDoc().collection(colName).doc(id)));
+      await batch.commit();
+    }
+  };
+
+  await upsertItems('clients', pendingClientWrites, clients);
+  await upsertItems('jobs',    pendingEventWrites,    lawnEvents);
+  await upsertItems('other',   pendingOtherWrites,  otherMoney);
+  await upsertItems('wishlist', pendingWishlistWrites, wishlist);
+  await upsertItems('pockets', pendingPocketWrites, pockets);
+  await upsertItems('pocketRules', pendingRuleWrites, pocketRules);
+  await upsertItems('recurring', pendingRecurringWrites, recurringRules);
+  await deleteItems('clients', pendingClientDeletes);
+  await deleteItems('jobs',    pendingEventDeletes);
+  await deleteItems('other',   pendingOtherDeletes);
+  await deleteItems('wishlist', pendingWishlistDeletes);
+  await deleteItems('pockets', pendingPocketDeletes);
+  await deleteItems('pocketRules', pendingRuleDeletes);
+  await deleteItems('recurring', pendingRecurringDeletes);
+
+  // History entries (unchanged)
+  while (pendingHistoryEntries.length > 0) {
+    const chunk = pendingHistoryEntries.splice(0, 50);
+    const batch = db.batch();
+    chunk.forEach(entry => batch.set(historyCol().doc(entry.id), entry));
+    await batch.commit();
+  }
+}
+
+auth.onAuthStateChanged(user => {
+  const area = document.getElementById('auth-area');
+  if (user) {
+    currentUser = user;
+    area.innerHTML = `
+      <div class="auth-user">
+        <span class="sync-dot"></span>
+        <img src="${user.photoURL || ''}" onerror="this.style.display='none'" />
+        <span>${user.displayName || user.email}</span>
+        <button class="btn-signout" onclick="loadFromFirestore()" title="Refresh data">↻ refresh</button>
+        <button class="btn-signout" onclick="signOut()">sign out</button>
+      </div>`;
+    loadFromFirestore();
+  } else {
+    currentUser = null;
+    area.innerHTML = `
+      <button class="btn-signin" onclick="signIn()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+        Sign in with Google
+      </button>`;
+  }
+});
+
+function signIn() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider);
+}
+function signOut() {
+  if (confirm('Sign out?')) { detachListeners(); auth.signOut(); }
+}
+
+// ── Realtime listeners ────────────────────────────────────
+let unsubscribers = [];
+function detachListeners() { unsubscribers.forEach(fn => fn()); unsubscribers = []; }
+
+// ── App data ──────────────────────────────────────────────
+let clients    = [];
+let lawnEvents   = [];
+let otherMoney = [];
+let wishlist   = [];
+let pockets      = [];
+let pocketRules  = [];
+let recurringRules = [];
+let pocketsOpen  = false;
+let recurringOpen = false;
+let lastNetCash  = 0;
+let historyLog = [];          // in-memory loaded entries
+let balances   = { bank: 0, cash: 0 };
+
+// ── Jobs ──────────────────────────────────────────────────
+// Add more jobs here later — each gets its own square button on the main
+// page and its own scoped Clients / Events / Paid Events / History.
+const JOBS = [
+  { id: 'lawn_mowing', label: 'Lawn Mowing', icon: '<svg viewBox="0 0 24 24"><path d="M9 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M19 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M3 17V8l6-4 6 4h3a3 3 0 013 3v6"/><path d="M9 4v9"/></svg>' },
+  { id: 'ca_it', label: 'CA – IT', icon: '<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8M12 17v4"/></svg>' }
+];
+function getJob(id) { return JOBS.find(j => j.id === id); }
+// Items created before jobs existed have no .job field — they were all
+// lawn mowing, so that's the safe default rather than losing them.
+function jobOf(item) { return item.job || 'lawn_mowing'; }
+
+// ── Recurring ─────────────────────────────────────────────
+// A "recurring rule" auto-generates an entry every N days — a lawn client
+// mowed on a schedule, a CA IT paycheck on a pay period, or a recurring
+// other-money income/expense (e.g. a subscription). Generation happens once
+// per load (see checkReady → processRecurringRules), catching up on any
+// occurrences missed while the app was closed, capped to avoid runaway
+// generation if it's been unused a long time.
+
+// Adds `days` to an ISO 'YYYY-MM-DD' date string, returning a new ISO date.
+function addDaysISO(iso, days) {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function ruleLabel(r) {
+  if (r.kind === 'lawn') return `${r.client} (lawn mowing)`;
+  if (r.kind === 'it') return 'CA IT paycheck';
+  return `"${r.desc}" (${r.type === 'expense' ? 'expense' : 'income'})`;
+}
+
+function ruleAmountDisplay(r) {
+  if (r.kind === 'lawn' && r.amount === undefined) return `$${getRate(r.client)}/event (rate)`;
+  return `$${parseFloat(r.amount).toFixed(2)}`;
+}
+
+function addRecurringRule(data) {
+  const rule = { id: 'rec' + Date.now(), active: true, createdAt: new Date().toISOString(), ...data };
+  recurringRules.push(rule);
+  pendingRecurringWrites.add(rule.id);
+  logHistory('recurring', `Set up recurring — ${ruleLabel(rule)} every ${rule.intervalDays} day${rule.intervalDays > 1 ? 's' : ''}, starting ${fmt(rule.nextDate)}`, { job: rule.job ?? null });
+  save();
+  return rule;
+}
+
+function generateLawnEventFromRule(rule, date) {
+  const amount = rule.amount !== undefined ? rule.amount : getRate(rule.client);
+  const newJob = { id: 'l' + Date.now() + Math.floor(Math.random() * 1000), client: rule.client, date, status: 'unpaid', amount, job: rule.job || 'lawn_mowing', recurringId: rule.id };
+  lawnEvents.push(newJob);
+  pendingEventWrites.add(newJob.id);
+  logHistory('add', `Auto-added recurring event — ${rule.client} on ${fmt(date)} ($${amount})`, { job: rule.job || 'lawn_mowing' });
+}
+
+function generateItCheckFromRule(rule, dateStart) {
+  const dateEnd = addDaysISO(dateStart, rule.intervalDays - 1);
+  const newCheck = { id: 'it' + Date.now() + Math.floor(Math.random() * 1000), job: 'ca_it', dateStart, dateEnd, amount: rule.amount, status: 'uncashed', titheDeductible: !!rule.titheDeductible, recurringId: rule.id };
+  lawnEvents.push(newCheck);
+  pendingEventWrites.add(newCheck.id);
+  logHistory('add', `Auto-added recurring paycheck — ${itCheckLabel(newCheck)} ($${rule.amount.toFixed(2)})`, { job: 'ca_it' });
+}
+
+function generateOtherFromRule(rule, date) {
+  const newEntry = { id: 'o' + Date.now() + Math.floor(Math.random() * 1000), desc: rule.desc, date, type: rule.type, amount: rule.amount, method: rule.method, recurringId: rule.id, ...(rule.type === 'income' ? { titheDeductible: !!rule.titheDeductible } : {}) };
+  otherMoney.push(newEntry);
+  pendingOtherWrites.add(newEntry.id);
+  logHistory('other', `Auto-added recurring ${rule.type} — "${rule.desc}" $${parseFloat(rule.amount).toFixed(2)} on ${fmt(date)}`, { job: null });
+}
+
+// Runs once per app load (after all collections are in). Catches each active
+// rule up to today, generating one entry per missed interval (capped per
+// rule so a long-unused account doesn't flood in thousands of entries).
+async function processRecurringRules() {
+  const today = todayISO();
+  const MAX_PER_RULE = 25;
+  let totalGenerated = 0;
+
+  recurringRules.forEach(rule => {
+    if (!rule.active || !rule.nextDate) return;
+    let next = rule.nextDate;
+    const dates = [];
+    while (next <= today && dates.length < MAX_PER_RULE) {
+      dates.push(next);
+      next = addDaysISO(next, rule.intervalDays);
+    }
+    if (!dates.length) return;
+    dates.forEach(date => {
+      if (rule.kind === 'lawn') generateLawnEventFromRule(rule, date);
+      else if (rule.kind === 'it') generateItCheckFromRule(rule, date);
+      else generateOtherFromRule(rule, date);
+    });
+    totalGenerated += dates.length;
+    rule.nextDate = next;
+    rule.lastGeneratedDate = dates[dates.length - 1];
+    pendingRecurringWrites.add(rule.id);
+  });
+
+  if (totalGenerated > 0) {
+    save();
+    render();
+    toast(`${totalGenerated} recurring entr${totalGenerated > 1 ? 'ies' : 'y'} auto-added ✓`);
+  }
+}
+
+function updateRecurringFields() {
+  const kind = document.getElementById('rec-kind');
+  if (!kind) return;
+  const isLawn = kind.value === 'lawn', isIt = kind.value === 'it', isOther = kind.value === 'other';
+  document.getElementById('rec-lawn-client-wrap').style.display = isLawn ? '' : 'none';
+  document.getElementById('rec-other-type-wrap').style.display = isOther ? '' : 'none';
+  document.getElementById('rec-other-desc-wrap').style.display = isOther ? '' : 'none';
+  const otherType = document.getElementById('rec-other-type').value;
+  document.getElementById('rec-method-wrap').style.display = isOther ? '' : 'none';
+  document.getElementById('rec-tithe-wrap').style.display = (isIt || (isOther && otherType === 'income')) ? '' : 'none';
+  document.getElementById('rec-amount-label').innerHTML = isLawn
+    ? 'Amount ($) <span style="font-size:10px;color:var(--text-faint);text-transform:none">— blank = client rate</span>'
+    : 'Amount ($)';
+  if (isLawn) refreshRecurringClientDropdown();
+}
+
+function refreshRecurringClientDropdown() {
+  const sel = document.getElementById('rec-client');
+  if (!sel) return;
+  const lawnClients = clients.filter(c => jobOf(c) === 'lawn_mowing');
+  sel.innerHTML = lawnClients.length
+    ? lawnClients.map(c => `<option value="${c.name}">${c.name} — $${c.rate}/event</option>`).join('')
+    : '<option value="">No lawn clients yet</option>';
+}
+
+function addRecurringRuleFromForm() {
+  const kind = document.getElementById('rec-kind').value;
+  const intervalDays = parseInt(document.getElementById('rec-interval').value, 10);
+  if (!intervalDays || intervalDays < 1) { alert('Enter a repeat interval of at least 1 day.'); return; }
+  const nextDate = parseFlexibleDate(document.getElementById('rec-next').value);
+  const amountRaw = document.getElementById('rec-amount').value;
+
+  let data;
+  if (kind === 'lawn') {
+    const client = document.getElementById('rec-client').value;
+    if (!client) { alert('Add a lawn client first.'); return; }
+    data = { kind: 'lawn', job: 'lawn_mowing', client, intervalDays, nextDate, ...(amountRaw !== '' ? { amount: parseFloat(amountRaw) } : {}) };
+  } else if (kind === 'it') {
+    const amount = parseFloat(amountRaw);
+    if (isNaN(amount) || amount <= 0) { alert('Enter a valid paycheck amount.'); return; }
+    data = { kind: 'it', job: 'ca_it', amount, intervalDays, nextDate, titheDeductible: document.getElementById('rec-tithe').checked };
+  } else {
+    const desc = document.getElementById('rec-desc').value.trim();
+    const amount = parseFloat(amountRaw);
+    const type = document.getElementById('rec-other-type').value;
+    const method = document.getElementById('rec-method').value;
+    if (!desc) { alert('Enter a description.'); return; }
+    if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
+    data = { kind: 'other', job: null, desc, amount, type, method, intervalDays, nextDate, ...(type === 'income' ? { titheDeductible: document.getElementById('rec-tithe').checked } : {}) };
+  }
+
+  addRecurringRule(data);
+  document.getElementById('recurring-form').classList.remove('open');
+  document.getElementById('rec-interval').value = '';
+  document.getElementById('rec-next').value = '';
+  document.getElementById('rec-amount').value = '';
+  document.getElementById('rec-desc').value = '';
+  renderRecurringPage();
+  toast('Recurring rule added ✓');
+}
+
+function toggleRecurringActive(id) {
+  const r = recurringRules.find(r => r.id === id);
+  if (!r) return;
+  const wasActive = r.active;
+  recurringRules = recurringRules.map(x => x.id === id ? { ...x, active: !wasActive } : x);
+  pendingRecurringWrites.add(id);
+  logHistory('recurring', `${wasActive ? 'Paused' : 'Resumed'} recurring — ${ruleLabel(r)}`, { job: r.job ?? null });
+  save(); renderRecurringList(); renderRecurringSummary();
+  toast(wasActive ? 'Recurring rule paused' : 'Recurring rule resumed ✓');
+}
+
+function deleteRecurringRule(id) {
+  const r = recurringRules.find(r => r.id === id);
+  if (!r) return;
+  if (!confirm(`Delete recurring rule — ${ruleLabel(r)}?`)) return;
+  recurringRules = recurringRules.filter(x => x.id !== id);
+  pendingRecurringDeletes.add(id); pendingRecurringWrites.delete(id);
+  logHistory('recurring', `Deleted recurring — ${ruleLabel(r)}`, { job: r.job ?? null });
+  save(); renderRecurringList(); renderRecurringSummary();
+  toast('Recurring rule deleted');
+}
+
+function renderRecurringList() {
+  const wrap = document.getElementById('recurring-wrap');
+  if (!wrap) return;
+  if (!recurringRules.length) { wrap.innerHTML = '<div class="empty-state">No recurring rules yet.</div>'; return; }
+  const sorted = [...recurringRules].sort((a, b) => a.nextDate.localeCompare(b.nextDate) || a.id.localeCompare(b.id));
+  wrap.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>What</th><th>Amount</th><th>Every</th><th>Next</th><th>Status</th><th></th></tr></thead>
+    <tbody>${sorted.map(r => `
+      <tr id="rec-row-${r.id}">
+        <td>${ruleLabel(r)}</td>
+        <td class="mono">${ruleAmountDisplay(r)}</td>
+        <td class="mono">${r.intervalDays} day${r.intervalDays > 1 ? 's' : ''}</td>
+        <td class="mono">${fmt(r.nextDate)}</td>
+        <td>${r.active ? '<span class="badge badge-paid">Active</span>' : '<span class="badge badge-unpaid">Paused</span>'}</td>
+        <td><div class="row-actions">
+          <button class="act-btn ${r.active ? '' : 'success'}" onclick="toggleRecurringActive('${r.id}')">${r.active ? 'pause' : 'resume'}</button>
+          <button class="act-btn danger" onclick="deleteRecurringRule('${r.id}')">delete</button>
+        </div></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function renderRecurringSummary() {
+  const el = document.getElementById('recurring-summary');
+  if (!el) return;
+  const active = recurringRules.filter(r => r.active);
+  if (!active.length) { el.textContent = 'No recurring rules yet.'; return; }
+  const soonest = [...active].sort((a, b) => a.nextDate.localeCompare(b.nextDate))[0];
+  el.textContent = `${active.length} active rule${active.length > 1 ? 's' : ''} · next: ${ruleLabel(soonest)} on ${fmt(soonest.nextDate)}`;
+}
+
+function renderRecurringPage() {
+  refreshRecurringClientDropdown();
+  renderRecurringList();
+}
+
+// ── Pockets ───────────────────────────────────────────────
+// A "pocket" is a named savings bucket, optionally linked to a wishlist item
+// as a savings goal (e.g. an "Emergency fund" pocket has no linked item — it's
+// just a portion of money set aside under that name). Pocket
+// rules say "x% of every new event on job Y gets set aside into pocket Z" —
+// applied the moment an event is added (see addEvent / applyPocketRules).
+// Palette is tuned to sit alongside the app's existing blue/purple/red/amber
+// tokens so pockets read as part of the same system rather than a separate
+// neon set. Green is reserved for the "Savings" / Free segment, so it's
+// deliberately excluded here to avoid two segments reading as the same color.
+const POCKET_COLORS = ['#60A5FA','#C084FC','#F87171','#FCD34D','#FB923C','#22D3EE','#F472B6','#818CF8'];
+const COLOR_GREEN = '#4ADE80';
+function getPocket(id) { return pockets.find(p => p.id === id); }
+function getWishlistItem(id) { return wishlist.find(w => w.id === id); }
+function getPocketColor(pocketId) {
+  const idx = pockets.findIndex(p => p.id === pocketId);
+  return POCKET_COLORS[idx % POCKET_COLORS.length] || '#888';
+}
+// Lightens (positive percent) or darkens (negative percent) a '#RRGGBB' hex
+// color by blending it toward white/black. Used to build glossy gradients
+// from a single base color instead of flat fills.
+function shadeColor(hex, percent) {
+  const num = parseInt(hex.replace('#',''), 16);
+  let r = (num >> 16) & 0xFF, g = (num >> 8) & 0xFF, b = num & 0xFF;
+  const blend = (c) => percent >= 0
+    ? Math.round(c + (255 - c) * (percent / 100))
+    : Math.round(c + c * (percent / 100));
+  r = Math.min(255, Math.max(0, blend(r)));
+  g = Math.min(255, Math.max(0, blend(g)));
+  b = Math.min(255, Math.max(0, blend(b)));
+  return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
+}
+// Builds a glossy diagonal gradient (light → base → dark) from one hex color,
+// used for funds-bar segments and pocket progress fills.
+function glossGradient(hex) {
+  return `linear-gradient(165deg, ${shadeColor(hex, 30)}, ${hex} 55%, ${shadeColor(hex, -22)})`;
+}
+function sumPocketBalances() {
+  return Math.round(pockets.reduce((s, p) => s + (p.balance || 0), 0) * 100) / 100;
+}
+// Free / unallocated money right now: net cash minus whatever's earmarked
+// in pockets, never shown below zero (see funds-overflow-note for when
+// pockets have outrun net cash because of unpaid events).
+function freeAmount() {
+  return Math.max(0, Math.round((lastNetCash - sumPocketBalances()) * 100) / 100);
+}
+function adjustPocketBalance(pocketId, delta) {
+  pockets = pockets.map(p => p.id === pocketId
+    ? { ...p, balance: Math.max(0, Math.round(((p.balance || 0) + delta) * 100) / 100) }
+    : p);
+  pendingPocketWrites.add(pocketId);
+}
+// Applies every pocket rule attached to jobId against an event's amount the
+// moment it's marked paid, moving money out of Free and into the matching
+// pocket(s). Returns the list of allocations made so the event can carry
+// them — letting a later undo/delete cleanly reverse exactly what was set
+// aside for it.
+function applyPocketRules(jobId, amount) {
+  const rules = pocketRules.filter(r => r.jobId === jobId);
+  const allocations = [];
+  rules.forEach(r => {
+    const pocket = getPocket(r.pocketId);
+    if (!pocket) return;
+    const alloc = Math.round(amount * r.percent / 100 * 100) / 100;
+    if (alloc <= 0) return;
+    adjustPocketBalance(pocket.id, alloc);
+    allocations.push({ pocketId: pocket.id, amount: alloc });
+    logHistory('pocket', `Auto-set-aside $${alloc.toFixed(2)} → "${pocket.name}" (${r.percent}% of paid ${getJob(jobId) ? getJob(jobId).label : jobId} event)`, { job: null, pocketId: pocket.id });
+  });
+  return allocations;
+}
+// Reverses whatever applyPocketRules set aside for this event (stored on
+// j.pocketAllocations), used whenever a payment is undone or a paid event
+// is deleted outright.
+function reversePocketAllocations(j, reason) {
+  if (!j || !j.pocketAllocations || !j.pocketAllocations.length) return;
+  j.pocketAllocations.forEach(a => {
+    const pocket = getPocket(a.pocketId);
+    adjustPocketBalance(a.pocketId, -a.amount);
+    logHistory('pocket', `Reversed $${a.amount.toFixed(2)} set-aside in "${pocket ? pocket.name : 'a removed pocket'}" — ${reason}`, { job: null, pocketId: a.pocketId });
+  });
+}
+
+let currentJobId = null; // null = on the main page; otherwise the open job's id
+
+function openJob(id) {
+  if (id === 'ca_it') { openCaIt(); return; }
+  currentJobId = id;
+  document.getElementById('job-view-title').textContent = getJob(id).label;
+  document.getElementById('main-view').style.display = 'none';
+  document.getElementById('job-view').style.display = 'block';
+  renderClients();
+  renderPaidEvents();
+  renderJobHistory();
+  window.scrollTo(0, 0);
+}
+
+function closeJob() {
+  currentJobId = null;
+  document.getElementById('job-view').style.display = 'none';
+  document.getElementById('main-view').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function openCaIt() {
+  currentJobId = 'ca_it';
+  document.getElementById('main-view').style.display = 'none';
+  document.getElementById('ca-it-view').style.display = 'block';
+  renderItChecks();
+  window.scrollTo(0, 0);
+}
+
+function closeCaIt() {
+  currentJobId = null;
+  document.getElementById('ca-it-view').style.display = 'none';
+  document.getElementById('main-view').style.display = 'block';
+  render();
+  window.scrollTo(0, 0);
+}
+
+function openPockets() {
+  pocketsOpen = true;
+  document.getElementById('main-view').style.display = 'none';
+  document.getElementById('job-view').style.display = 'none';
+  document.getElementById('pockets-view').style.display = 'block';
+  renderPocketsPage();
+  window.scrollTo(0, 0);
+}
+
+function closePockets() {
+  pocketsOpen = false;
+  document.getElementById('pockets-view').style.display = 'none';
+  document.getElementById('main-view').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function openRecurring() {
+  recurringOpen = true;
+  document.getElementById('main-view').style.display = 'none';
+  document.getElementById('job-view').style.display = 'none';
+  document.getElementById('pockets-view').style.display = 'none';
+  document.getElementById('recurring-view').style.display = 'block';
+  document.getElementById('rec-kind').value = 'lawn';
+  updateRecurringFields();
+  renderRecurringPage();
+  window.scrollTo(0, 0);
+}
+
+function closeRecurring() {
+  recurringOpen = false;
+  document.getElementById('recurring-view').style.display = 'none';
+  document.getElementById('main-view').style.display = 'block';
+  window.scrollTo(0, 0);
+}
+
+function renderJobsGrid() {
+  const grid = document.getElementById('jobs-grid');
+  if (!grid) return;
+  grid.innerHTML = JOBS.map(job => {
+    const openCount = job.id === 'ca_it'
+      ? lawnEvents.filter(j => jobOf(j) === job.id && j.status === 'uncashed').length
+      : lawnEvents.filter(j => jobOf(j) === job.id && j.status !== 'paid').length;
+    const subLabel = openCount > 0
+      ? (job.id === 'ca_it'
+          ? openCount + ' uncashed check' + (openCount > 1 ? 's' : '')
+          : openCount + ' open event' + (openCount > 1 ? 's' : ''))
+      : (job.id === 'ca_it' ? 'All clear' : 'All settled');
+    return `
+      <button class="job-btn" onclick="openJob('${job.id}')">
+        <div class="job-btn-icon">${job.icon}</div>
+        <div class="job-btn-label">${job.label}</div>
+        <div class="job-btn-sub">${subLabel}</div>
+      </button>`;
+  }).join('');
+}
+
+// Figures out which job a history entry belongs to. New entries carry an
+// explicit .job (a job id, or null for global entries like income/expenses
+// and tithe payments). Entries logged before this existed don't have the
+// field, so we infer it from their type/message — accurately, since the
+// underlying actions (addEvent, addClient, etc.) only ever happened in one
+// of these two buckets.
+function getEntryJob(h) {
+  if (h.job !== undefined) return h.job;
+  if (h.type === 'client' || h.type === 'paid') return 'lawn_mowing';
+  if (h.type === 'other') return null;
+  if (h.type === 'add') return h.message && h.message.startsWith('Tithe paid') ? null : 'lawn_mowing';
+  if (h.type === 'delete') return h.message && h.message.startsWith('Deleted entry') ? null : 'lawn_mowing';
+  return null;
+}
+
+let pendingHistoryEntries = []; // new entries not yet written to Firestore
+let lastHistoryDoc        = null;  // Firestore pagination cursor
+let allHistoryLoaded      = false; // true when no more entries on server
+
+// Pending subcollection writes/deletes (only changed records get written)
+let pendingClientWrites  = new Set();
+let pendingClientDeletes = new Set();
+let pendingEventWrites     = new Set();
+let pendingEventDeletes    = new Set();
+let pendingOtherWrites   = new Set();
+let pendingOtherDeletes  = new Set();
+let pendingWishlistWrites  = new Set();
+let pendingWishlistDeletes = new Set();
+let pendingPocketWrites  = new Set();
+let pendingPocketDeletes = new Set();
+let pendingRuleWrites    = new Set();
+let pendingRuleDeletes   = new Set();
+let pendingRecurringWrites  = new Set();
+let pendingRecurringDeletes = new Set();
+
+function historyCol() { return db.collection('users').doc(currentUser.uid).collection('history'); }
+
+function getRate(name) { const c = clients.find(c => c.name===name); return c ? c.rate : 0; }
+function eventAmount(j) { return j.amount !== undefined ? j.amount : getRate(j.client); }
+
+function fmt(d) { const [y,m,dy] = d.split('-'); return `${parseInt(m)}/${parseInt(dy)}/${y.slice(2)}`; }
+function itCheckLabel(j) { return `${fmt(j.dateStart)} – ${fmt(j.dateEnd)}`; }
+
+function todayISO() { return new Date().toISOString().slice(0,10); }
+
+// Parses flexible typed date input into ISO 'YYYY-MM-DD'.
+// Blank -> today. "5/26" -> May 26, current year. "26" -> 26th of current month/year.
+function parseFlexibleDate(str) {
+  str = (str || '').trim();
+  if (!str) return todayISO();
+  const parts = str.split(/[\/\-]/).map(p => p.trim()).filter(p => p !== '');
+  const now = new Date();
+  let month = now.getMonth() + 1, day = now.getDate(), year = now.getFullYear();
+  if (parts.length === 1) {
+    day = parseInt(parts[0], 10);
+  } else if (parts.length === 2) {
+    month = parseInt(parts[0], 10);
+    day = parseInt(parts[1], 10);
+  } else if (parts.length >= 3) {
+    month = parseInt(parts[0], 10);
+    day = parseInt(parts[1], 10);
+    year = parseInt(parts[2], 10);
+    if (year < 100) year += 2000;
+  }
+  if (isNaN(month) || isNaN(day) || isNaN(year) || month < 1 || month > 12 || day < 1 || day > 31) return todayISO();
+  return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+}
+
+// Converts stored ISO date back to a typeable M/D/YYYY string for edit fields.
+function isoToDisplay(iso) {
+  if (!iso) return '';
+  const [y,m,d] = iso.split('-');
+  return `${parseInt(m)}/${parseInt(d)}/${y}`;
+}
+
+// Opens the hidden native date picker tied to a text date field, seeded with
+// whatever that field currently resolves to (today if blank/unparseable).
+function openDatePicker(textId) {
+  const textInput = document.getElementById(textId);
+  const picker = document.getElementById(textId + '-picker');
+  if (!textInput || !picker) return;
+  picker.value = parseFlexibleDate(textInput.value);
+  if (picker.showPicker) { try { picker.showPicker(); return; } catch (e) {} }
+  picker.focus();
+  picker.click();
+}
+
+// Fired when the hidden picker's value changes — writes the picked date back
+// into the visible text field in the same M/D/YYYY style the user types in.
+function applyDatePicker(textId) {
+  const textInput = document.getElementById(textId);
+  const picker = document.getElementById(textId + '-picker');
+  if (picker.value) textInput.value = isoToDisplay(picker.value);
+}
+
+function logHistory(type, message, extra = {}) {
+  const entry = { id: extra.id || ('h'+Date.now()), type, message, ts: new Date().toISOString(), ...extra };
+  historyLog.unshift(entry);
+  pendingHistoryEntries.push(entry);
+}
+
+// Bank / cash totals are fully derived from the ledger — paid events and
+// income/expense entries — every time this is called, instead of being a
+// manually incremented running total. This means there's no longer any way
+// for the displayed balance to drift out of sync with the underlying data.
+function computeBalances() {
+  let bank = 0, cash = 0;
+  lawnEvents.forEach(j => {
+    if (j.job === 'ca_it') {
+      if (j.status === 'cashed') bank += eventAmount(j);
+      return;
+    }
+    if (j.status !== 'paid' || !j.paymentMethod) return;
+    const amt = eventAmount(j);
+    if (j.paymentMethod === 'bank') bank += amt;
+    else if (j.paymentMethod === 'cash') cash += amt;
+  });
+  otherMoney.forEach(e => {
+    const amt = parseFloat(e.amount) || 0;
+    if (e.type === 'transfer') {
+      if (e.fromMethod === 'bank') bank -= amt; else if (e.fromMethod === 'cash') cash -= amt;
+      if (e.toMethod === 'bank') bank += amt; else if (e.toMethod === 'cash') cash += amt;
+      return;
+    }
+    if (!e.method) return; // entries with no recorded method don't move bank/cash
+    const delta = e.type === 'expense' ? -amt : amt;
+    if (e.method === 'bank') bank += delta;
+    else if (e.method === 'cash') cash += delta;
+  });
+  return {
+    bank: Math.round(bank * 100) / 100,
+    cash: Math.round(cash * 100) / 100
+  };
+}
+
+function computeTithe() {
+  // "Other income" is tithe-deductible only when its own checkbox says so
+  // (defaults to true for entries created before this option existed).
+  // Gift/birthday and expense entries are never eligible regardless.
+  const bank = Math.round((
+    lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && !j.tithePaid)
+            .reduce((s, j) => s + eventAmount(j), 0) +
+    lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'cashed' && j.titheDeductible && !j.tithePaid)
+            .reduce((s, j) => s + eventAmount(j), 0) +
+    otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method !== 'cash' && !e.tithePaid)
+              .reduce((s, e) => s + parseFloat(e.amount), 0)
+  ) * 0.1 * 100) / 100;
+  const cash = Math.round((
+    lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && !j.tithePaid)
+            .reduce((s, j) => s + eventAmount(j), 0) +
+    otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method === 'cash' && !e.tithePaid)
+              .reduce((s, e) => s + parseFloat(e.amount), 0)
+  ) * 0.1 * 100) / 100;
+  return { bank, cash, total: Math.round((bank + cash) * 100) / 100 };
+}
+
+function statusBadge(s) {
+  return { unpaid:'<span class="badge badge-unpaid">Unpaid</span>', check:'<span class="badge badge-check">Check coming</span>', paid:'<span class="badge badge-paid">Paid</span>' }[s] || '';
+}
+
+function refreshClientDropdown() {
+  const sel = document.getElementById('le-client');
+  if (!sel) return;
+  const jobClients = clients.filter(c => jobOf(c) === currentJobId);
+  sel.innerHTML = jobClients.map(c => `<option value="${c.name}">${c.name}${c.note?' ('+c.note+')':''} — $${c.rate}</option>`).join('');
+  prefillEventAmount();
+}
+
+function renderClients() {
+  const wrap = document.getElementById('clients-wrap');
+  if (!currentJobId) return;
+  const jobClients = clients.filter(c => jobOf(c) === currentJobId);
+  if (!jobClients.length) { wrap.innerHTML = '<div class="empty-state">No clients yet.</div>'; refreshClientDropdown(); return; }
+
+  wrap.innerHTML = jobClients.map(c => {
+    const clientJobs = lawnEvents.filter(j => j.client === c.name && jobOf(j) === currentJobId && j.status !== 'paid')
+      .sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+    const jobCount = clientJobs.length;
+    const owed = clientJobs.reduce((s,j) => s + eventAmount(j), 0);
+
+    const jobRows = clientJobs.map(j => `
+      <tr id="erow-${j.id}">
+        <td style="width:32px"><input type="checkbox" class="event-cb" data-id="${j.id}" onclick="updateBulkBar()" /></td>
+        <td class="mono">${fmt(j.date)}</td>
+        <td style="color:var(--text-muted);font-size:12px">${j.client}</td>
+        <td class="mono amount-pos">$${eventAmount(j)}</td>
+        <td>${statusBadge(j.status)}</td>
+        <td><div class="row-actions">
+          <button class="act-btn repeat" onclick="quickRepeatEvent('${j.id}')" title="Add another event for today, same client &amp; amount">↻ repeat</button>
+          <button class="act-btn edit" onclick="editEvent('${j.id}')">edit</button>
+          <button class="act-btn success" onclick="markPaid('${j.id}')">mark paid</button>
+          <button class="act-btn danger" onclick="deleteEvent('${j.id}')">delete</button>
+        </div></td>
+      </tr>`).join('');
+
+    return `
+      <div id="crow-${c.id}">
+        <div style="display:flex;align-items:center;padding:10px 1.25rem;gap:10px;border-bottom:1px solid var(--border)">
+          <div style="font-weight:500">${c.name}</div>
+          ${jobCount > 0 ? `
+          <button class="client-events-toggle" onclick="toggleClientEvents('${c.id}')">
+            ${jobCount} event${jobCount>1?'s':''} · $${owed} owed ▾
+          </button>` : '<span style="font-size:11px;color:var(--text-muted)">no open events</span>'}
+          <div style="flex:1"></div>
+          <div style="color:var(--text-muted);font-size:12px">${c.note||''}</div>
+          <div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;color:var(--text-muted)">$${c.rate}/event</div>
+          <div class="row-actions" style="margin:0">
+            <button class="act-btn repeat" onclick="quickAddEventForClient('${c.id}')" title="Log today's visit for ${c.name} at $${c.rate}">↻ today</button>
+            <button class="act-btn edit" onclick="editClient('${c.id}')">edit</button>
+            <button class="act-btn danger" onclick="deleteClient('${c.id}')">remove</button>
+          </div>
+        </div>
+        ${jobCount > 0 ? `
+        <div class="client-events-panel" id="events-panel-${c.id}">
+          <table>
+            <thead><tr>
+              <th colspan="2" style="width:auto">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <input type="checkbox" id="select-all-${c.id}" onchange="toggleClientSelectAll(this,'${c.id}')" style="cursor:pointer;width:13px;height:13px;accent-color:var(--green)" />
+                  <span style="font-size:10px;color:var(--text-muted);font-weight:500;letter-spacing:.05em;cursor:pointer" onclick="document.getElementById('select-all-${c.id}').click()">SELECT ALL</span>
+                </div>
+              </th>
+              <th>CLIENT</th><th>AMOUNT</th><th>STATUS</th><th></th>
+            </tr></thead>
+            <tbody>${jobRows}</tbody>
+          </table>
+        </div>` : ''}
+      </div>`;
+  }).join('');
+
+  refreshClientDropdown();
+  updateBulkBar();
+}
+
+function toggleClientEvents(cid) {
+  const panel = document.getElementById('events-panel-'+cid);
+  if (panel) panel.classList.toggle('open');
+}
+
+function toggleClientSelectAll(cb, cid) {
+  const panel = document.getElementById('events-panel-'+cid);
+  if (!panel) return;
+  panel.querySelectorAll('.event-cb').forEach(c => c.checked = cb.checked);
+  updateBulkBar();
+}
+
+function editClient(id) {
+  const c = clients.find(c=>c.id===id);
+  const wrap = document.getElementById('crow-'+id);
+  const row = wrap.querySelector('div');
+  row.innerHTML = `
+    <input id="ec-name-${id}" value="${c.name}" style="flex:1;font-size:13px;padding:5px 8px" />
+    <input id="ec-note-${id}" value="${c.note||''}" placeholder="note" style="flex:1;font-size:13px;padding:5px 8px" />
+    <span style="font-size:12px;color:var(--text-muted)">$</span>
+    <input id="ec-rate-${id}" type="number" value="${c.rate}" min="0" step="0.01" style="width:70px;font-size:13px;padding:5px 8px" />
+    <div class="row-actions" style="margin:0">
+      <button class="act-btn save" onclick="saveClient('${id}')">save</button>
+      <button class="act-btn" onclick="renderClients()">cancel</button>
+    </div>`;
+}
+
+function saveClient(id) {
+  const name = document.getElementById('ec-name-'+id).value.trim();
+  const note = document.getElementById('ec-note-'+id).value.trim();
+  const rate = parseFloat(document.getElementById('ec-rate-'+id).value);
+  if (!name || isNaN(rate) || rate < 0) { alert('Name and valid rate required.'); return; }
+  const old = clients.find(c=>c.id===id);
+  clients = clients.map(c => c.id===id ? {...c, name, note, rate} : c);
+  clients.sort((a,b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+  pendingClientWrites.add(id);
+  const changes = [];
+  if (old.name !== name) changes.push(`name: ${old.name} → ${name}`);
+  if ((old.note||'') !== note) changes.push(`note: "${old.note||''}" → "${note}"`);
+  if (old.rate !== rate) changes.push(`rate: $${old.rate} → $${rate}/event`);
+  const changeStr = changes.length ? changes.join(', ') : 'no changes';
+  logHistory('client', `Edited client — ${name} (${changeStr})`, { job: currentJobId });
+  save(); render(); toast('Client updated ✓');
+}
+
+function reopenPanel(clientName) {
+  const c = clients.find(c => c.name === clientName);
+  if (c) { const p = document.getElementById('events-panel-'+c.id); if (p) p.classList.add('open'); }
+}
+
+function render() {
+  renderJobsGrid();
+  if (currentJobId) renderClients();
+
+  const omSorted = [...otherMoney].sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  const omWrap = document.getElementById('other-wrap');
+  if (!omSorted.length) {
+    omWrap.innerHTML = '<div class="empty-state">No entries yet.</div>';
+  } else {
+    omWrap.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Category</th><th>Method</th><th style="text-align:right">Actions</th></tr></thead>
+      <tbody>${omSorted.map(e => {
+        const isExp = e.type==='expense';
+        const isTransfer = e.type==='transfer';
+        const cls = isTransfer?'badge-transfer': e.type==='gift'?'badge-gift': isExp?'badge-expense':'badge-income';
+        const lbl = isTransfer?'⇄ Transfer': e.type==='gift'?'Gift / birthday': isExp?'Expense':'Income';
+        const amountCell = isTransfer
+          ? `<td class="mono" style="color:var(--blue)">$${parseFloat(e.amount).toFixed(2)}</td>`
+          : `<td class="mono ${isExp?'amount-neg':'amount-pos'}">${isExp?'-':'+'}$${parseFloat(e.amount).toFixed(2)}</td>`;
+        const methodCell = isTransfer
+          ? `<td class="mono">${e.fromMethod==='cash'?'Cash':'Bank'} → ${e.toMethod==='cash'?'Cash':'Bank'}</td>`
+          : `<td class="mono">${e.method ? (e.method==='cash'?'Cash':'Bank') : '—'}</td>`;
+        return `<tr id="orow-${e.id}">
+          <td class="mono">${fmt(e.date)}</td>
+          <td>${e.desc}</td>
+          ${amountCell}
+          <td><span class="badge ${cls}">${lbl}</span>${e.type==='income'&&e.titheDeductible===false?' <span class="mono" style="font-size:10px;color:var(--text-faint)">no tithe</span>':''}</td>
+          ${methodCell}
+          <td><div class="row-actions">
+            ${isTransfer ? '' : `<button class="act-btn repeat" onclick="quickRepeatOther('${e.id}')" title="Add the same entry for today">↻ repeat</button>`}
+            <button class="act-btn edit" onclick="editOther('${e.id}')">edit</button>
+            <button class="act-btn danger" onclick="deleteOther('${e.id}')">delete</button>
+          </div></td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
+  }
+
+  const unpaid   = lawnEvents.filter(j=>j.status==='unpaid').reduce((s,j)=>s+eventAmount(j),0);
+  const check    = lawnEvents.filter(j=>j.status==='check').reduce((s,j)=>s+eventAmount(j),0);
+  const paidJobs = lawnEvents.filter(j=>j.status==='paid').reduce((s,j)=>s+eventAmount(j),0);
+  const itUncashed = lawnEvents.filter(j=>j.status==='uncashed').reduce((s,j)=>s+eventAmount(j),0);
+  const itCashed   = lawnEvents.filter(j=>j.status==='cashed').reduce((s,j)=>s+eventAmount(j),0);
+  const income   = otherMoney.filter(e=>e.type!=='expense' && e.type!=='transfer').reduce((s,e)=>s+parseFloat(e.amount),0);
+  const expenses = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
+  const tithe     = computeTithe();
+  const titheOwed = tithe.total;
+  const netCash  = paidJobs + itCashed + income - expenses - titheOwed;
+  balances = computeBalances();
+  lastNetCash = Math.round(netCash * 100) / 100;
+
+  const owedParts = [unpaid>0?'$'+unpaid.toFixed(2)+' unpaid':'', check>0?'$'+check.toFixed(2)+' by check':'', itUncashed>0?'$'+itUncashed.toFixed(2)+' uncashed':''].filter(Boolean);
+  document.getElementById('summary').innerHTML = `
+    <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${netCash.toFixed(2)}</div><div class="metric-sub">paid + payroll + income − expenses − tithe</div></div>
+    <div class="metric amber"><div class="metric-label">Owed to you</div><div class="metric-value">$${(unpaid+check+itUncashed).toFixed(2)}</div><div class="metric-sub">${owedParts.join(' · ') || '&nbsp;'}</div></div>
+    <div class="metric blue"><div class="metric-label">Total earned</div><div class="metric-value">$${(paidJobs+itCashed+income).toFixed(2)}</div><div class="metric-sub">events + payroll + other income</div></div>
+    <div class="metric red"><div class="metric-label">Expenses</div><div class="metric-value">$${expenses.toFixed(2)}</div><div class="metric-sub">&nbsp;</div></div>
+    <div class="metric tithe${titheOwed>0?' tithe-active':''}">
+      <div class="metric-label">Tithe owed</div>
+      <div class="metric-value">$${titheOwed.toFixed(2)}</div>
+      <div class="metric-sub">${titheOwed>0?`$${tithe.bank.toFixed(2)} bank · $${tithe.cash.toFixed(2)} cash`:'10% of paid events + other income'}</div>
+      ${titheOwed>0?`<button class="tithe-pay-btn" onclick="payTithe()">Pay tithe</button>`:''}
+    </div>
+    <div class="metric purple" id="bal-bank-card">
+      <div class="metric-label">In bank</div>
+      <div class="metric-value" id="bal-bank-val">$${parseFloat(balances.bank).toFixed(2)}</div>
+      <button class="transfer-btn" onclick="quickTransfer('bank-to-cash')">⇄ Move to cash</button>
+    </div>
+    <div class="metric" id="bal-cash-card">
+      <div class="metric-label">Cash on hand</div>
+      <div class="metric-value" id="bal-cash-val" style="color:var(--amber)">$${parseFloat(balances.cash).toFixed(2)}</div>
+      <button class="transfer-btn" onclick="quickTransfer('cash-to-bank')">⇄ Move to bank</button>
+    </div>
+  `;
+
+renderPaidEvents();
+renderWishlist();
+renderFundsDistribution();
+renderRecurringSummary();
+if (pocketsOpen) renderPocketsPage();
+if (recurringOpen) renderRecurringList();
+if (currentJobId === 'ca_it') renderItChecks();
+renderAllHistory();
+}
+
+function historyEntryHTML(h) {
+  const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client',pocket:'dot-pocket',recurring:'dot-recurring'}[h.type]||'dot-add';
+  const d = new Date(h.ts);
+  return `<div class="history-entry" id="hrow-${h.id}">
+    <div class="history-dot ${dc}"></div>
+    <div class="history-action">${h.message}</div>
+    <div class="history-time">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}<br>${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+    <div class="row-actions" style="flex-shrink:0;margin-left:8px">
+      ${h.type==='paid' && (h.jobId || h.bulkJobIds) ? `<button class="act-btn success" onclick="undoPaid('${h.id}')">undo</button>` : ''}
+      <button class="act-btn edit" onclick="editHistory('${h.id}')">edit</button>
+      <button class="act-btn danger" onclick="deleteHistory('${h.id}')">delete</button>
+    </div>
+  </div>`;
+}
+
+function payTithe() {
+  const { bank: tb, cash: tc, total } = computeTithe();
+  if (!total) return;
+  if (!confirm(`Pay tithe of $${total.toFixed(2)}?\n\n$${tb.toFixed(2)} from bank\n$${tc.toFixed(2)} from cash`)) return;
+  // Mark all untithed paid events so they no longer count toward tithe
+  const affectedIds = [];
+  lawnEvents = lawnEvents.map(j => {
+    if (j.status === 'paid' && !j.tithePaid) { affectedIds.push(j.id); return {...j, tithePaid: true}; }
+    if (j.job === 'ca_it' && j.status === 'cashed' && j.titheDeductible && !j.tithePaid) { affectedIds.push(j.id); return {...j, tithePaid: true}; }
+    return j;
+  });
+  affectedIds.forEach(id => pendingEventWrites.add(id));
+  // Mark all untithed 'other income' entries the same way. Gift/birthday,
+  // expense, and non-deductible income entries are never touched here.
+  const affectedOtherIds = [];
+  otherMoney = otherMoney.map(e => {
+    if (e.type === 'income' && e.titheDeductible !== false && !e.tithePaid) { affectedOtherIds.push(e.id); return {...e, tithePaid: true}; }
+    return e;
+  });
+  affectedOtherIds.forEach(id => pendingOtherWrites.add(id));
+  const today = new Date().toISOString().slice(0,10);
+  if (tb > 0) {
+    const e1 = {id:'o'+Date.now()+'b', desc:'Tithe', date:today, type:'expense', amount:tb, method:'bank'};
+    otherMoney.push(e1);
+    pendingOtherWrites.add(e1.id);
+  }
+  if (tc > 0) {
+    const e2 = {id:'o'+Date.now()+'c', desc:'Tithe', date:today, type:'expense', amount:tc, method:'cash'};
+    otherMoney.push(e2);
+    pendingOtherWrites.add(e2.id);
+  }
+  const parts = [];
+  if (tb>0) parts.push(`$${tb.toFixed(2)} from bank`);
+  if (tc>0) parts.push(`$${tc.toFixed(2)} from cash`);
+  logHistory('add', `Tithe paid — $${total.toFixed(2)} (${parts.join(', ')})`, { job: null });
+  save(); render(); toast(`Tithe of $${total.toFixed(2)} paid ✓`);
+}
+
+function unpayEvent(id) {
+  const j = lawnEvents.find(j => j.id === id);
+  if (!j) return;
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? {...jb, status: 'unpaid', paymentMethod: null, paymentAmount: null} : jb);
+  pendingEventWrites.add(id);
+  logHistory('add', `Restored event to unpaid — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`, { job: currentJobId });
+  save(); render(); reopenPanel(j.client); toast('Event moved back to unpaid ✓');
+}
+
+function clearPaidEvents() {
+  const count = lawnEvents.filter(j => j.status === 'paid').length;
+  if (!count) return;
+  if (!confirm(`Delete all ${count} paid event${count>1?'s':''}? This cannot be undone.`)) return;
+  const paidIds = lawnEvents.filter(j => j.status === 'paid').map(j => j.id);
+  lawnEvents = lawnEvents.filter(j => j.status !== 'paid');
+  paidIds.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
+  logHistory('delete', `Cleared ${count} paid event${count>1?'s':''}`, { job: currentJobId });
+  save(); render(); toast(`${count} paid event${count>1?'s':''} cleared`);
+}
+
+function renderPaidEvents() {
+  if (!currentJobId) return;
+  const paid = lawnEvents.filter(j => jobOf(j) === currentJobId && j.status === 'paid').sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  const total = paid.reduce((s,j) => s + eventAmount(j), 0);
+  const summary = document.getElementById('paid-events-summary');
+  if (summary) summary.textContent = paid.length ? `${paid.length} event${paid.length>1?'s':''} · $${total.toFixed(2)}` : '';
+  const wrap = document.getElementById('paid-events-wrap');
+  if (!wrap) return;
+  if (!paid.length) { wrap.innerHTML = '<div class="empty-state">No paid events yet.</div>'; return; }
+  wrap.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Client</th><th>Amount</th><th></th></tr></thead>
+    <tbody>${paid.map(j => `
+      <tr>
+        <td class="mono">${fmt(j.date)}</td>
+        <td>${j.client}</td>
+        <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}</td>
+        <td><div class="row-actions">
+          <button class="act-btn success" onclick="unpayEvent('${j.id}')">undo</button>
+          <button class="act-btn danger" onclick="deleteEvent('${j.id}')">delete</button>
+        </div></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function renderHistory() {
+  const wrap = document.getElementById('history-wrap');
+  if (!historyLog.length) {
+    wrap.innerHTML = allHistoryLoaded
+      ? '<div class="empty-state">No history yet.</div>'
+      : '<div class="empty-state" style="cursor:pointer" onclick="loadMoreHistory()">Loading history…</div>';
+    return;
+  }
+  wrap.innerHTML = historyLog.slice(0, 30).map(historyEntryHTML).join('');
+  const extras = [];
+  if (historyLog.length > 30) extras.push(`<button class="pill-btn" onclick="showFullHistory(1, null)">Full history — ${historyLog.length}${allHistoryLoaded?'':'+' } entries</button>`);
+  if (!allHistoryLoaded) extras.push(`<button class="pill-btn" onclick="loadMoreHistory()">Load more…</button>`);
+  if (extras.length) wrap.innerHTML += `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center;display:flex;gap:8px;justify-content:center">${extras.join('')}</div>`;
+}
+
+function renderJobHistory() {
+  const wrap = document.getElementById('job-history-wrap');
+  if (!wrap || !currentJobId) return;
+  const filtered = historyLog.filter(h => getEntryJob(h) === currentJobId);
+  if (!filtered.length) {
+    wrap.innerHTML = allHistoryLoaded
+      ? '<div class="empty-state">No history yet.</div>'
+      : '<div class="empty-state" style="cursor:pointer" onclick="loadMoreHistory()">Loading history…</div>';
+    return;
+  }
+  wrap.innerHTML = filtered.slice(0, 30).map(historyEntryHTML).join('');
+  const extras = [];
+  if (filtered.length > 30) extras.push(`<button class="pill-btn" onclick="showFullHistory(1, '${currentJobId}')">Full history — ${filtered.length}${allHistoryLoaded?'':'+' } entries</button>`);
+  if (!allHistoryLoaded) extras.push(`<button class="pill-btn" onclick="loadMoreHistory()">Load more…</button>`);
+  if (extras.length) wrap.innerHTML += `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center;display:flex;gap:8px;justify-content:center">${extras.join('')}</div>`;
+}
+
+// Refreshes whichever history view(s) are relevant, and keeps the full
+// history modal in sync with whatever it's currently showing.
+function renderAllHistory() {
+  renderHistory();
+  if (currentJobId && currentJobId !== 'ca_it') renderJobHistory();
+  if (currentJobId === 'ca_it') renderItHistory();
+  const modal = document.getElementById('full-history-modal');
+  if (modal && modal.style.display !== 'none') showFullHistory(fullHistoryPage);
+}
+
+let fullHistoryPage = 1;
+const FH_PAGE_SIZE = 50;
+let fhJobFilter; // undefined = not yet set; null = showing all jobs; job id = scoped to that job
+
+function showFullHistory(page, jobFilter) {
+  if (jobFilter !== undefined) fhJobFilter = jobFilter;
+  const list = fhJobFilter ? historyLog.filter(h => getEntryJob(h) === fhJobFilter) : historyLog;
+  const totalPages = Math.ceil(list.length / FH_PAGE_SIZE);
+  fullHistoryPage = Math.max(1, Math.min(page, Math.max(1, totalPages)));
+  const start = (fullHistoryPage - 1) * FH_PAGE_SIZE;
+  const entries = list.slice(start, start + FH_PAGE_SIZE);
+  const loadMoreBtn = !allHistoryLoaded
+    ? `<button class="pill-btn" style="margin-top:8px" onclick="loadMoreHistory()">Load more from server…</button>` : '';
+  document.getElementById('fh-title').textContent = fhJobFilter ? `Full History — ${getJob(fhJobFilter).label}` : 'Full History — All Jobs';
+  document.getElementById('fh-entries').innerHTML = (entries.length
+    ? entries.map(historyEntryHTML).join('')
+    : '<div class="empty-state">No entries.</div>') + loadMoreBtn;
+  document.getElementById('fh-page-info').textContent = `Page ${fullHistoryPage} of ${Math.max(1,totalPages)}`;
+  document.getElementById('fh-prev').disabled = fullHistoryPage <= 1;
+  document.getElementById('fh-next').disabled = fullHistoryPage >= totalPages;
+  document.getElementById('full-history-modal').style.display = 'flex';
+}
+
+function closeFullHistory() {
+  document.getElementById('full-history-modal').style.display = 'none';
+}
+
+function editHistory(id) {
+  const h = historyLog.find(h=>h.id===id);
+  const row = document.getElementById('hrow-'+id);
+  const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client',pocket:'dot-pocket',recurring:'dot-recurring'}[h.type]||'dot-add';
+  const d = new Date(h.ts);
+  row.innerHTML = `
+    <div class="history-dot ${dc}"></div>
+    <div style="flex:1"><input id="hmsg-${id}" value="${h.message.replace(/"/g,'&quot;')}" style="width:100%;font-size:12px;padding:5px 8px" /></div>
+    <div class="history-time">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}<br>${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+    <div class="row-actions" style="flex-shrink:0;margin-left:8px">
+      <button class="act-btn save" onclick="saveHistory('${id}')">save</button>
+      <button class="act-btn" onclick="renderAllHistory()">cancel</button>
+    </div>`;
+}
+
+async function saveHistory(id) {
+  const msg = document.getElementById('hmsg-'+id).value.trim();
+  if (!msg) { alert('Message cannot be empty.'); return; }
+  historyLog = historyLog.map(h => h.id===id ? {...h, message: msg} : h);
+  if (currentUser) await historyCol().doc(id).update({ message: msg });
+  renderAllHistory(); toast('Log entry updated ✓');
+}
+
+async function deleteHistory(id) {
+  if (!confirm('Delete this log entry?')) return;
+  historyLog = historyLog.filter(h=>h.id!==id);
+  if (currentUser) await historyCol().doc(id).delete();
+  renderAllHistory(); toast('Log entry deleted');
+}
+
+async function clearHistory() {
+  if (!confirm('Clear ALL history? This includes every job, not just one, and cannot be undone.')) return;
+  historyLog = []; pendingHistoryEntries = []; lastHistoryDoc = null; allHistoryLoaded = true;
+  if (currentUser) {
+    let snap = await historyCol().limit(50).get();
+    while (!snap.empty) {
+      const batch = db.batch();
+      snap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+      snap = await historyCol().limit(50).get();
+    }
+  }
+  renderAllHistory(); toast('History cleared');
+}
+
+async function clearJobHistory(jobId) {
+  const job = getJob(jobId);
+  if (!confirm(`Clear all history for ${job.label}? This cannot be undone.`)) return;
+  while (!allHistoryLoaded) await loadMoreHistory(); // make sure nothing on the server is missed
+  const toDelete = historyLog.filter(h => getEntryJob(h) === jobId);
+  if (!toDelete.length) { toast('No history to clear'); return; }
+  const ids = toDelete.map(h => h.id);
+  historyLog = historyLog.filter(h => !ids.includes(h.id));
+  pendingHistoryEntries = pendingHistoryEntries.filter(h => !ids.includes(h.id));
+  if (currentUser) {
+    for (let i = 0; i < ids.length; i += 50) {
+      const batch = db.batch();
+      ids.slice(i, i + 50).forEach(id => batch.delete(historyCol().doc(id)));
+      await batch.commit();
+    }
+  }
+  renderAllHistory(); toast(`${ids.length} entries cleared`);
+}
+
+function toggleForm(id) { document.getElementById(id).classList.toggle('open'); }
+function toggleSection(id) { const el=document.getElementById(id); el.style.display=el.style.display==='none'?'':'none'; }
+
+function addClient() {
+  const name=document.getElementById('cl-name').value.trim();
+  const note=document.getElementById('cl-note').value.trim();
+  const rate=parseFloat(document.getElementById('cl-rate').value);
+  if (!name||isNaN(rate)||rate<=0) { alert('Please enter a name and rate.'); return; }
+  if (clients.find(c=>jobOf(c)===currentJobId && c.name.toLowerCase()===name.toLowerCase())) { alert('Client already exists.'); return; }
+  const newClient = {id:'c'+Date.now(),name,note,rate,job:currentJobId};
+  clients.push(newClient);
+  clients.sort((a,b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+  pendingClientWrites.add(newClient.id);
+  logHistory('client',`Added client — ${name}${note?' ('+note+')':''} at $${rate}/event`, { job: currentJobId });
+  document.getElementById('client-form').classList.remove('open');
+  save(); renderClients();
+  document.getElementById('cl-name').value='';
+  document.getElementById('cl-note').value='';
+  document.getElementById('cl-rate').value='';
+  toast('Client added ✓');
+}
+
+function deleteClient(id) {
+  const c=clients.find(c=>c.id===id);
+  if (!confirm(`Remove ${c.name}?`)) return;
+  clients=clients.filter(c=>c.id!==id);
+  pendingClientDeletes.add(id);
+  logHistory('delete',`Removed client — ${c.name}`, { job: currentJobId });
+  save(); render(); toast('Client removed');
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.event-cb').forEach(c => c.checked = cb.checked);
+  updateBulkBar();
+}
+
+function updateBulkBar() {
+  const checked = document.querySelectorAll('.event-cb:checked');
+  const bar = document.getElementById('bulk-bar');
+  const countEl = document.getElementById('bulk-count');
+  if (checked.length > 0) {
+    bar.style.display = 'flex';
+    countEl.textContent = `${checked.length} event${checked.length>1?'s':''} selected`;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+async function bulkMarkPaid() {
+  const checked = [...document.querySelectorAll('.event-cb:checked')];
+  if (!checked.length) return;
+  const method = await promptPaymentMethod(true);
+  if (!method) return;
+  const ids = checked.map(c => c.dataset.id);
+  const jobs = ids.map(id => lawnEvents.find(j => j.id===id)).filter(Boolean);
+
+  if (method === 'individual') {
+    // Prompt cash/bank for each event one at a time
+    const affectedPocketIds = [];
+    for (const j of jobs) {
+      const m = await promptPaymentMethod(false, j);
+      if (!m) continue; // skip this event if cancelled
+      const amount = eventAmount(j);
+      const prev = j.status;
+      const allocations = applyPocketRules(jobOf(j), amount);
+      lawnEvents = lawnEvents.map(jb => jb.id===j.id ? {...jb, status:'paid', paymentMethod:m, paymentAmount:amount, ...(allocations.length?{pocketAllocations:allocations}:{})} : jb);
+      pendingEventWrites.add(j.id);
+      logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${m})`, { jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount, job: currentJobId });
+      affectedPocketIds.push(...allocations.map(a => a.pocketId));
+    }
+    save(); render(); updateBulkBar(); toast(`Events marked as paid ✓`);
+    if (affectedPocketIds.length) await checkPocketsForGoalCompletion(affectedPocketIds);
+    return;
+  }
+
+  // Group by client
+  const byClient = {};
+  jobs.forEach(j => {
+    if (!byClient[j.client]) byClient[j.client] = [];
+    byClient[j.client].push(j);
+  });
+
+  // Pocket rules apply per event (each event keeps its own allocation
+  // record for later undo/delete) even though the history entry below is
+  // grouped per client for readability.
+  const allocationsByJobId = {};
+  const affectedPocketIds = [];
+  jobs.forEach(j => {
+    const allocations = applyPocketRules(jobOf(j), eventAmount(j));
+    if (allocations.length) {
+      allocationsByJobId[j.id] = allocations;
+      affectedPocketIds.push(...allocations.map(a => a.pocketId));
+    }
+  });
+
+  const hid = Date.now();
+  Object.entries(byClient).forEach(([client, cJobs], i) => {
+    const total = cJobs.reduce((s, j) => s + eventAmount(j), 0);
+    const dates = cJobs.map(j => j.date).sort();
+    const dateRange = dates.length === 1
+      ? fmt(dates[0])
+      : `${fmt(dates[0])} – ${fmt(dates[dates.length-1])}`;
+    const jobIds = cJobs.map(j => j.id);
+    logHistory('paid', `Marked ${client} paid — ${cJobs.length} event${cJobs.length>1?'s':''} (${dateRange}) — $${total} (${method})`, {
+      id: 'h'+(hid+i),
+      bulkJobIds: jobIds,
+      prevStatuses: Object.fromEntries(cJobs.map(j=>[j.id, j.status])),
+      paymentMethod: method,
+      paymentAmount: total,
+      job: currentJobId
+    });
+  });
+
+  lawnEvents = lawnEvents.map(j => ids.includes(j.id) ? {...j, status:'paid', paymentMethod:method, ...(allocationsByJobId[j.id]?{pocketAllocations:allocationsByJobId[j.id]}:{})} : j);
+  ids.forEach(id => pendingEventWrites.add(id));
+  save(); render(); updateBulkBar(); toast(`${jobs.length} events marked as paid ✓`);
+  if (affectedPocketIds.length) await checkPocketsForGoalCompletion(affectedPocketIds);
+}
+
+function bulkDelete() {
+  const checked = [...document.querySelectorAll('.event-cb:checked')];
+  if (!checked.length) return;
+  const ids = checked.map(c => c.dataset.id);
+  const jobs = ids.map(id => lawnEvents.find(j => j.id === id)).filter(Boolean);
+  if (!confirm(`Delete ${jobs.length} selected event${jobs.length > 1 ? 's' : ''}?`)) return;
+  jobs.forEach(j => {
+    logHistory('delete', `Deleted event — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`, { job: currentJobId });
+    if (j.pocketAllocations && j.pocketAllocations.length) {
+      j.pocketAllocations.forEach(a => {
+        const pocket = getPocket(a.pocketId);
+        adjustPocketBalance(a.pocketId, -a.amount);
+        logHistory('pocket', `Reversed $${a.amount.toFixed(2)} set-aside in "${pocket ? pocket.name : 'a removed pocket'}" — event deleted`, { job: null, pocketId: a.pocketId });
+      });
+    }
+  });
+  lawnEvents = lawnEvents.filter(j => !ids.includes(j.id));
+  ids.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
+  save(); render(); updateBulkBar(); toast(`${jobs.length} event${jobs.length > 1 ? 's' : ''} deleted`);
+}
+
+function promptPaymentMethod(showIndividual = false, job = null) {
+  return new Promise(resolve => {
+    const modal = document.getElementById('payment-modal');
+    const indBtn = document.getElementById('pm-individual');
+    const jobInfo = document.getElementById('pm-job-info');
+    indBtn.style.display = showIndividual ? 'block' : 'none';
+    if (job) {
+      const statusLabel = {unpaid:'Unpaid', check:'Check coming', paid:'Paid'}[job.status] || job.status;
+      jobInfo.style.display = 'block';
+      jobInfo.innerHTML =
+        `<span style="color:var(--text)">${job.client}</span><br>` +
+        `${fmt(job.date)} &nbsp;·&nbsp; ${statusLabel} &nbsp;·&nbsp; <span style="color:var(--green)">$${eventAmount(job)}</span>`;
+    } else {
+      jobInfo.style.display = 'none';
+    }
+    modal.style.display = 'flex';
+    const close = (val) => { modal.style.display = 'none'; resolve(val); };
+    document.getElementById('pm-cash').onclick     = () => close('cash');
+    document.getElementById('pm-bank').onclick     = () => close('bank');
+    document.getElementById('pm-cancel').onclick   = () => close(null);
+    indBtn.onclick                                 = () => close('individual');
+  });
+}
+
+async function markPaid(id) {
+  const method = await promptPaymentMethod();
+  if (!method) return;
+  const j=lawnEvents.find(j=>j.id===id);
+  const prev=j.status;
+  const amount=eventAmount(j);
+  const allocations = applyPocketRules(jobOf(j), amount);
+  lawnEvents=lawnEvents.map(j=>j.id===id?{...j,status:'paid',paymentMethod:method,paymentAmount:amount,...(allocations.length?{pocketAllocations:allocations}:{})}:j);
+  pendingEventWrites.add(id);
+  logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${method})`, { jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount, job: currentJobId });
+  save(); render(); reopenPanel(j.client); toast('Marked as paid ✓');
+  if (allocations.length) await checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
+}
+
+async function undoPaid(hid) {
+  const h = historyLog.find(h=>h.id===hid);
+  if (!h) return;
+
+  // Single event undo
+  if (h.jobId) {
+    const job = lawnEvents.find(j=>j.id===h.jobId);
+    if (!job) { toast('Event no longer exists'); return; }
+    const restore = h.prevStatus || 'unpaid';
+    lawnEvents = lawnEvents.map(j=>j.id===h.jobId ? {...j, status:restore, paymentMethod:null, paymentAmount:null} : j);
+    pendingEventWrites.add(h.jobId);
+    historyLog = historyLog.filter(h=>h.id!==hid);
+    if (currentUser) await historyCol().doc(hid).delete();
+    logHistory('add', `Undid payment — ${job.client} event (${fmt(job.date)}) restored to ${restore}`, { job: getEntryJob(h) });
+  }
+
+  // Bulk undo
+  if (h.bulkJobIds) {
+    h.bulkJobIds.forEach(jid => {
+      const prev = h.prevStatuses?.[jid] || 'unpaid';
+      lawnEvents = lawnEvents.map(j=>j.id===jid ? {...j, status:prev, paymentMethod:null, paymentAmount:null} : j);
+      pendingEventWrites.add(jid);
+    });
+    historyLog = historyLog.filter(h=>h.id!==hid);
+    if (currentUser) await historyCol().doc(hid).delete();
+    logHistory('add', `Undid bulk payment — ${h.bulkJobIds.length} events restored`, { job: getEntryJob(h) });
+  }
+
+  save(); render(); toast('Payment undone ✓');
+}
+
+function deleteEvent(id) {
+  if (!confirm('Delete this event?')) return;
+  const j=lawnEvents.find(j=>j.id===id);
+  if (j.pocketAllocations && j.pocketAllocations.length) {
+    j.pocketAllocations.forEach(a => {
+      const pocket = getPocket(a.pocketId);
+      adjustPocketBalance(a.pocketId, -a.amount);
+      logHistory('pocket', `Reversed $${a.amount.toFixed(2)} set-aside in "${pocket ? pocket.name : 'a removed pocket'}" — event deleted`, { job: null, pocketId: a.pocketId });
+    });
+  }
+  lawnEvents=lawnEvents.filter(j=>j.id!==id);
+  pendingEventDeletes.add(id); pendingEventWrites.delete(id);
+  logHistory('delete',`Deleted event — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`, { job: currentJobId });
+  save(); render(); reopenPanel(j.client); toast('Event deleted');
+}
+
+function prefillEventAmount() {
+  const client = document.getElementById('le-client').value;
+  const inp = document.getElementById('le-amount');
+  inp.value = getRate(client);
+  inp.placeholder = '';
+}
+
+function addEvent() {
+  const client = document.getElementById('le-client').value;
+  const date   = parseFlexibleDate(document.getElementById('le-date').value);
+  const status = document.getElementById('le-status').value;
+  const raw    = document.getElementById('le-amount').value;
+  const amount = raw !== '' ? parseFloat(raw) : getRate(client);
+  const newJob = {id:'l'+Date.now(), client, date, status, amount, job: currentJobId};
+  lawnEvents.push(newJob);
+  pendingEventWrites.add(newJob.id);
+  logHistory('add', `Added event — ${client} on ${fmt(date)}, ${status} ($${amount})`, { job: currentJobId });
+  save(); render();
+  document.getElementById('event-form').classList.remove('open');
+  document.getElementById('le-date').value = '';
+  prefillEventAmount();
+  toast('Event added ✓');
+}
+
+// One tap, no form: logs today's visit for a client at their standard rate.
+// Lives on the client row itself so it works even when that client has no
+// open events to copy from.
+function quickAddEventForClient(clientId) {
+  const c = clients.find(c => c.id === clientId);
+  if (!c) return;
+  const today = todayISO();
+  const newJob = { id: 'l' + Date.now(), client: c.name, date: today, status: 'unpaid', amount: c.rate, job: jobOf(c) };
+  lawnEvents.push(newJob);
+  pendingEventWrites.add(newJob.id);
+  logHistory('add', `Quick-added event — ${c.name} on ${fmt(today)} ($${c.rate})`, { job: jobOf(c) });
+  save(); render(); reopenPanel(c.name);
+  toast(`Logged today's visit for ${c.name} ✓`);
+}
+
+// Duplicates an existing event for today — same client and amount, status
+// reset to unpaid. Useful for repeating a one-off without setting up a
+// full recurring rule.
+function quickRepeatEvent(id) {
+  const j = lawnEvents.find(j => j.id === id);
+  if (!j) return;
+  const today = todayISO();
+  const amount = eventAmount(j);
+  const newJob = { id: 'l' + Date.now(), client: j.client, date: today, status: 'unpaid', amount, job: jobOf(j) };
+  lawnEvents.push(newJob);
+  pendingEventWrites.add(newJob.id);
+  logHistory('add', `Repeated event — ${j.client} on ${fmt(today)} ($${amount})`, { job: jobOf(j) });
+  save(); render(); reopenPanel(j.client);
+  toast('Event repeated for today ✓');
+}
+
+// ── Collegedale Academy IT ────────────────────────────────────────────────────
+
+function itStatusBadge(s) {
+  return s === 'cashed'
+    ? '<span class="badge badge-paid">Cashed</span>'
+    : '<span class="badge badge-unpaid">Not Cashed</span>';
+}
+
+function renderItChecks() {
+  renderItUncashedChecks();
+  renderItCashedChecks();
+  renderItHistory();
+}
+
+function renderItUncashedChecks() {
+  const uncashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'uncashed')
+    .sort((a, b) => b.dateEnd.localeCompare(a.dateEnd) || b.id.localeCompare(a.id));
+  const total = uncashed.reduce((s, j) => s + eventAmount(j), 0);
+  const summary = document.getElementById('it-uncashed-summary');
+  if (summary) summary.textContent = uncashed.length ? `${uncashed.length} check${uncashed.length > 1 ? 's' : ''} · $${total.toFixed(2)}` : '';
+  const wrap = document.getElementById('it-uncashed-wrap');
+  if (!wrap) return;
+  if (!uncashed.length) { wrap.innerHTML = '<div class="empty-state">No uncashed checks.</div>'; return; }
+  wrap.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Pay Period</th><th>Amount</th><th>Tithe</th><th></th></tr></thead>
+    <tbody>${uncashed.map(j => `
+      <tr id="it-row-${j.id}">
+        <td class="mono">${itCheckLabel(j)}</td>
+        <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}</td>
+        <td class="mono" style="font-size:11px;color:var(--text-faint)">${j.titheDeductible ? '✓ tithe' : '—'}</td>
+        <td><div class="row-actions">
+          <button class="act-btn repeat" onclick="quickRepeatItCheck('${j.id}')" title="Add another paycheck starting today, same amount &amp; period length">↻ repeat</button>
+          <button class="act-btn edit" onclick="editItCheck('${j.id}')">edit</button>
+          <button class="act-btn success" onclick="markCheckCashed('${j.id}')">mark cashed</button>
+          <button class="act-btn danger" onclick="deleteItCheck('${j.id}')">delete</button>
+        </div></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function renderItCashedChecks() {
+  const cashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'cashed')
+    .sort((a, b) => b.dateEnd.localeCompare(a.dateEnd) || b.id.localeCompare(a.id));
+  const total = cashed.reduce((s, j) => s + eventAmount(j), 0);
+  const summary = document.getElementById('it-cashed-summary');
+  if (summary) summary.textContent = cashed.length ? `${cashed.length} check${cashed.length > 1 ? 's' : ''} · $${total.toFixed(2)}` : '';
+  const wrap = document.getElementById('it-cashed-wrap');
+  if (!wrap) return;
+  if (!cashed.length) { wrap.innerHTML = '<div class="empty-state">No cashed checks yet.</div>'; return; }
+  wrap.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Pay Period</th><th>Amount</th><th>Tithe</th><th></th></tr></thead>
+    <tbody>${cashed.map(j => `
+      <tr>
+        <td class="mono">${itCheckLabel(j)}</td>
+        <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}</td>
+        <td class="mono" style="font-size:11px;color:var(--text-faint)">${j.titheDeductible ? '✓ tithe' : '—'}</td>
+        <td><div class="row-actions">
+          <button class="act-btn repeat" onclick="quickRepeatItCheck('${j.id}')" title="Add another paycheck starting today, same amount &amp; period length">↻ repeat</button>
+          <button class="act-btn success" onclick="uncashCheck('${j.id}')">undo</button>
+          <button class="act-btn danger" onclick="deleteItCheck('${j.id}')">delete</button>
+        </div></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function renderItHistory() {
+  const wrap = document.getElementById('it-history-wrap');
+  if (!wrap) return;
+  const filtered = historyLog.filter(h => getEntryJob(h) === 'ca_it');
+  if (!filtered.length) {
+    wrap.innerHTML = allHistoryLoaded
+      ? '<div class="empty-state">No history yet.</div>'
+      : '<div class="empty-state" style="cursor:pointer" onclick="loadMoreHistory()">Loading history…</div>';
+    return;
+  }
+  wrap.innerHTML = filtered.slice(0, 30).map(historyEntryHTML).join('');
+  const extras = [];
+  if (filtered.length > 30) extras.push(`<button class="pill-btn" onclick="showFullHistory(1,'ca_it')">Full history — ${filtered.length}${allHistoryLoaded ? '' : '+'} entries</button>`);
+  if (!allHistoryLoaded) extras.push(`<button class="pill-btn" onclick="loadMoreHistory()">Load more…</button>`);
+  if (extras.length) wrap.innerHTML += `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center;display:flex;gap:8px;justify-content:center">${extras.join('')}</div>`;
+}
+
+function addItCheck() {
+  const dateStart = parseFlexibleDate(document.getElementById('it-start').value);
+  const dateEnd   = parseFlexibleDate(document.getElementById('it-end').value);
+  const amount    = parseFloat(document.getElementById('it-amount').value);
+  const status    = document.getElementById('it-status').value;
+  const titheDeductible = document.getElementById('it-tithe').checked;
+  if (!dateStart || !dateEnd) { alert('Enter a valid pay period.'); return; }
+  if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
+  const allocations = status === 'cashed' ? applyPocketRules('ca_it', amount) : [];
+  const newCheck = { id: 'it' + Date.now(), job: 'ca_it', dateStart, dateEnd, amount, status, titheDeductible, ...(allocations.length ? { pocketAllocations: allocations } : {}) };
+  lawnEvents.push(newCheck);
+  pendingEventWrites.add(newCheck.id);
+  logHistory('add', `Added paycheck — ${itCheckLabel(newCheck)} ($${amount.toFixed(2)}, ${status === 'cashed' ? 'cashed' : 'not cashed'}${titheDeductible ? ', tithe' : ''})`, { job: 'ca_it' });
+  document.getElementById('it-start').value  = '';
+  document.getElementById('it-end').value    = '';
+  document.getElementById('it-amount').value = '';
+  document.getElementById('it-status').value = 'uncashed';
+  document.getElementById('it-tithe').checked = false;
+  document.getElementById('it-check-form').classList.remove('open');
+  save(); render(); renderJobsGrid(); toast('Paycheck added ✓');
+  if (allocations.length) checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
+}
+
+// Duplicates a paycheck's amount and pay-period length, starting today —
+// for repeating the last check without re-entering the dates by hand.
+function quickRepeatItCheck(id) {
+  const j = lawnEvents.find(j => j.id === id);
+  if (!j) return;
+  const today = todayISO();
+  const periodDays = Math.round((new Date(j.dateEnd + 'T00:00:00') - new Date(j.dateStart + 'T00:00:00')) / 86400000) + 1;
+  const dateEnd = addDaysISO(today, periodDays - 1);
+  const amount = eventAmount(j);
+  const newCheck = { id: 'it' + Date.now(), job: 'ca_it', dateStart: today, dateEnd, amount, status: 'uncashed', titheDeductible: !!j.titheDeductible };
+  lawnEvents.push(newCheck);
+  pendingEventWrites.add(newCheck.id);
+  logHistory('add', `Repeated paycheck — ${itCheckLabel(newCheck)} ($${amount.toFixed(2)})`, { job: 'ca_it' });
+  save(); render(); renderJobsGrid();
+  toast('Paycheck repeated for today ✓');
+}
+
+function markCheckCashed(id) {
+  const j = lawnEvents.find(j => j.id === id);
+  if (!j) return;
+  const prev = j.status;
+  const amount = eventAmount(j);
+  const allocations = applyPocketRules('ca_it', amount);
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
+  pendingEventWrites.add(id);
+  logHistory('paid', `Marked paycheck cashed — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { jobId: id, prevStatus: prev, job: 'ca_it' });
+  save(); render(); renderJobsGrid(); toast('Check marked as cashed ✓');
+  if (allocations.length) checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
+}
+
+function uncashCheck(id) {
+  const j = lawnEvents.find(j => j.id === id);
+  if (!j) return;
+  reversePocketAllocations(j, 'check moved back to not cashed');
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', tithePaid: false, pocketAllocations: [] } : jb);
+  pendingEventWrites.add(id);
+  logHistory('add', `Reversed cashed — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { job: 'ca_it' });
+  save(); render(); renderJobsGrid(); toast('Check moved back to uncashed');
+}
+
+function deleteItCheck(id) {
+  if (!confirm('Delete this paycheck?')) return;
+  const j = lawnEvents.find(j => j.id === id);
+  if (j.status === 'cashed') reversePocketAllocations(j, 'paycheck deleted');
+  lawnEvents = lawnEvents.filter(jb => jb.id !== id);
+  pendingEventDeletes.add(id); pendingEventWrites.delete(id);
+  logHistory('delete', `Deleted paycheck — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { job: 'ca_it' });
+  save(); render(); renderJobsGrid(); toast('Paycheck deleted');
+}
+
+function clearCashedChecks() {
+  const toDelete = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'cashed');
+  if (!toDelete.length) return;
+  if (!confirm(`Delete all ${toDelete.length} cashed check${toDelete.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
+  toDelete.forEach(j => reversePocketAllocations(j, 'cashed checks cleared'));
+  const ids = toDelete.map(j => j.id);
+  lawnEvents = lawnEvents.filter(j => !ids.includes(j.id));
+  ids.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
+  logHistory('delete', `Cleared ${ids.length} cashed check${ids.length > 1 ? 's' : ''}`, { job: 'ca_it' });
+  save(); render(); renderJobsGrid(); toast(`${ids.length} cashed check${ids.length > 1 ? 's' : ''} cleared`);
+}
+
+function editItCheck(id) {
+  const j = lawnEvents.find(j => j.id === id);
+  const row = document.getElementById('it-row-' + id);
+  if (!row) return;
+  row.classList.add('edit-row');
+  const cal = `<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+  row.innerHTML = `
+    <td colspan="2"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <div class="date-field">
+        <input id="ite-start-${id}" type="text" value="${isoToDisplay(j.dateStart)}" placeholder="MM/DD/YYYY" style="width:100px" />
+        <button type="button" class="date-pick-btn" onclick="openDatePicker('ite-start-${id}')" aria-label="Pick start">${cal}</button>
+        <input type="date" id="ite-start-${id}-picker" class="date-picker-hidden" onchange="applyDatePicker('ite-start-${id}')" tabindex="-1" />
+      </div>
+      <span style="color:var(--text-faint)">–</span>
+      <div class="date-field">
+        <input id="ite-end-${id}" type="text" value="${isoToDisplay(j.dateEnd)}" placeholder="MM/DD/YYYY" style="width:100px" />
+        <button type="button" class="date-pick-btn" onclick="openDatePicker('ite-end-${id}')" aria-label="Pick end">${cal}</button>
+        <input type="date" id="ite-end-${id}-picker" class="date-picker-hidden" onchange="applyDatePicker('ite-end-${id}')" tabindex="-1" />
+      </div>
+    </div></td>
+    <td><input id="ite-amount-${id}" type="number" value="${eventAmount(j)}" min="0" step="0.01" style="width:90px" /></td>
+    <td>
+      <select id="ite-status-${id}">
+        <option value="uncashed"${j.status === 'uncashed' ? ' selected' : ''}>Not Cashed</option>
+        <option value="cashed"${j.status === 'cashed' ? ' selected' : ''}>Cashed</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);margin-top:4px;cursor:pointer">
+        <input type="checkbox" id="ite-tithe-${id}"${j.titheDeductible ? ' checked' : ''} style="accent-color:var(--accent)"> Tithe
+      </label>
+      <div class="row-actions" style="margin-top:6px">
+        <button class="act-btn save" onclick="saveItCheck('${id}')">save</button>
+        <button class="act-btn" onclick="renderItChecks()">cancel</button>
+      </div>
+    </td>`;
+}
+
+function saveItCheck(id) {
+  const dateStart = parseFlexibleDate(document.getElementById('ite-start-' + id).value);
+  const dateEnd   = parseFlexibleDate(document.getElementById('ite-end-' + id).value);
+  const amount    = parseFloat(document.getElementById('ite-amount-' + id).value);
+  const status    = document.getElementById('ite-status-' + id).value;
+  const titheDeductible = document.getElementById('ite-tithe-' + id).checked;
+  if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
+  const old = lawnEvents.find(j => j.id === id);
+  let pocketAllocations = old.pocketAllocations || [];
+  if (old.status !== 'cashed' && status === 'cashed') {
+    pocketAllocations = applyPocketRules('ca_it', amount);
+  } else if (old.status === 'cashed' && status !== 'cashed') {
+    reversePocketAllocations(old, 'paycheck edited back to not cashed');
+    pocketAllocations = [];
+  }
+  lawnEvents = lawnEvents.map(j => j.id === id ? { ...j, dateStart, dateEnd, amount, status, titheDeductible, pocketAllocations } : j);
+  pendingEventWrites.add(id);
+  logHistory('add', `Edited paycheck — ${itCheckLabel(old)} → ${fmt(dateStart)}–${fmt(dateEnd)}, $${amount.toFixed(2)}, ${status}`, { job: 'ca_it' });
+  save(); render(); renderJobsGrid(); toast('Paycheck updated ✓');
+  if (old.status !== 'cashed' && status === 'cashed' && pocketAllocations.length) {
+    checkPocketsForGoalCompletion(pocketAllocations.map(a => a.pocketId));
+  }
+}
+
+function updateOmFields() {
+  const type = document.getElementById('om-type').value;
+  document.getElementById('om-tithe-wrap').style.display = type === 'income' ? '' : 'none';
+  const sel = document.getElementById('om-method');
+  const label = document.getElementById('om-method-label');
+  const desc = document.getElementById('om-desc');
+  if (type === 'transfer') {
+    sel.innerHTML = `<option value="bank-to-cash">Bank → Cash</option><option value="cash-to-bank">Cash → Bank</option>`;
+    label.textContent = 'Direction';
+    desc.placeholder = 'Optional note';
+  } else {
+    if (sel.options[0] && sel.options[0].value === 'bank-to-cash') {
+      sel.innerHTML = `<option value="bank">Bank</option><option value="cash">Cash</option>`;
+    }
+    label.textContent = 'Method';
+    desc.placeholder = 'e.g. Birthday money';
+  }
+}
+
+// Quick-access buttons on the bank/cash balance cards: open the Income &
+// Expenses form pre-set to Transfer with the right direction already chosen.
+function quickTransfer(direction) {
+  const form = document.getElementById('other-form');
+  form.classList.add('open');
+  document.getElementById('om-type').value = 'transfer';
+  updateOmFields();
+  document.getElementById('om-method').value = direction;
+  form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  document.getElementById('om-amount').focus();
+}
+
+function addOtherMoney() {
+  const descRaw = document.getElementById('om-desc').value.trim();
+  const date    = parseFlexibleDate(document.getElementById('om-date').value);
+  const type    = document.getElementById('om-type').value;
+  const amount  = parseFloat(document.getElementById('om-amount').value);
+  if (isNaN(amount) || amount <= 0) { alert('Please enter a valid amount greater than 0.'); return; }
+
+  let newEntry, historyMsg;
+  if (type === 'transfer') {
+    const dir = document.getElementById('om-method').value;
+    const fromMethod = dir === 'bank-to-cash' ? 'bank' : 'cash';
+    const toMethod   = dir === 'bank-to-cash' ? 'cash' : 'bank';
+    const desc = descRaw || 'Transfer';
+    newEntry = {id:'o'+Date.now(), desc, date, type:'transfer', amount, fromMethod, toMethod};
+    historyMsg = `Transferred $${amount.toFixed(2)} — ${fromMethod} → ${toMethod}${descRaw ? ' ('+descRaw+')' : ''}`;
+  } else {
+    if (!descRaw) { alert('Please enter a description.'); return; }
+    const method = document.getElementById('om-method').value;
+    const titheDeductible = type === 'income' ? document.getElementById('om-tithe').checked : false;
+    newEntry = {id:'o'+Date.now(), desc:descRaw, date, type, amount, method, titheDeductible};
+    historyMsg = `Added ${type} — "${descRaw}" $${amount.toFixed(2)} on ${fmt(date)} (${method})`;
+  }
+  otherMoney.push(newEntry);
+  pendingOtherWrites.add(newEntry.id);
+  logHistory('other', historyMsg, { job: null });
+  save(); render();
+  document.getElementById('om-desc').value='';
+  document.getElementById('om-date').value='';
+  document.getElementById('om-amount').value='';
+  document.getElementById('om-type').value='gift';
+  updateOmFields();
+  document.getElementById('om-tithe').checked=true;
+  toast(type==='transfer' ? 'Transfer added ✓' : 'Entry added ✓');
+}
+
+// Duplicates an income/expense/gift entry for today (transfers aren't
+// repeatable this way — direction and amount usually differ each time).
+function quickRepeatOther(id) {
+  const e = otherMoney.find(e => e.id === id);
+  if (!e) return;
+  if (e.type === 'transfer') { toast("Transfers can't be quick-repeated — add a new one"); return; }
+  const today = todayISO();
+  const amount = parseFloat(e.amount);
+  const newEntry = { id: 'o' + Date.now(), desc: e.desc, date: today, type: e.type, amount, method: e.method, ...(e.type === 'income' ? { titheDeductible: e.titheDeductible !== false } : {}) };
+  otherMoney.push(newEntry);
+  pendingOtherWrites.add(newEntry.id);
+  logHistory('other', `Repeated ${e.type} — "${e.desc}" $${amount.toFixed(2)} on ${fmt(today)}`, { job: null });
+  save(); render();
+  toast('Entry repeated for today ✓');
+}
+
+function deleteOther(id) {
+  if (!confirm('Delete this entry?')) return;
+  const e=otherMoney.find(e=>e.id===id);
+  otherMoney=otherMoney.filter(e=>e.id!==id);
+  pendingOtherDeletes.add(id); pendingOtherWrites.delete(id);
+  logHistory('delete',`Deleted entry — "${e.desc}" $${parseFloat(e.amount).toFixed(2)}`, { job: null });
+  save(); render(); toast('Entry deleted');
+}
+
+function editEvent(id) {
+  const j = lawnEvents.find(j=>j.id===id);
+  const row = document.getElementById('erow-'+id);
+  row.classList.add('edit-row');
+  const clientOpts = clients.map(c=>`<option value="${c.name}"${c.name===j.client?' selected':''}>${c.name}</option>`).join('');
+  row.innerHTML = `
+    <td></td>
+    <td><div class="date-field">
+      <input id="ee-date-${id}" type="text" value="${isoToDisplay(j.date)}" placeholder="MM/DD/YYYY" />
+      <button type="button" class="date-pick-btn" onclick="openDatePicker('ee-date-${id}')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+      <input type="date" id="ee-date-${id}-picker" class="date-picker-hidden" onchange="applyDatePicker('ee-date-${id}')" tabindex="-1" />
+    </div></td>
+    <td><select id="ee-client-${id}">${clientOpts}</select></td>
+    <td><input id="ee-amount-${id}" type="number" value="${eventAmount(j)}" min="0" step="0.01" /></td>
+    <td><select id="ee-status-${id}">
+      <option value="unpaid"${j.status==='unpaid'?' selected':''}>Unpaid</option>
+      <option value="check"${j.status==='check'?' selected':''}>Check coming</option>
+      <option value="paid"${j.status==='paid'?' selected':''}>Paid</option>
+    </select></td>
+    <td><div class="row-actions">
+      <button class="act-btn save" onclick="saveEvent('${id}')">save</button>
+      <button class="act-btn" onclick="renderClients()">cancel</button>
+    </div></td>`;
+}
+
+function saveEvent(id) {
+  const date   = parseFlexibleDate(document.getElementById('ee-date-'+id).value);
+  const client = document.getElementById('ee-client-'+id).value;
+  const status = document.getElementById('ee-status-'+id).value;
+  const amount = parseFloat(document.getElementById('ee-amount-'+id).value);
+  if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
+  const old = lawnEvents.find(j=>j.id===id);
+  lawnEvents = lawnEvents.map(j => j.id===id ? {...j, date, client, status, amount} : j);
+  pendingEventWrites.add(id);
+  logHistory('add', `Edited event — ${old.client} ${fmt(old.date)} → ${client} ${fmt(date)}, $${amount}, ${status}`, { job: currentJobId });
+  save();
+  render();
+  const c = clients.find(c => c.name === client) || clients.find(c => c.name === old.client);
+  if (c) { const p = document.getElementById('events-panel-'+c.id); if (p) p.classList.add('open'); }
+  toast('Event updated ✓');
+}
+
+function editOther(id) {
+  const e = otherMoney.find(e=>e.id===id);
+  const row = document.getElementById('orow-'+id);
+  row.classList.add('edit-row');
+  const isTransfer = e.type === 'transfer';
+  const dirVal = isTransfer ? (e.fromMethod === 'bank' ? 'bank-to-cash' : 'cash-to-bank') : null;
+  const methodOptions = isTransfer
+    ? `<option value="bank-to-cash"${dirVal==='bank-to-cash'?' selected':''}>Bank → Cash</option><option value="cash-to-bank"${dirVal==='cash-to-bank'?' selected':''}>Cash → Bank</option>`
+    : `<option value="bank"${e.method!=='cash'?' selected':''}>Bank</option><option value="cash"${e.method==='cash'?' selected':''}>Cash</option>`;
+  row.innerHTML = `
+    <td><div class="date-field">
+      <input id="eo-date-${id}" type="text" value="${isoToDisplay(e.date)}" placeholder="MM/DD/YYYY" />
+      <button type="button" class="date-pick-btn" onclick="openDatePicker('eo-date-${id}')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+      <input type="date" id="eo-date-${id}-picker" class="date-picker-hidden" onchange="applyDatePicker('eo-date-${id}')" tabindex="-1" />
+    </div></td>
+    <td><input id="eo-desc-${id}" value="${e.desc}" /></td>
+    <td><input id="eo-amount-${id}" type="number" value="${e.amount}" min="0" step="0.01" style="width:90px" /></td>
+    <td><select id="eo-type-${id}" onchange="toggleEoTithe('${id}')">
+      <option value="gift"${e.type==='gift'?' selected':''}>Gift / birthday</option>
+      <option value="income"${e.type==='income'?' selected':''}>Other income</option>
+      <option value="expense"${e.type==='expense'?' selected':''}>Expense</option>
+      <option value="transfer"${isTransfer?' selected':''}>Transfer (bank ⇄ cash)</option>
+    </select>
+    <div id="eo-tithe-wrap-${id}" style="display:${e.type==='income'?'':'none'};margin-top:6px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:0;font-size:11px">
+        <input type="checkbox" id="eo-tithe-${id}"${e.titheDeductible!==false?' checked':''} /> Tithe-deductible
+      </label>
+    </div></td>
+    <td><select id="eo-method-${id}">${methodOptions}</select></td>
+    <td><div class="row-actions">
+      <button class="act-btn save" onclick="saveOther('${id}')">save</button>
+      <button class="act-btn" onclick="render()">cancel</button>
+    </div></td>`;
+}
+
+function toggleEoTithe(id) {
+  const wrap = document.getElementById('eo-tithe-wrap-'+id);
+  const type = document.getElementById('eo-type-'+id).value;
+  wrap.style.display = type === 'income' ? '' : 'none';
+  const sel = document.getElementById('eo-method-'+id);
+  if (type === 'transfer') {
+    sel.innerHTML = `<option value="bank-to-cash">Bank → Cash</option><option value="cash-to-bank">Cash → Bank</option>`;
+  } else if (sel.options[0] && sel.options[0].value === 'bank-to-cash') {
+    sel.innerHTML = `<option value="bank">Bank</option><option value="cash">Cash</option>`;
+  }
+}
+
+function saveOther(id) {
+  const date     = parseFlexibleDate(document.getElementById('eo-date-'+id).value);
+  const descRaw  = document.getElementById('eo-desc-'+id).value.trim();
+  const amount   = parseFloat(document.getElementById('eo-amount-'+id).value);
+  const type     = document.getElementById('eo-type-'+id).value;
+  const methodVal = document.getElementById('eo-method-'+id).value;
+  if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
+  const old = otherMoney.find(e=>e.id===id);
+  let updated, desc;
+  if (type === 'transfer') {
+    const fromMethod = methodVal === 'bank-to-cash' ? 'bank' : 'cash';
+    const toMethod   = methodVal === 'bank-to-cash' ? 'cash' : 'bank';
+    desc = descRaw || 'Transfer';
+    updated = {...old, date, desc, amount, type, fromMethod, toMethod, method:null, titheDeductible:false};
+  } else {
+    if (!descRaw) { alert('Please enter a description.'); return; }
+    desc = descRaw;
+    const titheDeductible = type === 'income' ? document.getElementById('eo-tithe-'+id).checked : false;
+    updated = {...old, date, desc, amount, type, method:methodVal, titheDeductible, fromMethod:null, toMethod:null};
+  }
+  otherMoney = otherMoney.map(e => e.id===id ? updated : e);
+  pendingOtherWrites.add(id);
+  logHistory('other', `Edited entry — "${old.desc}" → "${desc}" $${amount.toFixed(2)}`, { job: null });
+  save(); render(); toast('Entry updated ✓');
+}
+
+let toastTimer;
+function toast(msg) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),2200);
+}
+
+// ── Distribution of Funds bar (above Jobs) ───────────────────
+function renderFundsDistribution(barId = 'funds-bar-wrap', legendId = 'funds-legend') {
+  const wrap = document.getElementById(barId);
+  const legend = document.getElementById(legendId);
+  if (!wrap || !legend) return;
+  const sumPockets = sumPocketBalances();
+  const total = Math.max(lastNetCash, sumPockets, 0);
+  const overflow = sumPockets > lastNetCash ? Math.round((sumPockets - lastNetCash) * 100) / 100 : 0;
+
+  let segments;
+  if (total <= 0) {
+    segments = [{ label: 'Savings', amount: 0, color: COLOR_GREEN }];
+  } else {
+    const free = freeAmount();
+    segments = [{ label: 'Savings', amount: free, color: COLOR_GREEN }];
+    pockets.forEach(p => {
+      if ((p.balance || 0) <= 0) return;
+      segments.push({ label: p.name, amount: p.balance, color: getPocketColor(p.id) });
+    });
+  }
+
+  wrap.innerHTML = `<div class="funds-bar-track">${segments.map((s, i) => {
+    const pct = Math.min(100, total > 0 ? (s.amount / total * 100) : 100);
+    if (pct <= 0) return ''; // exact-zero categories (e.g. Savings fully absorbed) get no bar segment, just a legend entry
+    const pctRound = Math.round(pct);
+    const isFree = i === 0;
+    const fill = isFree
+      ? `repeating-linear-gradient(135deg, rgba(255,255,255,0.08) 0 6px, transparent 6px 12px), ${glossGradient(s.color)}`
+      : glossGradient(s.color);
+    return `<div class="funds-seg${isFree ? ' seg-free' : ''}" data-key="seg-${i}" data-target-width="${pct.toFixed(2)}%" style="width:0%;background-image:${fill}" title="${s.label} — $${s.amount.toFixed(2)} (${pctRound}%)">${
+      pct >= 9 ? `<span class="funds-seg-pct on-light">${pctRound}%</span>` : ''
+    }</div>`;
+  }).join('')}</div>`;
+
+  legend.innerHTML = segments.map((s, i) => {
+    const pct = Math.round(total > 0 ? (s.amount / total * 100) : 100);
+    return `<div class="funds-legend-item" data-key="seg-${i}">
+      <span class="funds-swatch" style="background-image:${glossGradient(s.color)}"></span>
+      <span class="funds-legend-name">${s.label}</span>
+      <span>$${s.amount.toFixed(2)}</span>
+      <span class="funds-legend-pct" style="color:${s.color}">${pct}%</span>
+    </div>`;
+  }).join('') + (overflow > 0
+    ? `<div class="funds-overflow-note"><span>⚠</span>$${overflow.toFixed(2)} set aside ahead of being paid — settles once those events are marked paid</div>`
+    : '');
+
+  // Grow the segments in from 0 so the bar animates on every render.
+  const segEls = [...wrap.querySelectorAll('.funds-seg')];
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    segEls.forEach(el => { el.style.width = el.dataset.targetWidth; });
+  }));
+
+  // Hovering a segment (or its legend chip) highlights that pair and dims the rest.
+  const itemEls = [...legend.querySelectorAll('.funds-legend-item')];
+  const setActive = key => {
+    segEls.forEach(s => s.classList.toggle('is-dim', !!key && s.dataset.key !== key));
+    itemEls.forEach(it => it.classList.toggle('is-dim', !!key && it.dataset.key !== key));
+  };
+  segEls.forEach(s => {
+    s.addEventListener('mouseenter', () => setActive(s.dataset.key));
+    s.addEventListener('mouseleave', () => setActive(null));
+  });
+  itemEls.forEach(it => {
+    it.addEventListener('mouseenter', () => setActive(it.dataset.key));
+    it.addEventListener('mouseleave', () => setActive(null));
+  });
+}
+
+// ── Pockets page ──────────────────────────────────────────
+function renderPocketsPage() {
+  if (!pocketsOpen) return;
+  const sumPockets = sumPocketBalances();
+  const free = freeAmount();
+
+  document.getElementById('pockets-summary').innerHTML = `
+    <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${lastNetCash.toFixed(2)}</div></div>
+    <div class="metric"><div class="metric-label">Free / Savings</div><div class="metric-value">$${free.toFixed(2)}</div></div>
+    <div class="metric blue"><div class="metric-label">In pockets</div><div class="metric-value">$${sumPockets.toFixed(2)}</div></div>
+  `;
+
+  const moveOptions = [{ id: 'free', label: 'Free / Savings' }].concat(pockets.map(p => ({ id: p.id, label: p.name })));
+  const fromSel = document.getElementById('mv-from'), toSel = document.getElementById('mv-to');
+  const prevFrom = fromSel.value, prevTo = toSel.value;
+  fromSel.innerHTML = moveOptions.map(o => `<option value="${o.id}">${o.label}</option>`).join('');
+  toSel.innerHTML   = moveOptions.map(o => `<option value="${o.id}">${o.label}</option>`).join('');
+  if (moveOptions.find(o => o.id === prevFrom)) fromSel.value = prevFrom;
+  if (moveOptions.find(o => o.id === prevTo))   toSel.value = prevTo;
+
+  renderFundsDistribution('pk-funds-bar-wrap', 'pk-funds-legend');
+  renderPocketsList();
+  renderPocketHistory();
+}
+
+function jobOptionsHtml(selectedId) {
+  return JOBS.map(j => `<option value="${j.id}"${j.id === selectedId ? ' selected' : ''}>${j.label}</option>`).join('');
+}
+
+function updatePkFreeHint() {
+  const free = freeAmount();
+  const val  = parseFloat(document.getElementById('pk-balance').value) || 0;
+  const hint = document.getElementById('pk-free-hint');
+  if (!hint) return;
+  if (val > 0) {
+    const remaining = Math.round((free - val) * 100) / 100;
+    hint.style.display = '';
+    if (val > free) {
+      hint.style.color = 'var(--red)';
+      hint.textContent = `Only $${free.toFixed(2)} available — amount exceeds Free / Savings`;
+    } else {
+      hint.style.color = 'var(--text-faint)';
+      hint.textContent = `$${remaining.toFixed(2)} would remain in Free / Savings after this`;
+    }
+  } else {
+    hint.style.display = 'none';
+  }
+}
+
+function renderPocketsList() {
+  const wlSel = document.getElementById('pk-wishlist');
+  if (wlSel) wlSel.innerHTML = `<option value="">No linked item — general fund</option>` +
+    wishlist.map(w => `<option value="${w.id}">${w.title} — $${parseFloat(w.price).toFixed(2)}</option>`).join('');
+
+  // Keep the available Free amount label fresh every render
+  const availEl = document.getElementById('pk-free-avail');
+  if (availEl) availEl.textContent = `$${freeAmount().toFixed(2)} available`;
+
+  const wrap = document.getElementById('pockets-wrap');
+  if (!pockets.length) { wrap.innerHTML = '<div class="empty-state">No pockets yet. Add one above — link it to a wishlist item, or leave it unlinked for a general fund like an emergency fund.</div>'; return; }
+
+  wrap.innerHTML = pockets.map(p => {
+    const item = getWishlistItem(p.wishlistItemId);
+    const price = item ? parseFloat(item.price) : null;
+    const rawPct = price ? Math.round((p.balance || 0) / price * 100) : null;
+    const pct = rawPct !== null ? Math.min(100, rawPct) : null;
+    const isComplete = price && (p.balance || 0) >= price;
+    const color = getPocketColor(p.id);
+    const rulesForPocket = pocketRules.filter(r => r.pocketId === p.id);
+    const rulesHtml = rulesForPocket.length
+      ? rulesForPocket.map(r => {
+          const job = getJob(r.jobId);
+          return `
+            <div id="rule-row-${r.id}" class="pocket-rule-row">
+              <div style="flex:1">${r.percent}% of every <strong>${job ? job.label : '(removed job)'}</strong> event</div>
+              <div class="row-actions" style="margin:0">
+                <button class="act-btn edit" onclick="editPocketRule('${r.id}')">edit</button>
+                <button class="act-btn danger" onclick="deletePocketRule('${r.id}')">delete</button>
+              </div>
+            </div>`;
+        }).join('')
+      : `<div class="pocket-rule-empty">No rules yet — money only moves here when you add one or move funds manually.</div>`;
+    return `
+      <div id="pocket-row-${p.id}" class="pocket-row" style="padding:12px 1.25rem;border-bottom:1px solid var(--border)${isComplete ? ';background:rgba(74,222,128,0.04)' : ''}">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="funds-swatch" style="background-image:${glossGradient(isComplete ? COLOR_GREEN : color)}${isComplete ? ';box-shadow:0 0 6px rgba(74,222,128,0.5)' : ''}"></span>
+          <div style="font-weight:500">${p.name}</div>
+          ${isComplete ? `<span class="pocket-complete-badge">✓ GOAL MET</span>` : ''}
+          <div style="flex:1"></div>
+          <div class="mono" style="color:var(--text-muted);font-size:12px">${item ? `→ ${item.title}` : (p.wishlistItemId ? '(linked item removed)' : 'General fund')}</div>
+          <div class="mono" style="font-size:13px;color:${isComplete ? COLOR_GREEN : color}">$${(p.balance || 0).toFixed(2)}${price ? ` / $${price.toFixed(2)}` : ''}${pct !== null ? ` (${pct}%)` : ''}</div>
+          <div class="row-actions" style="margin:0">
+            ${isComplete ? `<button class="pocket-purchase-btn" onclick="showPocketPurchaseFlow('${p.id}')">🛍️ Purchase</button>` : ''}
+            <button class="act-btn" onclick="toggleForm('rule-form-${p.id}')">+ rule</button>
+            <button class="act-btn edit" onclick="editPocket('${p.id}')">edit</button>
+            <button class="act-btn danger" onclick="deletePocket('${p.id}')">delete</button>
+          </div>
+        </div>
+        ${price ? `<div class="pocket-progress-track" style="margin-top:8px"><div class="pocket-progress-fill" style="width:${pct}%;background-image:${glossGradient(isComplete ? COLOR_GREEN : color)}${isComplete ? ';box-shadow:0 0 8px rgba(74,222,128,0.45)' : ''}"></div></div>` : ''}
+        <div class="pocket-rules-list" id="pocket-rules-${p.id}">${rulesHtml}</div>
+        <div class="add-form pocket-rule-form" id="rule-form-${p.id}">
+          <div class="form-grid">
+            <div><label>Job</label><select id="rl-job-${p.id}">${jobOptionsHtml()}</select></div>
+            <div><label>Percent (%)</label><input type="number" id="rl-percent-${p.id}" min="1" max="100" step="1" placeholder="e.g. 10" /></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" onclick="addPocketRule('${p.id}')">Add rule</button>
+            <button class="btn btn-ghost" onclick="toggleForm('rule-form-${p.id}')">Cancel</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function addPocket() {
+  const name = document.getElementById('pk-name').value.trim();
+  const wishlistItemId = document.getElementById('pk-wishlist').value;
+  const startBalRaw = document.getElementById('pk-balance').value;
+  if (!name) { alert('Please enter a name.'); return; }
+  let startBal = startBalRaw !== '' ? parseFloat(startBalRaw) : 0;
+  if (isNaN(startBal) || startBal < 0) startBal = 0;
+  const item = wishlistItemId ? getWishlistItem(wishlistItemId) : null;
+  if (item) {
+    const itemPrice = parseFloat(item.price) || 0;
+    if (startBal > itemPrice) { alert(`Starting balance can't exceed the linked item's price ($${itemPrice.toFixed(2)}).`); return; }
+  }
+  const freeNow = freeAmount();
+  if (startBal > freeNow) { alert(`Only $${freeNow.toFixed(2)} is currently free to dedicate.`); return; }
+  const newPocket = { id: 'pk' + Date.now(), name, wishlistItemId: wishlistItemId || null, balance: startBal, createdAt: new Date().toISOString() };
+  pockets.push(newPocket);
+  pendingPocketWrites.add(newPocket.id);
+  logHistory('pocket', `Added pocket — "${name}"${item ? ` (→ ${item.title})` : ''}${startBal > 0 ? ` with $${startBal.toFixed(2)} from Free` : ''}`, { job: null, pocketId: newPocket.id });
+  save(); render(); toast('Pocket added ✓');
+  document.getElementById('pocket-form').classList.remove('open');
+  document.getElementById('pk-name').value = '';
+  document.getElementById('pk-balance').value = '';
+}
+
+function editPocket(id) {
+  const p = pockets.find(p => p.id === id);
+  const row = document.getElementById('pocket-row-' + id);
+  const wlOpts = `<option value=""${!p.wishlistItemId ? ' selected' : ''}>No linked item — general fund</option>` +
+    wishlist.map(w => `<option value="${w.id}"${w.id === p.wishlistItemId ? ' selected' : ''}>${w.title} — $${parseFloat(w.price).toFixed(2)}</option>`).join('');
+  row.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <input id="epk-name-${id}" value="${p.name}" style="flex:1;min-width:140px;font-size:13px;padding:5px 8px" />
+      <select id="epk-wishlist-${id}" style="font-size:13px;padding:5px 8px">${wlOpts}</select>
+      <div class="row-actions" style="margin:0">
+        <button class="act-btn save" onclick="savePocket('${id}')">save</button>
+        <button class="act-btn" onclick="renderPocketsList()">cancel</button>
+      </div>
+    </div>`;
+}
+
+function savePocket(id) {
+  const name = document.getElementById('epk-name-' + id).value.trim();
+  const wishlistItemId = document.getElementById('epk-wishlist-' + id).value;
+  if (!name) { alert('Name required.'); return; }
+  const old = pockets.find(p => p.id === id);
+  const newItem = wishlistItemId ? getWishlistItem(wishlistItemId) : null;
+  if (newItem) {
+    const newItemPrice = parseFloat(newItem.price) || 0;
+    if ((old.balance || 0) > newItemPrice) { alert(`Can't link to "${newItem.title}" — its price ($${newItemPrice.toFixed(2)}) is less than this pocket's current balance ($${(old.balance || 0).toFixed(2)}).`); return; }
+  }
+  pockets = pockets.map(p => p.id === id ? { ...p, name, wishlistItemId: wishlistItemId || null } : p);
+  pendingPocketWrites.add(id);
+  logHistory('pocket', `Edited pocket — "${old.name}" → "${name}"`, { job: null, pocketId: id });
+  save(); render(); toast('Pocket updated ✓');
+}
+
+function deletePocket(id) {
+  const p = pockets.find(p => p.id === id);
+  if (!confirm(`Delete "${p.name}"? Its $${(p.balance || 0).toFixed(2)} balance will return to Free / Savings.`)) return;
+  pockets = pockets.filter(p => p.id !== id);
+  pendingPocketDeletes.add(id); pendingPocketWrites.delete(id);
+  const orphanRules = pocketRules.filter(r => r.pocketId === id);
+  pocketRules = pocketRules.filter(r => r.pocketId !== id);
+  orphanRules.forEach(r => { pendingRuleDeletes.add(r.id); pendingRuleWrites.delete(r.id); });
+  logHistory('pocket', `Deleted pocket — "${p.name}" ($${(p.balance || 0).toFixed(2)} returned to Free)${orphanRules.length ? ` and removed ${orphanRules.length} rule${orphanRules.length > 1 ? 's' : ''}` : ''}`, { job: null });
+  save(); render(); toast('Pocket deleted');
+}
+
+function addPocketRule(pocketId) {
+  const jobId = document.getElementById('rl-job-' + pocketId).value;
+  const percent = parseFloat(document.getElementById('rl-percent-' + pocketId).value);
+  if (!jobId) { alert('Choose a job.'); return; }
+  if (isNaN(percent) || percent <= 0 || percent > 100) { alert('Enter a percent between 1 and 100.'); return; }
+  const existingTotal = pocketRules.filter(r => r.jobId === jobId).reduce((s, r) => s + r.percent, 0);
+  if (existingTotal + percent > 100) { alert(`That job already has ${existingTotal}% allocated across other rules — this would push it past 100%.`); return; }
+  const newRule = { id: 'rl' + Date.now(), jobId, pocketId, percent, createdAt: new Date().toISOString() };
+  pocketRules.push(newRule);
+  pendingRuleWrites.add(newRule.id);
+  const pocket = getPocket(pocketId);
+  logHistory('pocket', `Added rule — ${percent}% of every ${getJob(jobId).label} event → "${pocket ? pocket.name : '?'}"`, { job: null });
+  save(); render(); toast('Rule added ✓');
+}
+
+function editPocketRule(id) {
+  const r = pocketRules.find(r => r.id === id);
+  const row = document.getElementById('rule-row-' + id);
+  row.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1">
+      <select id="erl-job-${id}" style="font-size:12px;padding:5px 8px">${jobOptionsHtml(r.jobId)}</select>
+      <input id="erl-percent-${id}" type="number" value="${r.percent}" min="1" max="100" style="width:70px;font-size:12px;padding:5px 8px" />%
+    </div>
+    <div class="row-actions" style="margin:0">
+      <button class="act-btn save" onclick="savePocketRule('${id}')">save</button>
+      <button class="act-btn" onclick="renderPocketsList()">cancel</button>
+    </div>`;
+}
+
+function savePocketRule(id) {
+  const jobId = document.getElementById('erl-job-' + id).value;
+  const percent = parseFloat(document.getElementById('erl-percent-' + id).value);
+  if (isNaN(percent) || percent <= 0 || percent > 100) { alert('Enter a percent between 1 and 100.'); return; }
+  const existingTotal = pocketRules.filter(r => r.jobId === jobId && r.id !== id).reduce((s, r) => s + r.percent, 0);
+  if (existingTotal + percent > 100) { alert(`That job already has ${existingTotal}% allocated across other rules — this would push it past 100%.`); return; }
+  pocketRules = pocketRules.map(r => r.id === id ? { ...r, jobId, percent } : r);
+  pendingRuleWrites.add(id);
+  const r = pocketRules.find(r => r.id === id);
+  logHistory('pocket', `Edited rule — now ${percent}% of every ${getJob(jobId).label} event → ${getPocket(r.pocketId) ? getPocket(r.pocketId).name : '?'}`, { job: null });
+  save(); render(); toast('Rule updated ✓');
+}
+
+function deletePocketRule(id) {
+  const r = pocketRules.find(r => r.id === id);
+  if (!confirm('Delete this rule? Future events will no longer auto-allocate for it.')) return;
+  pocketRules = pocketRules.filter(r => r.id !== id);
+  pendingRuleDeletes.add(id); pendingRuleWrites.delete(id);
+  logHistory('pocket', `Deleted rule — ${r.percent}% of every ${getJob(r.jobId) ? getJob(r.jobId).label : r.jobId} event → ${getPocket(r.pocketId) ? getPocket(r.pocketId).name : '?'}`, { job: null });
+  save(); render(); toast('Rule deleted');
+}
+
+function executeMoveFunds() {
+  const from = document.getElementById('mv-from').value;
+  const to = document.getElementById('mv-to').value;
+  const amount = parseFloat(document.getElementById('mv-amount').value);
+  if (!from || !to) { alert('Choose a source and destination.'); return; }
+  if (from === to) { alert('Source and destination must be different.'); return; }
+  if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
+
+  const fromLabel = from === 'free' ? 'Free / Savings' : (getPocket(from) ? getPocket(from).name : 'Unknown');
+  const toLabel   = to === 'free'   ? 'Free / Savings' : (getPocket(to)   ? getPocket(to).name   : 'Unknown');
+  const fromAvailable = from === 'free' ? freeAmount() : (getPocket(from) ? getPocket(from).balance || 0 : 0);
+  if (amount > fromAvailable) { alert(`Only $${fromAvailable.toFixed(2)} available in ${fromLabel}.`); return; }
+
+  if (from !== 'free') adjustPocketBalance(from, -amount);
+  if (to !== 'free') adjustPocketBalance(to, amount);
+
+  logHistory('pocket', `Moved $${amount.toFixed(2)} — ${fromLabel} → ${toLabel}`, { job: null });
+  save(); render(); toast('Money moved ✓');
+  document.getElementById('mv-amount').value = '';
+  // Check if the destination pocket just hit its goal
+  if (to !== 'free') checkPocketsForGoalCompletion([to]);
+}
+
+function renderPocketHistory() {
+  const wrap = document.getElementById('pocket-history-wrap');
+  if (!wrap) return;
+  const filtered = historyLog.filter(h => h.type === 'pocket');
+  if (!filtered.length) { wrap.innerHTML = '<div class="empty-state">No pocket changes yet.</div>'; return; }
+  wrap.innerHTML = filtered.slice(0, 40).map(historyEntryHTML).join('');
+}
+
+// ── Wishlist ──────────────────────────────────────────────
+function normalizeUrl(url) {
+  if (!url) return '';
+  return /^https?:\/\//i.test(url) ? url : 'https://' + url;
+}
+
+function renderWishlist() {
+  const wrap = document.getElementById('wishlist-wrap');
+  if (!wrap) return;
+  const sorted = [...wishlist].sort((a,b) => (b.date||'').localeCompare(a.date||'') || b.id.localeCompare(a.id));
+  if (!sorted.length) {
+    wrap.innerHTML = '<div class="empty-state">No items yet.</div>';
+    return;
+  }
+  wrap.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Title</th><th>Price</th><th>Category</th><th>Description</th><th>Link</th><th style="text-align:right">Actions</th></tr></thead>
+    <tbody>${sorted.map(w => {
+      const cls = w.category==='other' ? 'badge-wother' : 'badge-witem';
+      const lbl = w.category==='other' ? 'Other' : 'Item';
+      const linkCell = w.link ? `<a class="wl-link" href="${w.link}" target="_blank" rel="noopener noreferrer">Visit ↗</a>` : '<span class="mono">—</span>';
+      return `<tr id="wlrow-${w.id}">
+        <td>${w.title}</td>
+        <td class="mono">$${parseFloat(w.price).toFixed(2)}</td>
+        <td><span class="badge ${cls}">${lbl}</span></td>
+        <td class="wl-desc">${w.desc || '—'}</td>
+        <td>${linkCell}</td>
+        <td><div class="row-actions">
+          <button class="act-btn edit" onclick="editWishlistItem('${w.id}')">edit</button>
+          <button class="act-btn danger" onclick="deleteWishlistItem('${w.id}')">delete</button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+function addWishlistItem() {
+  const title    = document.getElementById('wl-title').value.trim();
+  const price    = parseFloat(document.getElementById('wl-price').value);
+  const category = document.getElementById('wl-category').value;
+  const link     = normalizeUrl(document.getElementById('wl-link').value.trim());
+  const desc     = document.getElementById('wl-desc').value.trim();
+  if (!title) { alert('Please enter a title.'); return; }
+  if (isNaN(price) || price < 0) { alert('Please enter a valid price.'); return; }
+  const newItem = {id:'w'+Date.now(), title, price, category, link, desc, date: new Date().toISOString().slice(0,10)};
+  wishlist.push(newItem);
+  pendingWishlistWrites.add(newItem.id);
+  logHistory('other', `Added to wishlist — "${title}" $${price.toFixed(2)} (${category==='other'?'Other':'Item'})`, { job: null });
+  save(); render();
+  document.getElementById('wl-title').value='';
+  document.getElementById('wl-price').value='';
+  document.getElementById('wl-link').value='';
+  document.getElementById('wl-desc').value='';
+  document.getElementById('wl-category').value='item';
+  toast('Added to wishlist ✓');
+}
+
+function deleteWishlistItem(id) {
+  if (!confirm('Delete this item?')) return;
+  const w = wishlist.find(w=>w.id===id);
+  wishlist = wishlist.filter(w=>w.id!==id);
+  pendingWishlistDeletes.add(id); pendingWishlistWrites.delete(id);
+  logHistory('delete', `Deleted wishlist item — "${w.title}" $${parseFloat(w.price).toFixed(2)}`, { job: null });
+  save(); render(); toast('Item deleted');
+}
+
+function editWishlistItem(id) {
+  const w = wishlist.find(w=>w.id===id);
+  const row = document.getElementById('wlrow-'+id);
+  row.classList.add('edit-row');
+  row.innerHTML = `
+    <td><input id="ewl-title-${id}" value="${w.title}" /></td>
+    <td><input id="ewl-price-${id}" type="number" value="${w.price}" min="0" step="0.01" style="width:90px" /></td>
+    <td><select id="ewl-category-${id}">
+      <option value="item"${w.category!=='other'?' selected':''}>Item</option>
+      <option value="other"${w.category==='other'?' selected':''}>Other</option>
+    </select></td>
+    <td><input id="ewl-desc-${id}" value="${w.desc||''}" /></td>
+    <td><input id="ewl-link-${id}" value="${w.link||''}" /></td>
+    <td><div class="row-actions">
+      <button class="act-btn save" onclick="saveWishlistItem('${id}')">save</button>
+      <button class="act-btn" onclick="render()">cancel</button>
+    </div></td>`;
+}
+
+function saveWishlistItem(id) {
+  const title    = document.getElementById('ewl-title-'+id).value.trim();
+  const price    = parseFloat(document.getElementById('ewl-price-'+id).value);
+  const category = document.getElementById('ewl-category-'+id).value;
+  const desc     = document.getElementById('ewl-desc-'+id).value.trim();
+  const link     = normalizeUrl(document.getElementById('ewl-link-'+id).value.trim());
+  if (!title) { alert('Please enter a title.'); return; }
+  if (isNaN(price) || price < 0) { alert('Please enter a valid price.'); return; }
+  const old = wishlist.find(w=>w.id===id);
+  wishlist = wishlist.map(w => w.id===id ? {...w, title, price, category, desc, link} : w);
+  pendingWishlistWrites.add(id);
+  logHistory('other', `Edited wishlist item — "${old.title}" → "${title}" $${price.toFixed(2)}`, { job: null });
+  save(); render(); toast('Item updated ✓');
+}
+
+// ── Pocket Goal Completion ────────────────────────────────
+let _pocketCongratsQueue = [];
+let _processingCongratsQueue = false;
+
+async function checkPocketsForGoalCompletion(pocketIds) {
+  const uniqueIds = [...new Set(pocketIds)];
+  const newCompletions = [];
+
+  for (const pocketId of uniqueIds) {
+    const pocket = getPocket(pocketId);
+    if (!pocket) continue;
+
+    // Only trigger for pockets that HAVE rules
+    const rulesForPocket = pocketRules.filter(r => r.pocketId === pocketId);
+    if (!rulesForPocket.length) continue;
+
+    const wishItem = getWishlistItem(pocket.wishlistItemId);
+    if (!wishItem) continue;
+
+    const price = parseFloat(wishItem.price);
+    if (!price || price <= 0) continue;
+
+    const balance = pocket.balance || 0;
+    if (balance < price) continue; // Not at 100% yet
+
+    // Already queued? Skip to avoid double-trigger
+    if (_pocketCongratsQueue.some(q => q.pocketId === pocketId)) continue;
+
+    newCompletions.push({
+      pocketId,
+      savedRules: JSON.parse(JSON.stringify(rulesForPocket)),
+      excess: Math.round((balance - price) * 100) / 100
+    });
+  }
+
+  if (!newCompletions.length) return;
+  _pocketCongratsQueue.push(...newCompletions);
+
+  if (!_processingCongratsQueue) {
+    await _processPocketCongratsQueue();
+  }
+}
+
+async function _processPocketCongratsQueue() {
+  _processingCongratsQueue = true;
+  while (_pocketCongratsQueue.length > 0) {
+    const item = _pocketCongratsQueue.shift();
+    await _showPocketCongrats(item.pocketId, item.savedRules, item.excess);
+  }
+  _processingCongratsQueue = false;
+}
+
+async function _showPocketCongrats(pocketId, savedRules, excess) {
+  const pocket = getPocket(pocketId);
+  if (!pocket) return;
+
+  const wishItem = getWishlistItem(pocket.wishlistItemId);
+  const price = wishItem ? parseFloat(wishItem.price) : 0;
+
+  // ── Background: delete all rules for this pocket immediately ──
+  pocketRules = pocketRules.filter(r => r.pocketId !== pocketId);
+  savedRules.forEach(r => { pendingRuleDeletes.add(r.id); pendingRuleWrites.delete(r.id); });
+
+  // Trim the pocket to exactly 100% if there's overshoot
+  if (excess > 0) {
+    pockets = pockets.map(p => p.id === pocketId
+      ? { ...p, balance: Math.round((p.balance - excess) * 100) / 100 }
+      : p);
+    pendingPocketWrites.add(pocketId);
+  }
+
+  save(); render();
+
+  return new Promise(resolve => {
+    // Populate modal fields
+    document.getElementById('congrats-pocket-name').textContent = pocket.name;
+    document.getElementById('congrats-meta').textContent = wishItem
+      ? `"${wishItem.title}" — $${price.toFixed(2)} fully saved`
+      : `$${price.toFixed(2)} fully saved`;
+
+    const excessWrap = document.getElementById('congrats-excess-wrap');
+    if (excess > 0) {
+      document.getElementById('congrats-excess-text').textContent =
+        `$${excess.toFixed(2)} over goal → goes to duplicate or Free`;
+      excessWrap.style.display = '';
+    } else {
+      excessWrap.style.display = 'none';
+    }
+
+    // Rotate through a few celebratory emojis for variety
+    const emojis = ['🎉', '🏆', '🥳', '⭐', '🎯'];
+    document.getElementById('congrats-emoji').textContent =
+      emojis[Math.floor(Math.random() * emojis.length)];
+
+    document.getElementById('pocket-congrats-modal').style.display = 'flex';
+
+    document.getElementById('congrats-duplicate-btn').onclick = async () => {
+      document.getElementById('pocket-congrats-modal').style.display = 'none';
+      await _handleCongratsDuplicate(pocketId, savedRules, excess);
+      resolve();
+    };
+
+    document.getElementById('congrats-skip-btn').onclick = () => {
+      document.getElementById('pocket-congrats-modal').style.display = 'none';
+      _handleCongratsNoDuplicate(pocketId, excess);
+      resolve();
+    };
+  });
+}
+
+async function _handleCongratsDuplicate(pocketId, savedRules, excess) {
+  const pocket = getPocket(pocketId);
+  if (!pocket) return;
+
+  const newPocketId = 'pk' + Date.now();
+  const newPocket = {
+    id: newPocketId,
+    name: pocket.name,
+    wishlistItemId: pocket.wishlistItemId,
+    balance: excess > 0 ? excess : 0,
+    createdAt: new Date().toISOString()
+  };
+  pockets.push(newPocket);
+  pendingPocketWrites.add(newPocketId);
+
+  // Re-create the same rules on the new pocket
+  savedRules.forEach((r, i) => {
+    const newRule = {
+      ...r,
+      id: 'rl' + (Date.now() + i + 1),
+      pocketId: newPocketId,
+      createdAt: new Date().toISOString()
+    };
+    pocketRules.push(newRule);
+    pendingRuleWrites.add(newRule.id);
+  });
+
+  const msg = excess > 0
+    ? `Goal reached on "${pocket.name}" — duplicated with $${excess.toFixed(2)} carried over, ${savedRules.length} rule${savedRules.length !== 1 ? 's' : ''} re-applied`
+    : `Goal reached on "${pocket.name}" — duplicated with same rules for next round`;
+  logHistory('pocket', msg, { job: null, pocketId: newPocketId });
+  save(); render();
+  toast(`"${pocket.name}" duplicated — ready for round 2 ✓`);
+}
+
+function _handleCongratsNoDuplicate(pocketId, excess) {
+  // Excess was already trimmed from the pocket in _showPocketCongrats,
+  // so it now naturally lives in Free / Savings. Just log it.
+  if (excess > 0) {
+    const pocket = getPocket(pocketId);
+    logHistory('pocket',
+      `Goal reached on "${pocket ? pocket.name : 'pocket'}" — $${excess.toFixed(2)} excess returned to Free / Savings`,
+      { job: null, pocketId }
+    );
+    save(); render();
+  }
+}
+
+// ── Pocket Purchase Flow ──────────────────────────────────
+async function showPocketPurchaseFlow(pocketId) {
+  const pocket = getPocket(pocketId);
+  if (!pocket) return;
+
+  const method = await _promptPurchaseMethod(pocket);
+  if (!method) return;
+
+  _completePurchase(pocketId, method);
+}
+
+function _promptPurchaseMethod(pocket) {
+  return new Promise(resolve => {
+    const modal  = document.getElementById('payment-modal');
+    const indBtn = document.getElementById('pm-individual');
+    const jobInfo = document.getElementById('pm-job-info');
+
+    indBtn.style.display = 'none';
+    jobInfo.style.display = 'block';
+    jobInfo.innerHTML =
+      `<span style="color:var(--text);font-size:12px">Purchasing:</span><br>` +
+      `<strong style="color:var(--text)">${pocket.name}</strong><br>` +
+      `<span style="color:var(--green);font-family:'JetBrains Mono',monospace">$${(pocket.balance || 0).toFixed(2)}</span>`;
+
+    // Relabel buttons to fit "purchase" context
+    document.getElementById('pm-cash').textContent = 'Cash';
+    document.getElementById('pm-bank').textContent = 'Bank';
+
+    modal.style.display = 'flex';
+
+    const close = val => { modal.style.display = 'none'; resolve(val); };
+    document.getElementById('pm-cash').onclick   = () => close('cash');
+    document.getElementById('pm-bank').onclick   = () => close('bank');
+    document.getElementById('pm-cancel').onclick = () => close(null);
+  });
+}
+
+function _completePurchase(pocketId, method) {
+  const pocket = getPocket(pocketId);
+  if (!pocket) return;
+
+  const pocketName     = pocket.name;
+  const purchaseAmount = pocket.balance || 0;
+  const today          = todayISO();
+
+  // Add expense entry matching the pocket
+  const expId = 'o' + Date.now();
+  const expEntry = {
+    id: expId,
+    desc: pocketName,
+    date: today,
+    type: 'expense',
+    amount: purchaseAmount,
+    method
+  };
+  otherMoney.push(expEntry);
+  pendingOtherWrites.add(expId);
+
+  // Delete the pocket's rules
+  const orphanRules = pocketRules.filter(r => r.pocketId === pocketId);
+  pocketRules = pocketRules.filter(r => r.pocketId !== pocketId);
+  orphanRules.forEach(r => { pendingRuleDeletes.add(r.id); pendingRuleWrites.delete(r.id); });
+
+  // Delete the pocket itself
+  pockets = pockets.filter(p => p.id !== pocketId);
+  pendingPocketDeletes.add(pocketId);
+  pendingPocketWrites.delete(pocketId);
+
+  logHistory('pocket',
+    `Purchased "${pocketName}" — $${purchaseAmount.toFixed(2)} (${method}) · pocket closed, expense recorded`,
+    { job: null }
+  );
+  save(); render();
+
+  _showPurchaseCelebration(pocketName, purchaseAmount, method);
+}
+
+function _showPurchaseCelebration(name, amount, method) {
+  document.getElementById('celebration-item-text').innerHTML =
+    `<strong style="color:var(--text);font-size:14px;font-family:'Syne',sans-serif">${name}</strong><br>` +
+    `<span style="margin-top:5px;display:inline-block">$${amount.toFixed(2)} logged as a ${method} expense</span>`;
+  document.getElementById('purchase-celebration').style.display = 'flex';
+}
+
+function closePurchaseCelebration() {
+  document.getElementById('purchase-celebration').style.display = 'none';
+}
+
+// ── PWA: service worker registration ───────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(err => console.warn('SW failed:', err));
+  });
+}
+</script>
+</body>
+</html>
