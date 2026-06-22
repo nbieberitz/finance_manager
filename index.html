@@ -707,6 +707,56 @@ tr:hover td { background: var(--surface2); }
   border:1px solid rgba(252,211,77,0.25); border-radius:8px;
 }
 
+/* Trends */
+.trend-range-toggle { display:flex; gap:4px; }
+.trend-range-btn {
+  font-family:'JetBrains Mono',monospace; font-size:10px; padding:3px 9px;
+  border-radius:var(--radius-pill); border:1px solid var(--border-mid);
+  background:transparent; color:var(--text-faint); cursor:pointer;
+  transition:background 0.18s var(--ease), color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.trend-range-btn:hover { color:var(--text-muted); border-color:var(--text-faint); }
+.trend-range-btn.active { background:var(--accent-pale); border-color:var(--gold-border); color:var(--accent); }
+
+.trend-section-body { padding:1.1rem 1.25rem; }
+.trend-charts-grid { display:grid; grid-template-columns:1.3fr 1fr; gap:14px; }
+@media (max-width:760px) { .trend-charts-grid { grid-template-columns:1fr; } }
+
+.trend-card { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.9rem 1rem 1rem; }
+.trend-card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.trend-card-title { font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-faint); }
+.trend-delta-up { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--green); background:var(--green-pale); border:1px solid var(--green-border); border-radius:var(--radius-pill); padding:2px 9px; }
+.trend-delta-down { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--red); background:var(--red-pale); border:1px solid var(--red-border); border-radius:var(--radius-pill); padding:2px 9px; }
+.trend-legend-mini { display:flex; align-items:center; gap:5px; font-size:10px; font-family:'JetBrains Mono',monospace; color:var(--text-faint); }
+.trend-legend-dot { width:6px; height:6px; border-radius:50%; display:inline-block; margin-left:6px; }
+.trend-legend-dot:first-child { margin-left:0; }
+
+.trend-line-wrap { width:100%; }
+.trend-svg { width:100%; height:150px; display:block; overflow:visible; }
+.trend-zero-line { stroke:var(--border-mid); stroke-width:1; stroke-dasharray:3 3; }
+.trend-dot { fill:var(--bg); stroke:var(--green); stroke-width:2; cursor:pointer; transition:r 0.15s var(--ease); }
+.trend-dot:hover { r:5; fill:var(--green); }
+.trend-axis-labels { display:flex; justify-content:space-between; margin-top:4px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-faint); }
+
+.trend-bar-wrap { width:100%; }
+.trend-bars { display:flex; align-items:flex-end; gap:10px; height:150px; padding-top:6px; }
+.trend-bar-group { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; min-width:0; }
+.trend-bar-pair { display:flex; align-items:flex-end; gap:3px; height:100%; width:100%; justify-content:center; }
+.trend-bar { width:9px; border-radius:4px 4px 2px 2px; cursor:pointer; transition:height 0.5s var(--ease), filter 0.15s var(--ease), transform 0.15s var(--ease); transform-origin:bottom; box-shadow: inset 0 1px 1px rgba(255,255,255,0.14), inset 0 -3px 5px rgba(0,0,0,0.25); }
+.trend-bar:hover { filter:brightness(1.18); transform:scaleX(1.25); }
+.trend-bar-label { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--text-faint); white-space:nowrap; }
+
+.trend-tooltip {
+  position:fixed; z-index:10003; pointer-events:none; opacity:0;
+  background:var(--surface3); border:1px solid var(--border-mid); border-radius:8px;
+  padding:6px 10px; box-shadow:var(--shadow-pop);
+  font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text);
+  display:flex; flex-direction:column; gap:1px; white-space:nowrap;
+  transition:opacity 0.12s var(--ease);
+}
+.trend-tooltip strong { font-size:12px; }
+.trend-tooltip span { color:var(--text-faint); font-size:10px; }
+
 /* Pockets page */
 .pocket-progress-track { width:100%; height:7px; border-radius:var(--radius-pill); background:var(--surface3); overflow:hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.4); }
 .pocket-progress-fill { height:100%; border-radius:var(--radius-pill); transition:width 0.5s var(--ease), box-shadow 0.3s var(--ease); }
@@ -716,6 +766,56 @@ tr:hover td { background: var(--surface2); }
 .pocket-rule-form { margin-top:10px; padding:10px; background:var(--surface3); border-radius:8px; border-bottom:none; }
 .pocket-row { transition: background 0.2s var(--ease); }
 .pocket-row:hover { background: rgba(255,255,255,0.015); }
+
+/* ── Test Mode ───────────────────────────────────────────── */
+.test-mode-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 10000;
+  background: linear-gradient(135deg, #431407, #7c2d12);
+  border-bottom: 2px solid #ea580c;
+  padding: 9px 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #fdba74;
+  letter-spacing: 0.04em;
+  transform: translateY(-100%);
+  transition: transform 0.28s var(--ease);
+  gap: 12px;
+}
+.test-mode-banner.visible { transform: translateY(0); }
+body.test-mode-active { padding-top: calc(2rem + 46px) !important; }
+.test-mode-exit-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(234,88,12,0.55);
+  background: rgba(234,88,12,0.15);
+  color: #fb923c;
+  cursor: pointer;
+  transition: background 0.18s var(--ease), transform 0.15s var(--ease);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.test-mode-exit-btn:hover { background: rgba(234,88,12,0.32); transform: translateY(-1px); }
+.test-mode-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 3px 11px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-mid);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: border-color 0.18s var(--ease), color 0.18s var(--ease), background 0.18s var(--ease);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.test-mode-btn:hover { border-color: #ea580c; color: #fb923c; background: rgba(234,88,12,0.08); }
 
 /* ── Pocket Goal Congrats Modal ─────────────────────────── */
 .congrats-card {
@@ -828,11 +928,20 @@ tr:hover td { background: var(--surface2); }
 </head>
 <body>
 
+<div id="test-mode-banner" class="test-mode-banner">
+  <div style="display:flex;align-items:center;gap:10px;min-width:0">
+    <span style="font-size:15px;flex-shrink:0">⚗</span>
+    <span><strong>TEST MODE</strong> — all changes are temporary and won't touch your real account</span>
+  </div>
+  <button class="test-mode-exit-btn" onclick="exitTestMode()">✕ Exit test mode</button>
+</div>
+
 <header>
   <div style="display:flex;align-items:center;gap:14px">
     <div class="logo">
       <h1>Finance Manager</h1>
     </div>
+    <button id="test-mode-btn" class="test-mode-btn" onclick="enterTestMode()" style="display:none" title="Sandbox mode — changes won't be saved to your account">⚗ test mode</button>
   </div>
   <div class="auth-area" id="auth-area">
     <span id="auth-loading">connecting…</span>
@@ -842,6 +951,39 @@ tr:hover td { background: var(--surface2); }
 <div class="container" id="main-view">
 
   <div class="summary-grid" id="summary"></div>
+
+  <!-- Trends -->
+  <section>
+    <div class="section-header" onclick="toggleSection('trends-body')">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-8M21 8h-6v6"/></svg>
+        Trends
+      </div>
+      <div class="header-actions" onclick="event.stopPropagation()">
+        <div class="trend-range-toggle" id="trend-range-toggle"></div>
+      </div>
+    </div>
+    <div id="trends-body">
+      <div class="trend-section-body">
+        <div class="trend-charts-grid">
+          <div class="trend-card">
+            <div class="trend-card-head">
+              <span class="trend-card-title">Cash over time</span>
+              <span id="trend-delta-badge"></span>
+            </div>
+            <div id="trend-line-wrap" class="trend-line-wrap"></div>
+          </div>
+          <div class="trend-card">
+            <div class="trend-card-head">
+              <span class="trend-card-title">Income vs. expenses</span>
+              <span class="trend-legend-mini"><span class="trend-legend-dot" style="background:var(--green)"></span>In <span class="trend-legend-dot" style="background:var(--red)"></span>Out</span>
+            </div>
+            <div id="trend-bar-wrap" class="trend-bar-wrap"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- Distribution of Funds -->
   <section>
@@ -1429,6 +1571,8 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
 let currentUser = null;
+let testMode = false;
+let testModeSnapshot = null;
 
 function userDoc() { return db.collection('users').doc(currentUser.uid); }
 
@@ -1534,7 +1678,7 @@ function save() {
 }
 
 async function loadMoreHistory() {
-  if (allHistoryLoaded) return;
+  if (allHistoryLoaded || testMode) return;
   let query = historyCol().orderBy('ts', 'desc').limit(50);
   if (lastHistoryDoc) query = query.startAfter(lastHistoryDoc);
   const snap = await query.get();
@@ -1548,7 +1692,7 @@ async function loadMoreHistory() {
 }
 
 async function saveToFirestore() {
-  if (!currentUser) return;
+  if (!currentUser || testMode) return;
 
   // Main doc holds only balances now
   await userDoc().set({ balances });
@@ -1624,6 +1768,7 @@ auth.onAuthStateChanged(user => {
         Sign in with Google
       </button>`;
   }
+  updateTestModeUI();
 });
 
 function signIn() {
@@ -1726,6 +1871,7 @@ function generateOtherFromRule(rule, date) {
 // rule up to today, generating one entry per missed interval (capped per
 // rule so a long-unused account doesn't flood in thousands of entries).
 async function processRecurringRules() {
+  if (testMode) return;
   const today = todayISO();
   const MAX_PER_RULE = 25;
   let totalGenerated = 0;
@@ -2089,6 +2235,98 @@ let pendingRecurringDeletes = new Set();
 
 function historyCol() { return db.collection('users').doc(currentUser.uid).collection('history'); }
 
+// ── Test Mode ─────────────────────────────────────────────
+// Pure in-memory sandbox: all state is deep-copied, real Firestore listeners
+// are detached, and every write path is blocked. Nothing touches the DB.
+// On exit (or page refresh), loadFromFirestore() reconnects to real data.
+
+function enterTestMode() {
+  if (testMode || !currentUser) return;
+  if (!confirm(
+    'Enter test mode?\n\n' +
+    'Your current data will be copied into a sandbox. You can add outrageous numbers, ' +
+    'delete everything, or break things freely — nothing will touch your real account.\n\n' +
+    'Exit test mode (or refresh the page) to restore your real data.'
+  )) return;
+
+  // Cancel any pending debounced save so it doesn\'t fire after we detach
+  clearTimeout(saveTimer);
+
+  // Deep-copy the entire app state
+  testModeSnapshot = {
+    balances:         JSON.parse(JSON.stringify(balances)),
+    clients:          JSON.parse(JSON.stringify(clients)),
+    lawnEvents:       JSON.parse(JSON.stringify(lawnEvents)),
+    otherMoney:       JSON.parse(JSON.stringify(otherMoney)),
+    wishlist:         JSON.parse(JSON.stringify(wishlist)),
+    pockets:          JSON.parse(JSON.stringify(pockets)),
+    pocketRules:      JSON.parse(JSON.stringify(pocketRules)),
+    recurringRules:   JSON.parse(JSON.stringify(recurringRules)),
+    historyLog:       JSON.parse(JSON.stringify(historyLog)),
+    lastNetCash:      lastNetCash,
+    allHistoryLoaded: allHistoryLoaded,
+  };
+
+  // Detach real-time Firestore listeners — all writes are now blocked
+  detachListeners();
+  pendingHistoryEntries = [];
+
+  testMode = true;
+  updateTestModeUI();
+  render();
+  toast('⚗ Test mode on — go wild, nothing gets saved');
+}
+
+function exitTestMode() {
+  if (!testMode || !testModeSnapshot) return;
+
+  // Restore every piece of state from the pre-test snapshot
+  balances         = testModeSnapshot.balances;
+  clients          = testModeSnapshot.clients;
+  lawnEvents       = testModeSnapshot.lawnEvents;
+  otherMoney       = testModeSnapshot.otherMoney;
+  wishlist         = testModeSnapshot.wishlist;
+  pockets          = testModeSnapshot.pockets;
+  pocketRules      = testModeSnapshot.pocketRules;
+  recurringRules   = testModeSnapshot.recurringRules || [];
+  historyLog       = testModeSnapshot.historyLog;
+  lastNetCash      = testModeSnapshot.lastNetCash;
+  allHistoryLoaded = testModeSnapshot.allHistoryLoaded;
+  pendingHistoryEntries = [];
+
+  testModeSnapshot = null;
+  testMode = false;
+
+  updateTestModeUI();
+
+  // Reconnect Firestore listeners — this will confirm & re-render with real data
+  loadFromFirestore();
+  toast('Test mode off — real data restored ✓');
+}
+
+function updateTestModeUI() {
+  const banner = document.getElementById('test-mode-banner');
+  const btn    = document.getElementById('test-mode-btn');
+  if (!banner) return;
+  if (testMode) {
+    banner.classList.add('visible');
+    document.body.classList.add('test-mode-active');
+    if (btn) btn.style.display = 'none';
+  } else {
+    banner.classList.remove('visible');
+    document.body.classList.remove('test-mode-active');
+    if (btn) btn.style.display = currentUser ? '' : 'none';
+  }
+}
+
+// Warn before navigating away or refreshing while in test mode
+window.addEventListener('beforeunload', e => {
+  if (testMode) {
+    e.preventDefault();
+    return (e.returnValue = 'You\'re in test mode — leaving will discard all test changes.');
+  }
+});
+
 function getRate(name) { const c = clients.find(c => c.name===name); return c ? c.rate : 0; }
 function eventAmount(j) { return j.amount !== undefined ? j.amount : getRate(j.client); }
 
@@ -2414,6 +2652,7 @@ renderPaidEvents();
 renderWishlist();
 renderFundsDistribution();
 renderRecurringSummary();
+renderTrends();
 if (pocketsOpen) renderPocketsPage();
 if (recurringOpen) renderRecurringList();
 if (currentJobId === 'ca_it') renderItChecks();
@@ -2605,21 +2844,21 @@ async function saveHistory(id) {
   const msg = document.getElementById('hmsg-'+id).value.trim();
   if (!msg) { alert('Message cannot be empty.'); return; }
   historyLog = historyLog.map(h => h.id===id ? {...h, message: msg} : h);
-  if (currentUser) await historyCol().doc(id).update({ message: msg });
+  if (currentUser && !testMode) await historyCol().doc(id).update({ message: msg });
   renderAllHistory(); toast('Log entry updated ✓');
 }
 
 async function deleteHistory(id) {
   if (!confirm('Delete this log entry?')) return;
   historyLog = historyLog.filter(h=>h.id!==id);
-  if (currentUser) await historyCol().doc(id).delete();
+  if (currentUser && !testMode) await historyCol().doc(id).delete();
   renderAllHistory(); toast('Log entry deleted');
 }
 
 async function clearHistory() {
   if (!confirm('Clear ALL history? This includes every job, not just one, and cannot be undone.')) return;
   historyLog = []; pendingHistoryEntries = []; lastHistoryDoc = null; allHistoryLoaded = true;
-  if (currentUser) {
+  if (currentUser && !testMode) {
     let snap = await historyCol().limit(50).get();
     while (!snap.empty) {
       const batch = db.batch();
@@ -2640,7 +2879,7 @@ async function clearJobHistory(jobId) {
   const ids = toDelete.map(h => h.id);
   historyLog = historyLog.filter(h => !ids.includes(h.id));
   pendingHistoryEntries = pendingHistoryEntries.filter(h => !ids.includes(h.id));
-  if (currentUser) {
+  if (currentUser && !testMode) {
     for (let i = 0; i < ids.length; i += 50) {
       const batch = db.batch();
       ids.slice(i, i + 50).forEach(id => batch.delete(historyCol().doc(id)));
@@ -3369,6 +3608,199 @@ function toast(msg) {
   el.textContent=msg; el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>el.classList.remove('show'),2200);
+}
+
+// ── Trends (cash over time + monthly income vs. expenses) ────
+// Reconstructed entirely from existing dated records — no separate ledger
+// is stored. "Cash flow events" are the subset of records that actually
+// move real money: paid lawn-mowing events, cashed CA-IT checks, and
+// otherMoney entries other than transfers (transfers just move money
+// between bank/cash, so they're balance-neutral and excluded here).
+let trendsRange = 'all';
+
+function getCashFlowEvents() {
+  const flows = [];
+  lawnEvents.forEach(j => {
+    if (j.job === 'ca_it') {
+      if (j.status === 'cashed') flows.push({ date: j.date, amount: eventAmount(j), kind: 'income' });
+    } else if (j.status === 'paid') {
+      flows.push({ date: j.date, amount: eventAmount(j), kind: 'income' });
+    }
+  });
+  otherMoney.forEach(e => {
+    if (e.type === 'transfer') return;
+    const amt = parseFloat(e.amount) || 0;
+    if (!amt) return;
+    flows.push({ date: e.date, amount: amt, kind: e.type === 'expense' ? 'expense' : 'income' });
+  });
+  flows.sort((a, b) => a.date.localeCompare(b.date));
+  return flows;
+}
+
+// One point per unique date holding the running cumulative balance as of
+// that date (so the line reflects total cash actually on hand over time).
+function buildCashTimeline() {
+  const flows = getCashFlowEvents();
+  if (!flows.length) return [];
+  let running = 0;
+  const byDate = new Map();
+  flows.forEach(f => {
+    running += f.kind === 'expense' ? -f.amount : f.amount;
+    byDate.set(f.date, Math.round(running * 100) / 100);
+  });
+  return Array.from(byDate, ([date, balance]) => ({ date, balance })).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function buildMonthlyTotals() {
+  const flows = getCashFlowEvents();
+  const map = new Map();
+  flows.forEach(f => {
+    const month = f.date.slice(0, 7);
+    if (!map.has(month)) map.set(month, { income: 0, expense: 0 });
+    const bucket = map.get(month);
+    if (f.kind === 'expense') bucket.expense += f.amount; else bucket.income += f.amount;
+  });
+  return Array.from(map, ([month, v]) => ({
+    month, income: Math.round(v.income * 100) / 100, expense: Math.round(v.expense * 100) / 100
+  })).sort((a, b) => a.month.localeCompare(b.month));
+}
+
+function rangeCutoffStr(range, len) {
+  const months = { '1m': 1, '3m': 3, '6m': 6, '1y': 12 }[range];
+  if (!months) return null;
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - months);
+  return cutoff.toISOString().slice(0, len);
+}
+
+function filterTimelineByRange(timeline, range) {
+  if (range === 'all' || !timeline.length) return timeline;
+  const cutoffStr = rangeCutoffStr(range, 10);
+  let startIdx = timeline.findIndex(p => p.date >= cutoffStr);
+  if (startIdx === -1) startIdx = timeline.length - 1;
+  if (startIdx > 0) startIdx -= 1; // anchor the line to the balance just before the window starts
+  return timeline.slice(startIdx);
+}
+
+function filterMonthlyByRange(monthly, range) {
+  if (range === 'all') return monthly;
+  const cutoffMonth = rangeCutoffStr(range, 7);
+  return monthly.filter(m => m.month >= cutoffMonth);
+}
+
+function setTrendsRange(r) {
+  trendsRange = r;
+  renderTrends();
+}
+
+function renderTrendRangeToggle() {
+  const wrap = document.getElementById('trend-range-toggle');
+  if (!wrap) return;
+  const opts = [['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['1y', '1Y'], ['all', 'All']];
+  wrap.innerHTML = opts.map(([val, label]) =>
+    `<button class="trend-range-btn${trendsRange === val ? ' active' : ''}" onclick="setTrendsRange('${val}')">${label}</button>`
+  ).join('');
+}
+
+function showTrendTip(evt, label, value) {
+  let tip = document.getElementById('trend-tooltip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'trend-tooltip';
+    tip.className = 'trend-tooltip';
+    document.body.appendChild(tip);
+  }
+  tip.innerHTML = `<strong>${value}</strong><span>${label}</span>`;
+  const x = Math.min(evt.clientX + 14, window.innerWidth - 140);
+  tip.style.left = x + 'px';
+  tip.style.top = Math.max(evt.clientY - 44, 8) + 'px';
+  tip.style.opacity = '1';
+}
+function hideTrendTip() {
+  const tip = document.getElementById('trend-tooltip');
+  if (tip) tip.style.opacity = '0';
+}
+
+function renderTrendLineChart(timeline) {
+  const wrap = document.getElementById('trend-line-wrap');
+  const badge = document.getElementById('trend-delta-badge');
+  if (!wrap) return;
+  if (timeline.length < 2) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:2.2rem 1rem">Not enough history yet — a few more dated entries and a trend line will show up here.</div>`;
+    if (badge) badge.innerHTML = '';
+    return;
+  }
+  const W = 600, H = 150, padX = 4, padT = 14, padB = 6;
+  const values = timeline.map(p => p.balance);
+  let min = Math.min(...values, 0), max = Math.max(...values, 0);
+  if (min === max) { min -= 10; max += 10; }
+  const spread = max - min;
+  const x = i => padX + (i / (timeline.length - 1)) * (W - padX * 2);
+  const y = v => padT + (1 - (v - min) / spread) * (H - padT - padB);
+
+  const linePts = timeline.map((p, i) => `${x(i).toFixed(1)},${y(p.balance).toFixed(1)}`).join(' ');
+  const areaPts = `${x(0).toFixed(1)},${y(min).toFixed(1)} ${linePts} ${x(timeline.length - 1).toFixed(1)},${y(min).toFixed(1)}`;
+  const dots = timeline.map((p, i) =>
+    `<circle class="trend-dot" cx="${x(i).toFixed(1)}" cy="${y(p.balance).toFixed(1)}" r="3"
+      onmouseenter="showTrendTip(event,'${fmt(p.date)}','$${p.balance.toFixed(2)}')" onmouseleave="hideTrendTip()" />`
+  ).join('');
+  const showZero = min < 0 && max > 0;
+
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" class="trend-svg" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="trendLineGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="var(--green-bright)" />
+          <stop offset="100%" stop-color="var(--accent)" />
+        </linearGradient>
+        <linearGradient id="trendAreaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--green)" stop-opacity="0.28" />
+          <stop offset="100%" stop-color="var(--green)" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      ${showZero ? `<line x1="${padX}" y1="${y(0).toFixed(1)}" x2="${W - padX}" y2="${y(0).toFixed(1)}" class="trend-zero-line" />` : ''}
+      <polygon points="${areaPts}" fill="url(#trendAreaGrad)" />
+      <polyline points="${linePts}" fill="none" stroke="url(#trendLineGrad)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      ${dots}
+    </svg>
+    <div class="trend-axis-labels"><span>${fmt(timeline[0].date)}</span><span>${fmt(timeline[timeline.length - 1].date)}</span></div>
+  `;
+
+  if (badge) {
+    const delta = Math.round((timeline[timeline.length - 1].balance - timeline[0].balance) * 100) / 100;
+    const sign = delta >= 0 ? '+' : '−';
+    badge.innerHTML = `<span class="${delta >= 0 ? 'trend-delta-up' : 'trend-delta-down'}">${sign}$${Math.abs(delta).toFixed(2)}</span>`;
+  }
+}
+
+function renderTrendBarChart(monthly) {
+  const wrap = document.getElementById('trend-bar-wrap');
+  if (!wrap) return;
+  if (!monthly.length) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:2.2rem 1rem">No monthly data yet.</div>`;
+    return;
+  }
+  const maxVal = Math.max(...monthly.map(m => Math.max(m.income, m.expense)), 1);
+  wrap.innerHTML = `<div class="trend-bars">${monthly.map(m => {
+    const incH = m.income > 0 ? Math.max(3, (m.income / maxVal) * 100) : 0;
+    const expH = m.expense > 0 ? Math.max(3, (m.expense / maxVal) * 100) : 0;
+    const label = new Date(m.month + '-02').toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    return `<div class="trend-bar-group">
+      <div class="trend-bar-pair">
+        <div class="trend-bar" style="height:${incH}%;background-image:${glossGradient(COLOR_GREEN)}"
+          onmouseenter="showTrendTip(event,'${label} income','$${m.income.toFixed(2)}')" onmouseleave="hideTrendTip()"></div>
+        <div class="trend-bar" style="height:${expH}%;background-image:${glossGradient('#F87171')}"
+          onmouseenter="showTrendTip(event,'${label} expenses','$${m.expense.toFixed(2)}')" onmouseleave="hideTrendTip()"></div>
+      </div>
+      <div class="trend-bar-label">${label}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderTrends() {
+  renderTrendRangeToggle();
+  renderTrendLineChart(filterTimelineByRange(buildCashTimeline(), trendsRange));
+  renderTrendBarChart(filterMonthlyByRange(buildMonthlyTotals(), trendsRange));
 }
 
 // ── Distribution of Funds bar (above Jobs) ───────────────────
