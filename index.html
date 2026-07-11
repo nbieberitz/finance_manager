@@ -707,6 +707,56 @@ tr:hover td { background: var(--surface2); }
   border:1px solid rgba(252,211,77,0.25); border-radius:8px;
 }
 
+/* Trends */
+.trend-range-toggle { display:flex; gap:4px; }
+.trend-range-btn {
+  font-family:'JetBrains Mono',monospace; font-size:10px; padding:3px 9px;
+  border-radius:var(--radius-pill); border:1px solid var(--border-mid);
+  background:transparent; color:var(--text-faint); cursor:pointer;
+  transition:background 0.18s var(--ease), color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.trend-range-btn:hover { color:var(--text-muted); border-color:var(--text-faint); }
+.trend-range-btn.active { background:var(--accent-pale); border-color:var(--gold-border); color:var(--accent); }
+
+.trend-section-body { padding:1.1rem 1.25rem; }
+.trend-charts-grid { display:grid; grid-template-columns:1.3fr 1fr; gap:14px; }
+@media (max-width:760px) { .trend-charts-grid { grid-template-columns:1fr; } }
+
+.trend-card { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.9rem 1rem 1rem; }
+.trend-card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.trend-card-title { font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-faint); }
+.trend-delta-up { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--green); background:var(--green-pale); border:1px solid var(--green-border); border-radius:var(--radius-pill); padding:2px 9px; }
+.trend-delta-down { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--red); background:var(--red-pale); border:1px solid var(--red-border); border-radius:var(--radius-pill); padding:2px 9px; }
+.trend-legend-mini { display:flex; align-items:center; gap:5px; font-size:10px; font-family:'JetBrains Mono',monospace; color:var(--text-faint); }
+.trend-legend-dot { width:6px; height:6px; border-radius:50%; display:inline-block; margin-left:6px; }
+.trend-legend-dot:first-child { margin-left:0; }
+
+.trend-line-wrap { width:100%; }
+.trend-svg { width:100%; height:150px; display:block; overflow:visible; }
+.trend-zero-line { stroke:var(--border-mid); stroke-width:1; stroke-dasharray:3 3; }
+.trend-dot { fill:var(--bg); stroke:var(--green); stroke-width:2; cursor:pointer; transition:r 0.15s var(--ease); }
+.trend-dot:hover { r:5; fill:var(--green); }
+.trend-axis-labels { display:flex; justify-content:space-between; margin-top:4px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-faint); }
+
+.trend-bar-wrap { width:100%; }
+.trend-bars { display:flex; align-items:flex-end; gap:10px; height:150px; padding-top:6px; }
+.trend-bar-group { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; min-width:0; }
+.trend-bar-pair { display:flex; align-items:flex-end; gap:3px; height:100%; width:100%; justify-content:center; }
+.trend-bar { width:9px; border-radius:4px 4px 2px 2px; cursor:pointer; transition:height 0.5s var(--ease), filter 0.15s var(--ease), transform 0.15s var(--ease); transform-origin:bottom; box-shadow: inset 0 1px 1px rgba(255,255,255,0.14), inset 0 -3px 5px rgba(0,0,0,0.25); }
+.trend-bar:hover { filter:brightness(1.18); transform:scaleX(1.25); }
+.trend-bar-label { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--text-faint); white-space:nowrap; }
+
+.trend-tooltip {
+  position:fixed; z-index:10003; pointer-events:none; opacity:0;
+  background:var(--surface3); border:1px solid var(--border-mid); border-radius:8px;
+  padding:6px 10px; box-shadow:var(--shadow-pop);
+  font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text);
+  display:flex; flex-direction:column; gap:1px; white-space:nowrap;
+  transition:opacity 0.12s var(--ease);
+}
+.trend-tooltip strong { font-size:12px; }
+.trend-tooltip span { color:var(--text-faint); font-size:10px; }
+
 /* Pockets page */
 .pocket-progress-track { width:100%; height:7px; border-radius:var(--radius-pill); background:var(--surface3); overflow:hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.4); }
 .pocket-progress-fill { height:100%; border-radius:var(--radius-pill); transition:width 0.5s var(--ease), box-shadow 0.3s var(--ease); }
@@ -716,6 +766,56 @@ tr:hover td { background: var(--surface2); }
 .pocket-rule-form { margin-top:10px; padding:10px; background:var(--surface3); border-radius:8px; border-bottom:none; }
 .pocket-row { transition: background 0.2s var(--ease); }
 .pocket-row:hover { background: rgba(255,255,255,0.015); }
+
+/* ── Test Mode ───────────────────────────────────────────── */
+.test-mode-banner {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 10000;
+  background: linear-gradient(135deg, #431407, #7c2d12);
+  border-bottom: 2px solid #ea580c;
+  padding: 9px 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #fdba74;
+  letter-spacing: 0.04em;
+  transform: translateY(-100%);
+  transition: transform 0.28s var(--ease);
+  gap: 12px;
+}
+.test-mode-banner.visible { transform: translateY(0); }
+body.test-mode-active { padding-top: calc(2rem + 46px) !important; }
+.test-mode-exit-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 14px;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(234,88,12,0.55);
+  background: rgba(234,88,12,0.15);
+  color: #fb923c;
+  cursor: pointer;
+  transition: background 0.18s var(--ease), transform 0.15s var(--ease);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.test-mode-exit-btn:hover { background: rgba(234,88,12,0.32); transform: translateY(-1px); }
+.test-mode-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 3px 11px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-mid);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  transition: border-color 0.18s var(--ease), color 0.18s var(--ease), background 0.18s var(--ease);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.test-mode-btn:hover { border-color: #ea580c; color: #fb923c; background: rgba(234,88,12,0.08); }
 
 /* ── Pocket Goal Congrats Modal ─────────────────────────── */
 .congrats-card {
@@ -815,100 +915,33 @@ tr:hover td { background: var(--surface2); }
 }
 
 /* ── Modal entrance motion (applies whenever JS toggles display) ── */
-#full-history-modal, #payment-modal, #pocket-congrats-modal, #purchase-celebration, #backup-passphrase-modal, #restore-modal {
+#full-history-modal, #payment-modal, #pocket-congrats-modal, #purchase-celebration {
   animation: modalFade 0.2s var(--ease);
 }
-#full-history-modal > div, #payment-modal > div, #backup-passphrase-modal > div, #restore-modal > div {
+#full-history-modal > div, #payment-modal > div {
   animation: modalPop 0.3s var(--ease-spring);
   box-shadow: var(--shadow-pop);
 }
 @keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes modalPop { from { opacity: 0; transform: scale(0.94) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-
-/* ── Local Backup ────────────────────────────────────────── */
-.backup-badge {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  padding: 4px 11px;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--border-mid);
-  background: transparent;
-  color: var(--text-faint);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-  transition: border-color 0.18s var(--ease), color 0.18s var(--ease), background 0.18s var(--ease);
-}
-.backup-badge:hover { border-color: var(--text-faint); color: var(--text-muted); }
-.backup-badge.ok { color: var(--green); border-color: var(--green-border); background: var(--green-pale); }
-.backup-badge.warn { color: var(--accent); border-color: var(--gold-border, var(--accent-dim)); background: var(--accent-pale); }
-.backup-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-
-.backup-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  z-index: 9997;
-  width: 260px;
-  background: var(--surface-grad);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-pop);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  animation: modalPop 0.18s var(--ease-spring);
-}
-.backup-panel-status { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); line-height: 1.6; }
-.backup-panel-status strong { color: var(--text); }
-.backup-panel .pill-btn { width: 100%; text-align: center; justify-content: center; }
-
-#backup-passphrase-modal, #restore-modal {
-  display: none; position: fixed; inset: 0;
-  background: rgba(11,13,11,0.88); backdrop-filter: blur(6px);
-  z-index: 10001; align-items: center; justify-content: center; padding: 1.5rem;
-}
-.backup-modal-box {
-  background: var(--surface-grad); border: 1px solid var(--border-mid);
-  border-radius: var(--radius-lg); padding: 1.5rem; width: 100%; max-width: 380px;
-  display: flex; flex-direction: column; gap: 14px;
-}
-.backup-modal-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; color: var(--text); }
-.backup-modal-desc { font-family: 'Inter', sans-serif; font-size: 12px; color: var(--text-muted); line-height: 1.5; }
-.backup-input {
-  width: 100%; background: var(--surface2); border: 1px solid var(--border-mid);
-  border-radius: var(--radius-sm); padding: 10px 12px; color: var(--text);
-  font-family: 'JetBrains Mono', monospace; font-size: 13px;
-}
-.backup-input:focus { outline: none; border-color: var(--text-faint); }
-textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
-
-#restore-modal .backup-modal-box { max-width: 480px; }
-.restore-preview-box {
-  display: none; background: var(--surface2); border: 1px solid var(--border-mid);
-  border-radius: var(--radius-sm); padding: 12px 14px;
-}
-.backup-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
-.backup-modal-actions button { flex: 0 0 auto; }
-.backup-error-text { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--red); display: none; }
 </style>
 </head>
 <body>
+
+<div id="test-mode-banner" class="test-mode-banner">
+  <div style="display:flex;align-items:center;gap:10px;min-width:0">
+    <span style="font-size:15px;flex-shrink:0">⚗</span>
+    <span><strong>TEST MODE</strong> — all changes are temporary and won't touch your real account</span>
+  </div>
+  <button class="test-mode-exit-btn" onclick="exitTestMode()">✕ Exit test mode</button>
+</div>
 
 <header>
   <div style="display:flex;align-items:center;gap:14px">
     <div class="logo">
       <h1>Finance Manager</h1>
     </div>
-    <div style="position:relative">
-      <button id="backup-badge" class="backup-badge" onclick="toggleBackupPanel()" style="display:none">
-        <span class="backup-badge-dot"></span><span id="backup-badge-label">Backup</span>
-      </button>
-      <div id="backup-panel" class="backup-panel" style="display:none"></div>
-    </div>
+    <button id="test-mode-btn" class="test-mode-btn" onclick="enterTestMode()" style="display:none" title="Sandbox mode — changes won't be saved to your account">⚗ test mode</button>
   </div>
   <div class="auth-area" id="auth-area">
     <span id="auth-loading">connecting…</span>
@@ -918,6 +951,39 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 <div class="container" id="main-view">
 
   <div class="summary-grid" id="summary"></div>
+
+  <!-- Trends -->
+  <section>
+    <div class="section-header" onclick="toggleSection('trends-body')">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-8M21 8h-6v6"/></svg>
+        Trends
+      </div>
+      <div class="header-actions" onclick="event.stopPropagation()">
+        <div class="trend-range-toggle" id="trend-range-toggle"></div>
+      </div>
+    </div>
+    <div id="trends-body">
+      <div class="trend-section-body">
+        <div class="trend-charts-grid">
+          <div class="trend-card">
+            <div class="trend-card-head">
+              <span class="trend-card-title">Cash over time</span>
+              <span id="trend-delta-badge"></span>
+            </div>
+            <div id="trend-line-wrap" class="trend-line-wrap"></div>
+          </div>
+          <div class="trend-card">
+            <div class="trend-card-head">
+              <span class="trend-card-title">Income vs. expenses</span>
+              <span class="trend-legend-mini"><span class="trend-legend-dot" style="background:var(--green)"></span>In <span class="trend-legend-dot" style="background:var(--red)"></span>Out</span>
+            </div>
+            <div id="trend-bar-wrap" class="trend-bar-wrap"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- Distribution of Funds -->
   <section>
@@ -1464,42 +1530,6 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 
 <div class="toast" id="toast"></div>
 
-<!-- ── Local Backup: passphrase modal ─────────────────────── -->
-<div id="backup-passphrase-modal">
-  <div class="backup-modal-box">
-    <div class="backup-modal-title">🔒 Backup passphrase</div>
-    <div class="backup-modal-desc" id="bp-purpose">Set a passphrase to encrypt your local backups. It's never sent anywhere or stored — you'll need to remember it to restore later.</div>
-    <input id="backup-passphrase-input" class="backup-input" type="password" placeholder="At least 6 characters" onkeydown="if(event.key==='Enter')submitBackupPassphrase()" />
-    <div class="backup-modal-actions">
-      <button class="pill-btn" onclick="cancelBackupPassphrase()">Cancel</button>
-      <button class="pill-btn success" onclick="submitBackupPassphrase()">Confirm</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── Local Backup: restore modal ────────────────────────── -->
-<div id="restore-modal">
-  <div class="backup-modal-box">
-    <div style="display:flex;align-items:center;justify-content:space-between">
-      <div class="backup-modal-title">Restore from backup</div>
-      <button class="pill-btn" onclick="closeRestoreModal()">✕ Close</button>
-    </div>
-    <div class="backup-modal-desc">Paste an encrypted backup below. You'll see a preview before anything on your real account changes.</div>
-    <textarea id="restore-blob-input" class="backup-input" placeholder="Paste FMBK1:... backup text here"></textarea>
-    <input id="restore-passphrase-input" class="backup-input" type="password" placeholder="Backup passphrase" onkeydown="if(event.key==='Enter')decryptAndPreviewBackup()" />
-    <div class="backup-error-text" id="restore-error"></div>
-    <div class="backup-modal-actions">
-      <button class="pill-btn" onclick="decryptAndPreviewBackup()">Decrypt &amp; preview</button>
-    </div>
-    <div class="restore-preview-box" id="restore-preview-wrap">
-      <div id="restore-preview"></div>
-    </div>
-    <div class="backup-modal-actions">
-      <button class="pill-btn danger" id="restore-confirm-btn" style="display:none;color:var(--red);border-color:var(--red-border)" onclick="confirmRestore()">Restore this — overwrite my real data</button>
-    </div>
-  </div>
-</div>
-
 <!-- ── Pocket Goal Congratulations Modal ───────────────── -->
 <div id="pocket-congrats-modal" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.92);backdrop-filter:blur(8px);z-index:10000;align-items:center;justify-content:center;padding:1.5rem;">
   <div class="congrats-card">
@@ -1541,6 +1571,8 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
 let currentUser = null;
+let testMode = false;
+let testModeSnapshot = null;
 
 function userDoc() { return db.collection('users').doc(currentUser.uid); }
 
@@ -1642,14 +1674,11 @@ function loadFromFirestore() {
 let saveTimer;
 function save() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    await saveToFirestore();
-    runLocalBackup(); // fire-and-forget: encrypted local backup, throttled internally
-  }, 800);
+  saveTimer = setTimeout(saveToFirestore, 800);
 }
 
 async function loadMoreHistory() {
-  if (allHistoryLoaded) return;
+  if (allHistoryLoaded || testMode) return;
   let query = historyCol().orderBy('ts', 'desc').limit(50);
   if (lastHistoryDoc) query = query.startAfter(lastHistoryDoc);
   const snap = await query.get();
@@ -1663,7 +1692,7 @@ async function loadMoreHistory() {
 }
 
 async function saveToFirestore() {
-  if (!currentUser) return;
+  if (!currentUser || testMode) return;
 
   // Main doc holds only balances now
   await userDoc().set({ balances });
@@ -1731,17 +1760,15 @@ auth.onAuthStateChanged(user => {
         <button class="btn-signout" onclick="signOut()">sign out</button>
       </div>`;
     loadFromFirestore();
-    initLocalBackup();
   } else {
     currentUser = null;
-    const badge = document.getElementById('backup-badge');
-    if (badge) badge.style.display = 'none';
     area.innerHTML = `
       <button class="btn-signin" onclick="signIn()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
         Sign in with Google
       </button>`;
   }
+  updateTestModeUI();
 });
 
 function signIn() {
@@ -1844,6 +1871,7 @@ function generateOtherFromRule(rule, date) {
 // rule up to today, generating one entry per missed interval (capped per
 // rule so a long-unused account doesn't flood in thousands of entries).
 async function processRecurringRules() {
+  if (testMode) return;
   const today = todayISO();
   const MAX_PER_RULE = 25;
   let totalGenerated = 0;
@@ -2207,6 +2235,98 @@ let pendingRecurringDeletes = new Set();
 
 function historyCol() { return db.collection('users').doc(currentUser.uid).collection('history'); }
 
+// ── Test Mode ─────────────────────────────────────────────
+// Pure in-memory sandbox: all state is deep-copied, real Firestore listeners
+// are detached, and every write path is blocked. Nothing touches the DB.
+// On exit (or page refresh), loadFromFirestore() reconnects to real data.
+
+function enterTestMode() {
+  if (testMode || !currentUser) return;
+  if (!confirm(
+    'Enter test mode?\n\n' +
+    'Your current data will be copied into a sandbox. You can add outrageous numbers, ' +
+    'delete everything, or break things freely — nothing will touch your real account.\n\n' +
+    'Exit test mode (or refresh the page) to restore your real data.'
+  )) return;
+
+  // Cancel any pending debounced save so it doesn\'t fire after we detach
+  clearTimeout(saveTimer);
+
+  // Deep-copy the entire app state
+  testModeSnapshot = {
+    balances:         JSON.parse(JSON.stringify(balances)),
+    clients:          JSON.parse(JSON.stringify(clients)),
+    lawnEvents:       JSON.parse(JSON.stringify(lawnEvents)),
+    otherMoney:       JSON.parse(JSON.stringify(otherMoney)),
+    wishlist:         JSON.parse(JSON.stringify(wishlist)),
+    pockets:          JSON.parse(JSON.stringify(pockets)),
+    pocketRules:      JSON.parse(JSON.stringify(pocketRules)),
+    recurringRules:   JSON.parse(JSON.stringify(recurringRules)),
+    historyLog:       JSON.parse(JSON.stringify(historyLog)),
+    lastNetCash:      lastNetCash,
+    allHistoryLoaded: allHistoryLoaded,
+  };
+
+  // Detach real-time Firestore listeners — all writes are now blocked
+  detachListeners();
+  pendingHistoryEntries = [];
+
+  testMode = true;
+  updateTestModeUI();
+  render();
+  toast('⚗ Test mode on — go wild, nothing gets saved');
+}
+
+function exitTestMode() {
+  if (!testMode || !testModeSnapshot) return;
+
+  // Restore every piece of state from the pre-test snapshot
+  balances         = testModeSnapshot.balances;
+  clients          = testModeSnapshot.clients;
+  lawnEvents       = testModeSnapshot.lawnEvents;
+  otherMoney       = testModeSnapshot.otherMoney;
+  wishlist         = testModeSnapshot.wishlist;
+  pockets          = testModeSnapshot.pockets;
+  pocketRules      = testModeSnapshot.pocketRules;
+  recurringRules   = testModeSnapshot.recurringRules || [];
+  historyLog       = testModeSnapshot.historyLog;
+  lastNetCash      = testModeSnapshot.lastNetCash;
+  allHistoryLoaded = testModeSnapshot.allHistoryLoaded;
+  pendingHistoryEntries = [];
+
+  testModeSnapshot = null;
+  testMode = false;
+
+  updateTestModeUI();
+
+  // Reconnect Firestore listeners — this will confirm & re-render with real data
+  loadFromFirestore();
+  toast('Test mode off — real data restored ✓');
+}
+
+function updateTestModeUI() {
+  const banner = document.getElementById('test-mode-banner');
+  const btn    = document.getElementById('test-mode-btn');
+  if (!banner) return;
+  if (testMode) {
+    banner.classList.add('visible');
+    document.body.classList.add('test-mode-active');
+    if (btn) btn.style.display = 'none';
+  } else {
+    banner.classList.remove('visible');
+    document.body.classList.remove('test-mode-active');
+    if (btn) btn.style.display = currentUser ? '' : 'none';
+  }
+}
+
+// Warn before navigating away or refreshing while in test mode
+window.addEventListener('beforeunload', e => {
+  if (testMode) {
+    e.preventDefault();
+    return (e.returnValue = 'You\'re in test mode — leaving will discard all test changes.');
+  }
+});
+
 function getRate(name) { const c = clients.find(c => c.name===name); return c ? c.rate : 0; }
 function eventAmount(j) { return j.amount !== undefined ? j.amount : getRate(j.client); }
 
@@ -2532,6 +2652,7 @@ renderPaidEvents();
 renderWishlist();
 renderFundsDistribution();
 renderRecurringSummary();
+renderTrends();
 if (pocketsOpen) renderPocketsPage();
 if (recurringOpen) renderRecurringList();
 if (currentJobId === 'ca_it') renderItChecks();
@@ -2723,21 +2844,21 @@ async function saveHistory(id) {
   const msg = document.getElementById('hmsg-'+id).value.trim();
   if (!msg) { alert('Message cannot be empty.'); return; }
   historyLog = historyLog.map(h => h.id===id ? {...h, message: msg} : h);
-  if (currentUser) await historyCol().doc(id).update({ message: msg });
+  if (currentUser && !testMode) await historyCol().doc(id).update({ message: msg });
   renderAllHistory(); toast('Log entry updated ✓');
 }
 
 async function deleteHistory(id) {
   if (!confirm('Delete this log entry?')) return;
   historyLog = historyLog.filter(h=>h.id!==id);
-  if (currentUser) await historyCol().doc(id).delete();
+  if (currentUser && !testMode) await historyCol().doc(id).delete();
   renderAllHistory(); toast('Log entry deleted');
 }
 
 async function clearHistory() {
   if (!confirm('Clear ALL history? This includes every job, not just one, and cannot be undone.')) return;
   historyLog = []; pendingHistoryEntries = []; lastHistoryDoc = null; allHistoryLoaded = true;
-  if (currentUser) {
+  if (currentUser && !testMode) {
     let snap = await historyCol().limit(50).get();
     while (!snap.empty) {
       const batch = db.batch();
@@ -2758,7 +2879,7 @@ async function clearJobHistory(jobId) {
   const ids = toDelete.map(h => h.id);
   historyLog = historyLog.filter(h => !ids.includes(h.id));
   pendingHistoryEntries = pendingHistoryEntries.filter(h => !ids.includes(h.id));
-  if (currentUser) {
+  if (currentUser && !testMode) {
     for (let i = 0; i < ids.length; i += 50) {
       const batch = db.batch();
       ids.slice(i, i + 50).forEach(id => batch.delete(historyCol().doc(id)));
@@ -3489,6 +3610,199 @@ function toast(msg) {
   toastTimer=setTimeout(()=>el.classList.remove('show'),2200);
 }
 
+// ── Trends (cash over time + monthly income vs. expenses) ────
+// Reconstructed entirely from existing dated records — no separate ledger
+// is stored. "Cash flow events" are the subset of records that actually
+// move real money: paid lawn-mowing events, cashed CA-IT checks, and
+// otherMoney entries other than transfers (transfers just move money
+// between bank/cash, so they're balance-neutral and excluded here).
+let trendsRange = 'all';
+
+function getCashFlowEvents() {
+  const flows = [];
+  lawnEvents.forEach(j => {
+    if (j.job === 'ca_it') {
+      if (j.status === 'cashed') flows.push({ date: j.date, amount: eventAmount(j), kind: 'income' });
+    } else if (j.status === 'paid') {
+      flows.push({ date: j.date, amount: eventAmount(j), kind: 'income' });
+    }
+  });
+  otherMoney.forEach(e => {
+    if (e.type === 'transfer') return;
+    const amt = parseFloat(e.amount) || 0;
+    if (!amt) return;
+    flows.push({ date: e.date, amount: amt, kind: e.type === 'expense' ? 'expense' : 'income' });
+  });
+  flows.sort((a, b) => a.date.localeCompare(b.date));
+  return flows;
+}
+
+// One point per unique date holding the running cumulative balance as of
+// that date (so the line reflects total cash actually on hand over time).
+function buildCashTimeline() {
+  const flows = getCashFlowEvents();
+  if (!flows.length) return [];
+  let running = 0;
+  const byDate = new Map();
+  flows.forEach(f => {
+    running += f.kind === 'expense' ? -f.amount : f.amount;
+    byDate.set(f.date, Math.round(running * 100) / 100);
+  });
+  return Array.from(byDate, ([date, balance]) => ({ date, balance })).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+function buildMonthlyTotals() {
+  const flows = getCashFlowEvents();
+  const map = new Map();
+  flows.forEach(f => {
+    const month = f.date.slice(0, 7);
+    if (!map.has(month)) map.set(month, { income: 0, expense: 0 });
+    const bucket = map.get(month);
+    if (f.kind === 'expense') bucket.expense += f.amount; else bucket.income += f.amount;
+  });
+  return Array.from(map, ([month, v]) => ({
+    month, income: Math.round(v.income * 100) / 100, expense: Math.round(v.expense * 100) / 100
+  })).sort((a, b) => a.month.localeCompare(b.month));
+}
+
+function rangeCutoffStr(range, len) {
+  const months = { '1m': 1, '3m': 3, '6m': 6, '1y': 12 }[range];
+  if (!months) return null;
+  const cutoff = new Date();
+  cutoff.setMonth(cutoff.getMonth() - months);
+  return cutoff.toISOString().slice(0, len);
+}
+
+function filterTimelineByRange(timeline, range) {
+  if (range === 'all' || !timeline.length) return timeline;
+  const cutoffStr = rangeCutoffStr(range, 10);
+  let startIdx = timeline.findIndex(p => p.date >= cutoffStr);
+  if (startIdx === -1) startIdx = timeline.length - 1;
+  if (startIdx > 0) startIdx -= 1; // anchor the line to the balance just before the window starts
+  return timeline.slice(startIdx);
+}
+
+function filterMonthlyByRange(monthly, range) {
+  if (range === 'all') return monthly;
+  const cutoffMonth = rangeCutoffStr(range, 7);
+  return monthly.filter(m => m.month >= cutoffMonth);
+}
+
+function setTrendsRange(r) {
+  trendsRange = r;
+  renderTrends();
+}
+
+function renderTrendRangeToggle() {
+  const wrap = document.getElementById('trend-range-toggle');
+  if (!wrap) return;
+  const opts = [['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['1y', '1Y'], ['all', 'All']];
+  wrap.innerHTML = opts.map(([val, label]) =>
+    `<button class="trend-range-btn${trendsRange === val ? ' active' : ''}" onclick="setTrendsRange('${val}')">${label}</button>`
+  ).join('');
+}
+
+function showTrendTip(evt, label, value) {
+  let tip = document.getElementById('trend-tooltip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'trend-tooltip';
+    tip.className = 'trend-tooltip';
+    document.body.appendChild(tip);
+  }
+  tip.innerHTML = `<strong>${value}</strong><span>${label}</span>`;
+  const x = Math.min(evt.clientX + 14, window.innerWidth - 140);
+  tip.style.left = x + 'px';
+  tip.style.top = Math.max(evt.clientY - 44, 8) + 'px';
+  tip.style.opacity = '1';
+}
+function hideTrendTip() {
+  const tip = document.getElementById('trend-tooltip');
+  if (tip) tip.style.opacity = '0';
+}
+
+function renderTrendLineChart(timeline) {
+  const wrap = document.getElementById('trend-line-wrap');
+  const badge = document.getElementById('trend-delta-badge');
+  if (!wrap) return;
+  if (timeline.length < 2) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:2.2rem 1rem">Not enough history yet — a few more dated entries and a trend line will show up here.</div>`;
+    if (badge) badge.innerHTML = '';
+    return;
+  }
+  const W = 600, H = 150, padX = 4, padT = 14, padB = 6;
+  const values = timeline.map(p => p.balance);
+  let min = Math.min(...values, 0), max = Math.max(...values, 0);
+  if (min === max) { min -= 10; max += 10; }
+  const spread = max - min;
+  const x = i => padX + (i / (timeline.length - 1)) * (W - padX * 2);
+  const y = v => padT + (1 - (v - min) / spread) * (H - padT - padB);
+
+  const linePts = timeline.map((p, i) => `${x(i).toFixed(1)},${y(p.balance).toFixed(1)}`).join(' ');
+  const areaPts = `${x(0).toFixed(1)},${y(min).toFixed(1)} ${linePts} ${x(timeline.length - 1).toFixed(1)},${y(min).toFixed(1)}`;
+  const dots = timeline.map((p, i) =>
+    `<circle class="trend-dot" cx="${x(i).toFixed(1)}" cy="${y(p.balance).toFixed(1)}" r="3"
+      onmouseenter="showTrendTip(event,'${fmt(p.date)}','$${p.balance.toFixed(2)}')" onmouseleave="hideTrendTip()" />`
+  ).join('');
+  const showZero = min < 0 && max > 0;
+
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" class="trend-svg" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="trendLineGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="var(--green-bright)" />
+          <stop offset="100%" stop-color="var(--accent)" />
+        </linearGradient>
+        <linearGradient id="trendAreaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--green)" stop-opacity="0.28" />
+          <stop offset="100%" stop-color="var(--green)" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      ${showZero ? `<line x1="${padX}" y1="${y(0).toFixed(1)}" x2="${W - padX}" y2="${y(0).toFixed(1)}" class="trend-zero-line" />` : ''}
+      <polygon points="${areaPts}" fill="url(#trendAreaGrad)" />
+      <polyline points="${linePts}" fill="none" stroke="url(#trendLineGrad)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      ${dots}
+    </svg>
+    <div class="trend-axis-labels"><span>${fmt(timeline[0].date)}</span><span>${fmt(timeline[timeline.length - 1].date)}</span></div>
+  `;
+
+  if (badge) {
+    const delta = Math.round((timeline[timeline.length - 1].balance - timeline[0].balance) * 100) / 100;
+    const sign = delta >= 0 ? '+' : '−';
+    badge.innerHTML = `<span class="${delta >= 0 ? 'trend-delta-up' : 'trend-delta-down'}">${sign}$${Math.abs(delta).toFixed(2)}</span>`;
+  }
+}
+
+function renderTrendBarChart(monthly) {
+  const wrap = document.getElementById('trend-bar-wrap');
+  if (!wrap) return;
+  if (!monthly.length) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:2.2rem 1rem">No monthly data yet.</div>`;
+    return;
+  }
+  const maxVal = Math.max(...monthly.map(m => Math.max(m.income, m.expense)), 1);
+  wrap.innerHTML = `<div class="trend-bars">${monthly.map(m => {
+    const incH = m.income > 0 ? Math.max(3, (m.income / maxVal) * 100) : 0;
+    const expH = m.expense > 0 ? Math.max(3, (m.expense / maxVal) * 100) : 0;
+    const label = new Date(m.month + '-02').toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    return `<div class="trend-bar-group">
+      <div class="trend-bar-pair">
+        <div class="trend-bar" style="height:${incH}%;background-image:${glossGradient(COLOR_GREEN)}"
+          onmouseenter="showTrendTip(event,'${label} income','$${m.income.toFixed(2)}')" onmouseleave="hideTrendTip()"></div>
+        <div class="trend-bar" style="height:${expH}%;background-image:${glossGradient('#F87171')}"
+          onmouseenter="showTrendTip(event,'${label} expenses','$${m.expense.toFixed(2)}')" onmouseleave="hideTrendTip()"></div>
+      </div>
+      <div class="trend-bar-label">${label}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function renderTrends() {
+  renderTrendRangeToggle();
+  renderTrendLineChart(filterTimelineByRange(buildCashTimeline(), trendsRange));
+  renderTrendBarChart(filterMonthlyByRange(buildMonthlyTotals(), trendsRange));
+}
+
 // ── Distribution of Funds bar (above Jobs) ───────────────────
 function renderFundsDistribution(barId = 'funds-bar-wrap', legendId = 'funds-legend') {
   const wrap = document.getElementById(barId);
@@ -4163,416 +4477,6 @@ function _showPurchaseCelebration(name, amount, method) {
 
 function closePurchaseCelebration() {
   document.getElementById('purchase-celebration').style.display = 'none';
-}
-
-// ══════════════════════════════════════════════════════════
-// ── Local Encrypted Backup + Restore ────────────────────────
-// Disaster recovery in case Firestore data is ever lost. On every
-// autosave, the current full state gets encrypted (AES-GCM, key from
-// a passphrase you set) and written either to a single file you pick
-// once (Chrome/Edge desktop — via File System Access API) or, as a
-// universal fallback, downloaded into your Downloads folder. Restore
-// lets you paste an encrypted backup back in, preview it decrypted,
-// then overwrite live Firestore data after a Google re-auth prompt.
-// The pre-restore state is archived first so a bad restore is undoable.
-// ══════════════════════════════════════════════════════════
-
-const BACKUP_MAGIC = 'FMBK1';
-const PBKDF2_ITERATIONS = 250000;
-const BACKUP_FILE_MIN_INTERVAL_MS = 3000;        // coalesce rapid edits when writing to the picked file
-const BACKUP_DOWNLOAD_MIN_INTERVAL_MS = 5*60*1000; // avoid flooding Downloads: at most once per 5 min
-
-let backupSessionKey   = null;  // CryptoKey, derived once per tab session
-let backupSessionSalt  = null;  // Uint8Array paired with the key above
-let backupPassResolve  = null;
-let backupPassReject   = null;
-let backupFileHandle   = null;  // FileSystemFileHandle, if one's been picked
-let backupFileArmed    = false; // true once write permission is confirmed THIS session
-let backupLastFileWriteAt = 0;
-let backupLastDownloadAt  = 0;
-let backupLastAt = null;        // Date of most recent successful local backup
-let pendingRestorePayload = null;
-
-/* ---- tiny IndexedDB wrapper (only place a FileSystemFileHandle can be persisted) ---- */
-function idbOpen() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('fm-backup', 1);
-    req.onupgradeneeded = () => req.result.createObjectStore('kv');
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-async function idbSet(key, val) {
-  const db_ = await idbOpen();
-  return new Promise((resolve, reject) => {
-    const tx = db_.transaction('kv', 'readwrite');
-    tx.objectStore('kv').put(val, key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-async function idbGet(key) {
-  const db_ = await idbOpen();
-  return new Promise((resolve, reject) => {
-    const tx = db_.transaction('kv', 'readonly');
-    const req = tx.objectStore('kv').get(key);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-/* ---- crypto helpers ---- */
-function bufToB64(buf) {
-  const bytes = new Uint8Array(buf);
-  let binary = '';
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
-function b64ToBuf(b64) {
-  const bin = atob(b64);
-  const arr = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-  return arr;
-}
-async function deriveBackupKey(passphrase, saltBytes) {
-  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: saltBytes, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
-    base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
-  );
-}
-
-/* ---- passphrase modal (armed once per tab session, held only in memory) ---- */
-function ensureBackupArmed() {
-  if (backupSessionKey) return Promise.resolve();
-  return new Promise((resolve, reject) => {
-    backupPassResolve = resolve;
-    backupPassReject = reject;
-    document.getElementById('backup-passphrase-input').value = '';
-    document.getElementById('backup-passphrase-modal').style.display = 'flex';
-    setTimeout(() => document.getElementById('backup-passphrase-input').focus(), 50);
-  });
-}
-async function submitBackupPassphrase() {
-  const val = document.getElementById('backup-passphrase-input').value;
-  if (!val || val.length < 6) { toast('Use at least 6 characters'); return; }
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  try {
-    backupSessionKey = await deriveBackupKey(val, salt);
-    backupSessionSalt = salt;
-    document.getElementById('backup-passphrase-modal').style.display = 'none';
-    if (backupPassResolve) backupPassResolve();
-  } catch (e) {
-    toast('Could not set up encryption — try again');
-  }
-}
-function cancelBackupPassphrase() {
-  document.getElementById('backup-passphrase-modal').style.display = 'none';
-  if (backupPassReject) backupPassReject(new Error('cancelled'));
-}
-
-/* ---- build + encrypt the full backup payload ---- */
-async function fetchFullHistoryForBackup() {
-  if (!currentUser) return [];
-  const snap = await historyCol().orderBy('ts', 'desc').get();
-  return snap.docs.map(d => d.data());
-}
-async function buildBackupPayload() {
-  const fullHistory = await fetchFullHistoryForBackup();
-  return {
-    version: 1,
-    createdAt: new Date().toISOString(),
-    uid: currentUser ? currentUser.uid : null,
-    data: { balances, clients, lawnEvents, otherMoney, wishlist, pockets, pocketRules, recurringRules, historyLog: fullHistory }
-  };
-}
-async function encryptBackupPayload(payloadObj) {
-  await ensureBackupArmed();
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const plaintext = new TextEncoder().encode(JSON.stringify(payloadObj));
-  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, backupSessionKey, plaintext);
-  return `${BACKUP_MAGIC}:${bufToB64(backupSessionSalt)}:${bufToB64(iv)}:${bufToB64(ciphertext)}`;
-}
-async function decryptBackupBlob(blobStr, passphrase) {
-  const parts = (blobStr || '').trim().split(':');
-  if (parts.length !== 4 || parts[0] !== BACKUP_MAGIC) {
-    throw new Error("That doesn't look like a Finance Manager backup — check you copied the whole thing.");
-  }
-  const salt = b64ToBuf(parts[1]), iv = b64ToBuf(parts[2]), ct = b64ToBuf(parts[3]);
-  const key = await deriveBackupKey(passphrase, salt);
-  let plainBuf;
-  try {
-    plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
-  } catch (e) {
-    throw new Error('Wrong passphrase, or the backup text is corrupted/incomplete.');
-  }
-  const payload = JSON.parse(new TextDecoder().decode(plainBuf));
-  if (!payload || payload.version !== 1 || !payload.data) throw new Error('Backup decrypted but the contents look unexpected.');
-  return payload;
-}
-
-/* ---- where the encrypted blob actually goes ---- */
-function supportsFileSystemAccess() { return 'showSaveFilePicker' in window; }
-
-function downloadBackupBlob(blobStr) {
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const file = new Blob([blobStr], { type: 'text/plain' });
-  const url = URL.createObjectURL(file);
-  const a = document.createElement('a');
-  a.href = url; a.download = `finance-manager-backup-${stamp}.txt`;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
-}
-
-async function setupLocalBackupFile() {
-  if (!supportsFileSystemAccess()) {
-    localStorage.setItem('fm_backup_configured', '1');
-    toast('This browser only supports the Downloads-folder method — that\'s now active');
-    updateBackupBadge();
-    return;
-  }
-  try {
-    const handle = await window.showSaveFilePicker({
-      suggestedName: 'finance-manager-backup.txt',
-      types: [{ description: 'Encrypted backup', accept: { 'text/plain': ['.txt'] } }]
-    });
-    await idbSet('backupFileHandle', handle);
-    backupFileHandle = handle;
-    backupFileArmed = true;
-    localStorage.setItem('fm_backup_configured', '1');
-    toast('Local backup file connected ✓');
-    updateBackupBadge();
-    runLocalBackup({ force: true });
-  } catch (e) {
-    if (e.name !== 'AbortError') console.error('setupLocalBackupFile:', e);
-  }
-}
-
-async function reconnectLocalBackupFile() {
-  if (!backupFileHandle) return setupLocalBackupFile();
-  try {
-    const status = await backupFileHandle.requestPermission({ mode: 'readwrite' });
-    backupFileArmed = (status === 'granted');
-    updateBackupBadge();
-    if (backupFileArmed) { toast('Local backup file reconnected ✓'); runLocalBackup({ force: true }); }
-    else toast('Permission not granted — using Downloads instead this session');
-  } catch (e) {
-    toast('Could not reconnect — using Downloads instead this session');
-  }
-}
-
-async function initLocalBackup() {
-  try {
-    const handle = await idbGet('backupFileHandle');
-    if (handle) {
-      backupFileHandle = handle;
-      const status = await handle.queryPermission({ mode: 'readwrite' });
-      backupFileArmed = (status === 'granted');
-    }
-  } catch (e) { /* ignore — badge will just prompt setup */ }
-  updateBackupBadge();
-}
-
-async function runLocalBackup(opts = {}) {
-  const force = !!opts.force;
-  if (!currentUser) return;
-  try { await ensureBackupArmed(); } catch (e) { return; } // dismissed — skip, next trigger will retry
-
-  const now = Date.now();
-  const useFile = backupFileHandle && backupFileArmed;
-  if (useFile && !force && (now - backupLastFileWriteAt) < BACKUP_FILE_MIN_INTERVAL_MS) return;
-  if (!useFile && !force && (now - backupLastDownloadAt) < BACKUP_DOWNLOAD_MIN_INTERVAL_MS) return;
-
-  let blob;
-  try {
-    blob = await encryptBackupPayload(await buildBackupPayload());
-  } catch (e) {
-    console.error('Local backup: build/encrypt failed', e);
-    return;
-  }
-
-  if (useFile) {
-    try {
-      const writable = await backupFileHandle.createWritable();
-      await writable.write(blob);
-      await writable.close();
-      backupLastFileWriteAt = now; backupLastAt = new Date();
-      updateBackupBadge();
-    } catch (e) {
-      console.error('Local backup: file write failed, falling back to a download', e);
-      backupFileArmed = false;
-      downloadBackupBlob(blob);
-      backupLastDownloadAt = now; backupLastAt = new Date();
-      updateBackupBadge();
-    }
-  } else {
-    downloadBackupBlob(blob);
-    backupLastDownloadAt = now; backupLastAt = new Date();
-    updateBackupBadge();
-  }
-}
-
-// Best-effort extra flush the moment the tab is backgrounded/closed — only if
-// already armed this session, so this never pops a passphrase prompt on exit.
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden' && currentUser && backupSessionKey) {
-    runLocalBackup({ force: true });
-  }
-});
-
-/* ---- header badge + panel ---- */
-function updateBackupBadge() {
-  const badge = document.getElementById('backup-badge');
-  const label = document.getElementById('backup-badge-label');
-  if (!badge || !currentUser) return;
-  badge.style.display = 'inline-flex';
-  badge.classList.remove('ok', 'warn');
-  if (backupFileHandle && backupFileArmed) { label.textContent = 'Backup: file'; badge.classList.add('ok'); }
-  else if (backupFileHandle && !backupFileArmed) { label.textContent = 'Backup: reconnect'; badge.classList.add('warn'); }
-  else if (localStorage.getItem('fm_backup_configured')) { label.textContent = 'Backup: downloads'; badge.classList.add('ok'); }
-  else { label.textContent = 'Set up backup'; badge.classList.add('warn'); }
-}
-
-function toggleBackupPanel() {
-  const panel = document.getElementById('backup-panel');
-  if (panel.style.display === 'flex') { panel.style.display = 'none'; return; }
-  renderBackupPanel();
-  panel.style.display = 'flex';
-}
-document.addEventListener('click', e => {
-  const panel = document.getElementById('backup-panel');
-  const badge = document.getElementById('backup-badge');
-  if (panel && panel.style.display === 'flex' && !panel.contains(e.target) && e.target !== badge && !badge.contains(e.target)) {
-    panel.style.display = 'none';
-  }
-});
-
-function renderBackupPanel() {
-  const panel = document.getElementById('backup-panel');
-  const modeText = (backupFileHandle && backupFileArmed) ? 'Writing to your picked file'
-    : (backupFileHandle && !backupFileArmed) ? 'File picked, needs reconnect'
-    : localStorage.getItem('fm_backup_configured') ? 'Using Downloads folder'
-    : 'Not set up yet';
-  const lastText = backupLastAt ? backupLastAt.toLocaleTimeString() : 'never yet';
-  panel.innerHTML = `
-    <div class="backup-panel-status"><strong>${modeText}</strong><br>Last backup: ${lastText}</div>
-    <button class="pill-btn" onclick="runLocalBackup({force:true});toggleBackupPanel()">Back up now</button>
-    ${!backupFileHandle && supportsFileSystemAccess() ? `<button class="pill-btn" onclick="setupLocalBackupFile();toggleBackupPanel()">Connect a backup file</button>` : ''}
-    ${backupFileHandle && !backupFileArmed ? `<button class="pill-btn success" onclick="reconnectLocalBackupFile();toggleBackupPanel()">Reconnect file</button>` : ''}
-    <button class="pill-btn" onclick="openRestoreModal();toggleBackupPanel()">Restore from backup…</button>
-  `;
-}
-
-/* ---- restore flow ---- */
-function openRestoreModal() {
-  document.getElementById('restore-blob-input').value = '';
-  document.getElementById('restore-passphrase-input').value = '';
-  document.getElementById('restore-error').style.display = 'none';
-  document.getElementById('restore-preview-wrap').style.display = 'none';
-  document.getElementById('restore-confirm-btn').style.display = 'none';
-  pendingRestorePayload = null;
-  document.getElementById('restore-modal').style.display = 'flex';
-}
-function closeRestoreModal() {
-  document.getElementById('restore-modal').style.display = 'none';
-}
-
-async function decryptAndPreviewBackup() {
-  const errEl = document.getElementById('restore-error');
-  errEl.style.display = 'none';
-  const blobStr = document.getElementById('restore-blob-input').value;
-  const pass = document.getElementById('restore-passphrase-input').value;
-  if (!blobStr.trim() || !pass) { errEl.textContent = 'Paste the backup text and enter its passphrase.'; errEl.style.display = 'block'; return; }
-  try {
-    const payload = await decryptBackupBlob(blobStr, pass);
-    renderBackupPreview(payload);
-  } catch (e) {
-    document.getElementById('restore-preview-wrap').style.display = 'none';
-    document.getElementById('restore-confirm-btn').style.display = 'none';
-    errEl.textContent = e.message || 'Could not decrypt that backup.';
-    errEl.style.display = 'block';
-  }
-}
-
-function renderBackupPreview(payload) {
-  const d = payload.data || {};
-  const mismatch = currentUser && payload.uid && payload.uid !== currentUser.uid;
-  document.getElementById('restore-preview').innerHTML = `
-    ${mismatch ? `<div style="color:var(--red);font-size:11px;margin-bottom:8px">⚠ This backup belongs to a different signed-in account — double check before restoring.</div>` : ''}
-    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);line-height:1.9">
-      Backed up: ${new Date(payload.createdAt).toLocaleString()}<br>
-      Bank: $${(d.balances?.bank || 0).toFixed(2)} · Cash: $${(d.balances?.cash || 0).toFixed(2)}<br>
-      Clients: ${(d.clients || []).length} · Jobs: ${(d.lawnEvents || []).length} · Other entries: ${(d.otherMoney || []).length}<br>
-      Pockets: ${(d.pockets || []).length} · Recurring rules: ${(d.recurringRules || []).length}<br>
-      History entries: ${(d.historyLog || []).length}
-    </div>`;
-  document.getElementById('restore-preview-wrap').style.display = 'block';
-  document.getElementById('restore-confirm-btn').style.display = 'inline-flex';
-  pendingRestorePayload = payload;
-}
-
-async function wipeAndWriteCollection(colName, items) {
-  const col = userDoc().collection(colName);
-  const existing = await col.get();
-  for (let i = 0; i < existing.docs.length; i += 50) {
-    const batch = db.batch();
-    existing.docs.slice(i, i + 50).forEach(d => batch.delete(d.ref));
-    await batch.commit();
-  }
-  for (let i = 0; i < items.length; i += 50) {
-    const batch = db.batch();
-    items.slice(i, i + 50).forEach(item => batch.set(col.doc(item.id), item));
-    await batch.commit();
-  }
-}
-async function restoreFullState(data) {
-  await wipeAndWriteCollection('clients', data.clients || []);
-  await wipeAndWriteCollection('jobs', data.lawnEvents || []);
-  await wipeAndWriteCollection('other', data.otherMoney || []);
-  await wipeAndWriteCollection('wishlist', data.wishlist || []);
-  await wipeAndWriteCollection('pockets', data.pockets || []);
-  await wipeAndWriteCollection('pocketRules', data.pocketRules || []);
-  await wipeAndWriteCollection('recurring', data.recurringRules || []);
-  await wipeAndWriteCollection('history', data.historyLog || []);
-  await userDoc().set({ balances: data.balances || { bank: 0, cash: 0 } });
-}
-async function archiveCurrentStateBeforeRestore() {
-  try {
-    const blob = await encryptBackupPayload(await buildBackupPayload());
-    await userDoc().collection('restoreArchive').doc(String(Date.now())).set({ createdAt: new Date().toISOString(), blob });
-  } catch (e) {
-    console.error('Pre-restore archive failed (continuing anyway):', e);
-  }
-}
-
-async function confirmRestore() {
-  if (!pendingRestorePayload) return;
-  if (!confirm("This permanently overwrites your real data with this backup. What's there now gets archived first, but this is still a big action. Continue?")) return;
-
-  try {
-    await currentUser.reauthenticateWithPopup(new firebase.auth.GoogleAuthProvider());
-  } catch (e) {
-    toast('Re-authentication failed or was cancelled — nothing was changed');
-    return;
-  }
-
-  const btn = document.getElementById('restore-confirm-btn');
-  btn.disabled = true; btn.textContent = 'Restoring…';
-  try {
-    await archiveCurrentStateBeforeRestore();
-    await restoreFullState(pendingRestorePayload.data);
-    closeRestoreModal();
-    toast('Restore complete — reloading your data ✓');
-    loadFromFirestore();
-  } catch (e) {
-    console.error('Restore failed:', e);
-    toast('Restore failed partway through — check the console; your prior data was archived first');
-  } finally {
-    btn.disabled = false; btn.textContent = 'Restore this — overwrite my real data';
-  }
 }
 </script>
 </body>
