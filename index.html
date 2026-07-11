@@ -915,15 +915,85 @@ body.test-mode-active { padding-top: calc(2rem + 46px) !important; }
 }
 
 /* ── Modal entrance motion (applies whenever JS toggles display) ── */
-#full-history-modal, #payment-modal, #pocket-congrats-modal, #purchase-celebration {
+#full-history-modal, #payment-modal, #pocket-congrats-modal, #purchase-celebration, #backup-passphrase-modal, #restore-modal {
   animation: modalFade 0.2s var(--ease);
 }
-#full-history-modal > div, #payment-modal > div {
+#full-history-modal > div, #payment-modal > div, #backup-passphrase-modal > div, #restore-modal > div {
   animation: modalPop 0.3s var(--ease-spring);
   box-shadow: var(--shadow-pop);
 }
 @keyframes modalFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes modalPop { from { opacity: 0; transform: scale(0.94) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+/* ── Local Backup ────────────────────────────────────────── */
+.backup-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 4px 11px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-mid);
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  transition: border-color 0.18s var(--ease), color 0.18s var(--ease), background 0.18s var(--ease);
+}
+.backup-badge:hover { border-color: var(--text-faint); color: var(--text-muted); }
+.backup-badge.ok { color: var(--green); border-color: var(--green-border); background: var(--green-pale); }
+.backup-badge.warn { color: var(--accent); border-color: var(--gold-border); background: var(--accent-pale); }
+.backup-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+.backup-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 9997;
+  width: 260px;
+  background: var(--surface-grad);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-pop);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: modalPop 0.18s var(--ease-spring);
+}
+.backup-panel-status { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); line-height: 1.6; }
+.backup-panel-status strong { color: var(--text); }
+.backup-panel .pill-btn { width: 100%; text-align: center; justify-content: center; }
+
+#backup-passphrase-modal, #restore-modal {
+  display: none; position: fixed; inset: 0;
+  background: rgba(11,13,11,0.88); backdrop-filter: blur(6px);
+  z-index: 10001; align-items: center; justify-content: center; padding: 1.5rem;
+}
+.backup-modal-box {
+  background: var(--surface-grad); border: 1px solid var(--border-mid);
+  border-radius: var(--radius-lg); padding: 1.5rem; width: 100%; max-width: 380px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.backup-modal-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; color: var(--text); }
+.backup-modal-desc { font-family: 'Inter', sans-serif; font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.backup-input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm); padding: 10px 12px; color: var(--text);
+  font-family: 'JetBrains Mono', monospace; font-size: 13px;
+}
+.backup-input:focus { outline: none; border-color: var(--text-faint); }
+textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
+
+#restore-modal .backup-modal-box { max-width: 480px; }
+.restore-preview-box {
+  display: none; background: var(--surface2); border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+}
+.backup-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.backup-modal-actions button { flex: 0 0 auto; }
+.backup-error-text { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--red); display: none; }
 </style>
 </head>
 <body>
@@ -942,6 +1012,12 @@ body.test-mode-active { padding-top: calc(2rem + 46px) !important; }
       <h1>Finance Manager</h1>
     </div>
     <button id="test-mode-btn" class="test-mode-btn" onclick="enterTestMode()" style="display:none" title="Sandbox mode — changes won't be saved to your account">⚗ test mode</button>
+    <div style="position:relative">
+      <button id="backup-badge" class="backup-badge" onclick="toggleBackupPanel()" style="display:none">
+        <span class="backup-badge-dot"></span><span id="backup-badge-label">Backup</span>
+      </button>
+      <div id="backup-panel" class="backup-panel" style="display:none"></div>
+    </div>
   </div>
   <div class="auth-area" id="auth-area">
     <span id="auth-loading">connecting…</span>
@@ -1530,6 +1606,42 @@ body.test-mode-active { padding-top: calc(2rem + 46px) !important; }
 
 <div class="toast" id="toast"></div>
 
+<!-- ── Local Backup: passphrase modal ─────────────────────── -->
+<div id="backup-passphrase-modal">
+  <div class="backup-modal-box">
+    <div class="backup-modal-title">🔒 Backup passphrase</div>
+    <div class="backup-modal-desc" id="bp-purpose">Set a passphrase to encrypt your local backups. It's never sent anywhere or stored — you'll need to remember it to restore later.</div>
+    <input id="backup-passphrase-input" class="backup-input" type="password" placeholder="At least 6 characters" onkeydown="if(event.key==='Enter')submitBackupPassphrase()" />
+    <div class="backup-modal-actions">
+      <button class="pill-btn" onclick="cancelBackupPassphrase()">Cancel</button>
+      <button class="pill-btn success" onclick="submitBackupPassphrase()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Local Backup: restore modal ────────────────────────── -->
+<div id="restore-modal">
+  <div class="backup-modal-box">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div class="backup-modal-title">Restore from backup</div>
+      <button class="pill-btn" onclick="closeRestoreModal()">✕ Close</button>
+    </div>
+    <div class="backup-modal-desc">Paste an encrypted backup below. You'll see a preview before anything on your real account changes.</div>
+    <textarea id="restore-blob-input" class="backup-input" placeholder="Paste FMBK1:... backup text here"></textarea>
+    <input id="restore-passphrase-input" class="backup-input" type="password" placeholder="Backup passphrase" onkeydown="if(event.key==='Enter')decryptAndPreviewBackup()" />
+    <div class="backup-error-text" id="restore-error"></div>
+    <div class="backup-modal-actions">
+      <button class="pill-btn" onclick="decryptAndPreviewBackup()">Decrypt &amp; preview</button>
+    </div>
+    <div class="restore-preview-box" id="restore-preview-wrap">
+      <div id="restore-preview"></div>
+    </div>
+    <div class="backup-modal-actions">
+      <button class="pill-btn danger" id="restore-confirm-btn" style="display:none;color:var(--red);border-color:var(--red-border)" onclick="confirmRestore()">Restore this — overwrite my real data</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Pocket Goal Congratulations Modal ───────────────── -->
 <div id="pocket-congrats-modal" style="display:none;position:fixed;inset:0;background:rgba(13,15,14,0.92);backdrop-filter:blur(8px);z-index:10000;align-items:center;justify-content:center;padding:1.5rem;">
   <div class="congrats-card">
@@ -1674,7 +1786,10 @@ function loadFromFirestore() {
 let saveTimer;
 function save() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveToFirestore, 800);
+  saveTimer = setTimeout(async () => {
+    await saveToFirestore();
+    runLocalBackup(); // fire-and-forget: encrypted local backup, throttled internally, no-ops in test mode
+  }, 800);
 }
 
 async function loadMoreHistory() {
@@ -1760,8 +1875,11 @@ auth.onAuthStateChanged(user => {
         <button class="btn-signout" onclick="signOut()">sign out</button>
       </div>`;
     loadFromFirestore();
+    initLocalBackup();
   } else {
     currentUser = null;
+    const badge = document.getElementById('backup-badge');
+    if (badge) badge.style.display = 'none';
     area.innerHTML = `
       <button class="btn-signin" onclick="signIn()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
@@ -2317,6 +2435,7 @@ function updateTestModeUI() {
     document.body.classList.remove('test-mode-active');
     if (btn) btn.style.display = currentUser ? '' : 'none';
   }
+  updateBackupBadge();
 }
 
 // Warn before navigating away or refreshing while in test mode
@@ -4477,6 +4596,429 @@ function _showPurchaseCelebration(name, amount, method) {
 
 function closePurchaseCelebration() {
   document.getElementById('purchase-celebration').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════════
+// ── Local Encrypted Backup + Restore ────────────────────────
+// Disaster recovery in case Firestore data is ever lost. On every
+// autosave, the current full state gets encrypted (AES-GCM, key from
+// a passphrase you set) and written either to a single file you pick
+// once (Chrome/Edge desktop — via File System Access API) or, as a
+// universal fallback, downloaded into your Downloads folder. Restore
+// lets you paste an encrypted backup back in, preview it decrypted,
+// then overwrite live Firestore data after a Google re-auth prompt.
+// The pre-restore state is archived first so a bad restore is undoable.
+// Backups and restores are both disabled while test mode is active —
+// sandbox data must never get written into a real backup, and a real
+// restore must never fire while you're looking at fake numbers.
+// ══════════════════════════════════════════════════════════
+
+const BACKUP_MAGIC = 'FMBK1';
+const PBKDF2_ITERATIONS = 250000;
+const BACKUP_FILE_MIN_INTERVAL_MS = 3000;        // coalesce rapid edits when writing to the picked file
+const BACKUP_DOWNLOAD_MIN_INTERVAL_MS = 5*60*1000; // avoid flooding Downloads: at most once per 5 min
+
+let backupSessionKey   = null;  // CryptoKey, derived once per tab session
+let backupSessionSalt  = null;  // Uint8Array paired with the key above
+let backupPassResolve  = null;
+let backupPassReject   = null;
+let backupFileHandle   = null;  // FileSystemFileHandle, if one's been picked
+let backupFileArmed    = false; // true once write permission is confirmed THIS session
+let backupLastFileWriteAt = 0;
+let backupLastDownloadAt  = 0;
+let backupLastAt = null;        // Date of most recent successful local backup
+let pendingRestorePayload = null;
+
+/* ---- tiny IndexedDB wrapper (only place a FileSystemFileHandle can be persisted) ---- */
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('fm-backup', 1);
+    req.onupgradeneeded = () => req.result.createObjectStore('kv');
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function idbSet(key, val) {
+  const db_ = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db_.transaction('kv', 'readwrite');
+    tx.objectStore('kv').put(val, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+async function idbGet(key) {
+  const db_ = await idbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db_.transaction('kv', 'readonly');
+    const req = tx.objectStore('kv').get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+/* ---- crypto helpers ---- */
+function bufToB64(buf) {
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+function b64ToBuf(b64) {
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return arr;
+}
+async function deriveBackupKey(passphrase, saltBytes) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(passphrase), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: saltBytes, iterations: PBKDF2_ITERATIONS, hash: 'SHA-256' },
+    base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']
+  );
+}
+
+/* ---- passphrase modal (armed once per tab session, held only in memory) ---- */
+function ensureBackupArmed() {
+  if (backupSessionKey) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    backupPassResolve = resolve;
+    backupPassReject = reject;
+    document.getElementById('backup-passphrase-input').value = '';
+    document.getElementById('backup-passphrase-modal').style.display = 'flex';
+    setTimeout(() => document.getElementById('backup-passphrase-input').focus(), 50);
+  });
+}
+async function submitBackupPassphrase() {
+  const val = document.getElementById('backup-passphrase-input').value;
+  if (!val || val.length < 6) { toast('Use at least 6 characters'); return; }
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  try {
+    backupSessionKey = await deriveBackupKey(val, salt);
+    backupSessionSalt = salt;
+    document.getElementById('backup-passphrase-modal').style.display = 'none';
+    if (backupPassResolve) backupPassResolve();
+  } catch (e) {
+    toast('Could not set up encryption — try again');
+  }
+}
+function cancelBackupPassphrase() {
+  document.getElementById('backup-passphrase-modal').style.display = 'none';
+  if (backupPassReject) backupPassReject(new Error('cancelled'));
+}
+
+/* ---- build + encrypt the full backup payload ---- */
+async function fetchFullHistoryForBackup() {
+  if (!currentUser) return [];
+  const snap = await historyCol().orderBy('ts', 'desc').get();
+  return snap.docs.map(d => d.data());
+}
+async function buildBackupPayload() {
+  const fullHistory = await fetchFullHistoryForBackup();
+  return {
+    version: 1,
+    createdAt: new Date().toISOString(),
+    uid: currentUser ? currentUser.uid : null,
+    data: { balances, clients, lawnEvents, otherMoney, wishlist, pockets, pocketRules, recurringRules, historyLog: fullHistory }
+  };
+}
+async function encryptBackupPayload(payloadObj) {
+  await ensureBackupArmed();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const plaintext = new TextEncoder().encode(JSON.stringify(payloadObj));
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, backupSessionKey, plaintext);
+  return `${BACKUP_MAGIC}:${bufToB64(backupSessionSalt)}:${bufToB64(iv)}:${bufToB64(ciphertext)}`;
+}
+async function decryptBackupBlob(blobStr, passphrase) {
+  const parts = (blobStr || '').trim().split(':');
+  if (parts.length !== 4 || parts[0] !== BACKUP_MAGIC) {
+    throw new Error("That doesn't look like a Finance Manager backup — check you copied the whole thing.");
+  }
+  const salt = b64ToBuf(parts[1]), iv = b64ToBuf(parts[2]), ct = b64ToBuf(parts[3]);
+  const key = await deriveBackupKey(passphrase, salt);
+  let plainBuf;
+  try {
+    plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  } catch (e) {
+    throw new Error('Wrong passphrase, or the backup text is corrupted/incomplete.');
+  }
+  const payload = JSON.parse(new TextDecoder().decode(plainBuf));
+  if (!payload || payload.version !== 1 || !payload.data) throw new Error('Backup decrypted but the contents look unexpected.');
+  return payload;
+}
+
+/* ---- where the encrypted blob actually goes ---- */
+function supportsFileSystemAccess() { return 'showSaveFilePicker' in window; }
+
+function downloadBackupBlob(blobStr) {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const file = new Blob([blobStr], { type: 'text/plain' });
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url; a.download = `finance-manager-backup-${stamp}.txt`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function setupLocalBackupFile() {
+  if (testMode) { toast('Exit test mode first'); return; }
+  if (!supportsFileSystemAccess()) {
+    localStorage.setItem('fm_backup_configured', '1');
+    toast('This browser only supports the Downloads-folder method — that\'s now active');
+    updateBackupBadge();
+    return;
+  }
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: 'finance-manager-backup.txt',
+      types: [{ description: 'Encrypted backup', accept: { 'text/plain': ['.txt'] } }]
+    });
+    await idbSet('backupFileHandle', handle);
+    backupFileHandle = handle;
+    backupFileArmed = true;
+    localStorage.setItem('fm_backup_configured', '1');
+    toast('Local backup file connected ✓');
+    updateBackupBadge();
+    runLocalBackup({ force: true });
+  } catch (e) {
+    if (e.name !== 'AbortError') console.error('setupLocalBackupFile:', e);
+  }
+}
+
+async function reconnectLocalBackupFile() {
+  if (testMode) { toast('Exit test mode first'); return; }
+  if (!backupFileHandle) return setupLocalBackupFile();
+  try {
+    const status = await backupFileHandle.requestPermission({ mode: 'readwrite' });
+    backupFileArmed = (status === 'granted');
+    updateBackupBadge();
+    if (backupFileArmed) { toast('Local backup file reconnected ✓'); runLocalBackup({ force: true }); }
+    else toast('Permission not granted — using Downloads instead this session');
+  } catch (e) {
+    toast('Could not reconnect — using Downloads instead this session');
+  }
+}
+
+async function initLocalBackup() {
+  try {
+    const handle = await idbGet('backupFileHandle');
+    if (handle) {
+      backupFileHandle = handle;
+      const status = await handle.queryPermission({ mode: 'readwrite' });
+      backupFileArmed = (status === 'granted');
+    }
+  } catch (e) { /* ignore — badge will just prompt setup */ }
+  updateBackupBadge();
+}
+
+async function runLocalBackup(opts = {}) {
+  const force = !!opts.force;
+  if (!currentUser || testMode) return; // never back up sandbox data
+
+  try { await ensureBackupArmed(); } catch (e) { return; } // dismissed — skip, next trigger will retry
+
+  const now = Date.now();
+  const useFile = backupFileHandle && backupFileArmed;
+  if (useFile && !force && (now - backupLastFileWriteAt) < BACKUP_FILE_MIN_INTERVAL_MS) return;
+  if (!useFile && !force && (now - backupLastDownloadAt) < BACKUP_DOWNLOAD_MIN_INTERVAL_MS) return;
+
+  let blob;
+  try {
+    blob = await encryptBackupPayload(await buildBackupPayload());
+  } catch (e) {
+    console.error('Local backup: build/encrypt failed', e);
+    return;
+  }
+
+  if (useFile) {
+    try {
+      const writable = await backupFileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      backupLastFileWriteAt = now; backupLastAt = new Date();
+      updateBackupBadge();
+    } catch (e) {
+      console.error('Local backup: file write failed, falling back to a download', e);
+      backupFileArmed = false;
+      downloadBackupBlob(blob);
+      backupLastDownloadAt = now; backupLastAt = new Date();
+      updateBackupBadge();
+    }
+  } else {
+    downloadBackupBlob(blob);
+    backupLastDownloadAt = now; backupLastAt = new Date();
+    updateBackupBadge();
+  }
+}
+
+// Best-effort extra flush the moment the tab is backgrounded/closed — only if
+// already armed this session, so this never pops a passphrase prompt on exit.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && currentUser && backupSessionKey && !testMode) {
+    runLocalBackup({ force: true });
+  }
+});
+
+/* ---- header badge + panel ---- */
+function updateBackupBadge() {
+  const badge = document.getElementById('backup-badge');
+  const label = document.getElementById('backup-badge-label');
+  if (!badge || !currentUser) return;
+  badge.style.display = 'inline-flex';
+  badge.classList.remove('ok', 'warn');
+  if (testMode) { label.textContent = 'Backup: paused (test)'; badge.classList.add('warn'); return; }
+  if (backupFileHandle && backupFileArmed) { label.textContent = 'Backup: file'; badge.classList.add('ok'); }
+  else if (backupFileHandle && !backupFileArmed) { label.textContent = 'Backup: reconnect'; badge.classList.add('warn'); }
+  else if (localStorage.getItem('fm_backup_configured')) { label.textContent = 'Backup: downloads'; badge.classList.add('ok'); }
+  else { label.textContent = 'Set up backup'; badge.classList.add('warn'); }
+}
+
+function toggleBackupPanel() {
+  const panel = document.getElementById('backup-panel');
+  if (panel.style.display === 'flex') { panel.style.display = 'none'; return; }
+  renderBackupPanel();
+  panel.style.display = 'flex';
+}
+document.addEventListener('click', e => {
+  const panel = document.getElementById('backup-panel');
+  const badge = document.getElementById('backup-badge');
+  if (panel && panel.style.display === 'flex' && !panel.contains(e.target) && e.target !== badge && !badge.contains(e.target)) {
+    panel.style.display = 'none';
+  }
+});
+
+function renderBackupPanel() {
+  const panel = document.getElementById('backup-panel');
+  if (testMode) {
+    panel.innerHTML = `<div class="backup-panel-status">Backups are paused while test mode is on — sandbox data never gets backed up or restored over your real account. Exit test mode to resume.</div>`;
+    return;
+  }
+  const modeText = (backupFileHandle && backupFileArmed) ? 'Writing to your picked file'
+    : (backupFileHandle && !backupFileArmed) ? 'File picked, needs reconnect'
+    : localStorage.getItem('fm_backup_configured') ? 'Using Downloads folder'
+    : 'Not set up yet';
+  const lastText = backupLastAt ? backupLastAt.toLocaleTimeString() : 'never yet';
+  panel.innerHTML = `
+    <div class="backup-panel-status"><strong>${modeText}</strong><br>Last backup: ${lastText}</div>
+    <button class="pill-btn" onclick="runLocalBackup({force:true});toggleBackupPanel()">Back up now</button>
+    ${!backupFileHandle && supportsFileSystemAccess() ? `<button class="pill-btn" onclick="setupLocalBackupFile();toggleBackupPanel()">Connect a backup file</button>` : ''}
+    ${backupFileHandle && !backupFileArmed ? `<button class="pill-btn success" onclick="reconnectLocalBackupFile();toggleBackupPanel()">Reconnect file</button>` : ''}
+    <button class="pill-btn" onclick="openRestoreModal();toggleBackupPanel()">Restore from backup…</button>
+  `;
+}
+
+/* ---- restore flow ---- */
+function openRestoreModal() {
+  if (testMode) { toast('Exit test mode before restoring'); return; }
+  document.getElementById('restore-blob-input').value = '';
+  document.getElementById('restore-passphrase-input').value = '';
+  document.getElementById('restore-error').style.display = 'none';
+  document.getElementById('restore-preview-wrap').style.display = 'none';
+  document.getElementById('restore-confirm-btn').style.display = 'none';
+  pendingRestorePayload = null;
+  document.getElementById('restore-modal').style.display = 'flex';
+}
+function closeRestoreModal() {
+  document.getElementById('restore-modal').style.display = 'none';
+}
+
+async function decryptAndPreviewBackup() {
+  const errEl = document.getElementById('restore-error');
+  errEl.style.display = 'none';
+  const blobStr = document.getElementById('restore-blob-input').value;
+  const pass = document.getElementById('restore-passphrase-input').value;
+  if (!blobStr.trim() || !pass) { errEl.textContent = 'Paste the backup text and enter its passphrase.'; errEl.style.display = 'block'; return; }
+  try {
+    const payload = await decryptBackupBlob(blobStr, pass);
+    renderBackupPreview(payload);
+  } catch (e) {
+    document.getElementById('restore-preview-wrap').style.display = 'none';
+    document.getElementById('restore-confirm-btn').style.display = 'none';
+    errEl.textContent = e.message || 'Could not decrypt that backup.';
+    errEl.style.display = 'block';
+  }
+}
+
+function renderBackupPreview(payload) {
+  const d = payload.data || {};
+  const mismatch = currentUser && payload.uid && payload.uid !== currentUser.uid;
+  document.getElementById('restore-preview').innerHTML = `
+    ${mismatch ? `<div style="color:var(--red);font-size:11px;margin-bottom:8px">⚠ This backup belongs to a different signed-in account — double check before restoring.</div>` : ''}
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);line-height:1.9">
+      Backed up: ${new Date(payload.createdAt).toLocaleString()}<br>
+      Bank: $${(d.balances?.bank || 0).toFixed(2)} · Cash: $${(d.balances?.cash || 0).toFixed(2)}<br>
+      Clients: ${(d.clients || []).length} · Jobs: ${(d.lawnEvents || []).length} · Other entries: ${(d.otherMoney || []).length}<br>
+      Pockets: ${(d.pockets || []).length} · Recurring rules: ${(d.recurringRules || []).length}<br>
+      History entries: ${(d.historyLog || []).length}
+    </div>`;
+  document.getElementById('restore-preview-wrap').style.display = 'block';
+  document.getElementById('restore-confirm-btn').style.display = 'inline-flex';
+  pendingRestorePayload = payload;
+}
+
+async function wipeAndWriteCollection(colName, items) {
+  const col = userDoc().collection(colName);
+  const existing = await col.get();
+  for (let i = 0; i < existing.docs.length; i += 50) {
+    const batch = db.batch();
+    existing.docs.slice(i, i + 50).forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  }
+  for (let i = 0; i < items.length; i += 50) {
+    const batch = db.batch();
+    items.slice(i, i + 50).forEach(item => batch.set(col.doc(item.id), item));
+    await batch.commit();
+  }
+}
+async function restoreFullState(data) {
+  await wipeAndWriteCollection('clients', data.clients || []);
+  await wipeAndWriteCollection('jobs', data.lawnEvents || []);
+  await wipeAndWriteCollection('other', data.otherMoney || []);
+  await wipeAndWriteCollection('wishlist', data.wishlist || []);
+  await wipeAndWriteCollection('pockets', data.pockets || []);
+  await wipeAndWriteCollection('pocketRules', data.pocketRules || []);
+  await wipeAndWriteCollection('recurring', data.recurringRules || []);
+  await wipeAndWriteCollection('history', data.historyLog || []);
+  await userDoc().set({ balances: data.balances || { bank: 0, cash: 0 } });
+}
+async function archiveCurrentStateBeforeRestore() {
+  try {
+    const blob = await encryptBackupPayload(await buildBackupPayload());
+    await userDoc().collection('restoreArchive').doc(String(Date.now())).set({ createdAt: new Date().toISOString(), blob });
+  } catch (e) {
+    console.error('Pre-restore archive failed (continuing anyway):', e);
+  }
+}
+
+async function confirmRestore() {
+  if (!pendingRestorePayload) return;
+  if (testMode) { toast('Exit test mode before restoring — sandbox and real data must stay separate'); return; }
+  if (!confirm("This permanently overwrites your real data with this backup. What's there now gets archived first, but this is still a big action. Continue?")) return;
+
+  try {
+    await currentUser.reauthenticateWithPopup(new firebase.auth.GoogleAuthProvider());
+  } catch (e) {
+    toast('Re-authentication failed or was cancelled — nothing was changed');
+    return;
+  }
+
+  const btn = document.getElementById('restore-confirm-btn');
+  btn.disabled = true; btn.textContent = 'Restoring…';
+  try {
+    await archiveCurrentStateBeforeRestore();
+    await restoreFullState(pendingRestorePayload.data);
+    closeRestoreModal();
+    toast('Restore complete — reloading your data ✓');
+    loadFromFirestore();
+  } catch (e) {
+    console.error('Restore failed:', e);
+    toast('Restore failed partway through — check the console; your prior data was archived first');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Restore this — overwrite my real data';
+  }
 }
 </script>
 </body>
