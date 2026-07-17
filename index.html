@@ -1610,7 +1610,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 <div id="backup-passphrase-modal">
   <div class="backup-modal-box">
     <div class="backup-modal-title">🔒 Backup passphrase</div>
-    <div class="backup-modal-desc" id="bp-purpose">Set a passphrase to encrypt your local backups. It's never sent anywhere or stored — you'll need to remember it to restore later.</div>
+    <div class="backup-modal-desc" id="bp-purpose">Set a passphrase to encrypt your local backups. This device remembers it so you won't be asked again — but you'll still need the passphrase itself to restore from another device or browser, so don't forget it.</div>
     <input id="backup-passphrase-input" class="backup-input" type="password" placeholder="At least 6 characters" onkeydown="if(event.key==='Enter')submitBackupPassphrase()" />
     <div class="backup-modal-actions">
       <button class="pill-btn" onclick="cancelBackupPassphrase()">Cancel</button>
@@ -3240,21 +3240,40 @@ function prefillEventAmount() {
   inp.placeholder = '';
 }
 
-function addEvent() {
+async function addEvent() {
   const client = document.getElementById('le-client').value;
   const date   = parseFlexibleDate(document.getElementById('le-date').value);
   const status = document.getElementById('le-status').value;
   const raw    = document.getElementById('le-amount').value;
   const amount = raw !== '' ? parseFloat(raw) : getRate(client);
   const newJob = {id:'l'+Date.now(), client, date, status, amount, job: currentJobId};
+
+  // Creating an event already marked Paid needs the same payment-method
+  // capture markPaid() does later — without it the amount has nowhere to
+  // land (no bank/cash split) and can't be counted toward balance or tithe.
+  if (status === 'paid') {
+    const method = await promptPaymentMethod();
+    if (method) {
+      newJob.paymentMethod = method;
+      newJob.paymentAmount = amount;
+      const allocations = applyPocketRules(jobOf(newJob), amount);
+      if (allocations.length) newJob.pocketAllocations = allocations;
+    } else {
+      newJob.status = 'unpaid'; // cancelled the method prompt — don't leave it paid with nowhere to post
+    }
+  }
+
   lawnEvents.push(newJob);
   pendingEventWrites.add(newJob.id);
-  logHistory('add', `Added event — ${client} on ${fmt(date)}, ${status} ($${amount})`, { job: currentJobId });
+  logHistory('add', `Added event — ${client} on ${fmt(date)}, ${newJob.status}${newJob.paymentMethod ? ' ('+newJob.paymentMethod+')' : ''} ($${amount})`, { job: currentJobId });
   save(); render();
   document.getElementById('event-form').classList.remove('open');
   document.getElementById('le-date').value = '';
   prefillEventAmount();
   toast('Event added ✓');
+  if (newJob.pocketAllocations && newJob.pocketAllocations.length) {
+    await checkPocketsForGoalCompletion(newJob.pocketAllocations.map(a => a.pocketId));
+  }
 }
 
 // One tap, no form: logs today's visit for a client at their standard rate.
@@ -4699,11 +4718,19 @@ async function submitBackupPassphrase() {
   try {
     backupSessionKey = await deriveBackupKey(val, salt);
     backupSessionSalt = salt;
+    try { await idbSet('backupKey', backupSessionKey); await idbSet('backupSalt', salt); } catch (e2) { /* remembering failed — will just ask again next time */ }
     document.getElementById('backup-passphrase-modal').style.display = 'none';
     if (backupPassResolve) backupPassResolve();
   } catch (e) {
     toast('Could not set up encryption — try again');
   }
+}
+async function resetBackupPassphrase() {
+  backupSessionKey = null;
+  backupSessionSalt = null;
+  try { await idbSet('backupKey', null); await idbSet('backupSalt', null); } catch (e) { /* ignore */ }
+  toast('Passphrase forgotten — next backup will ask you to set a new one');
+  renderBackupPanel();
 }
 function cancelBackupPassphrase() {
   document.getElementById('backup-passphrase-modal').style.display = 'none';
@@ -4811,6 +4838,11 @@ async function initLocalBackup() {
       backupFileArmed = (status === 'granted');
     }
   } catch (e) { /* ignore — badge will just prompt setup */ }
+  try {
+    const storedKey = await idbGet('backupKey');
+    const storedSalt = await idbGet('backupSalt');
+    if (storedKey && storedSalt) { backupSessionKey = storedKey; backupSessionSalt = storedSalt; }
+  } catch (e) { /* ignore — first backup this session will just ask for the passphrase */ }
   updateBackupBadge();
 }
 
@@ -4879,6 +4911,8 @@ function updateBackupBadge() {
 function toggleBackupPanel() {
   const panel = document.getElementById('backup-panel');
   if (panel.style.display === 'flex') { panel.style.display = 'none'; return; }
+  // Reconnect state has one obvious action — skip the panel and use this click directly.
+  if (!testMode && backupFileHandle && !backupFileArmed) { reconnectLocalBackupFile(); return; }
   renderBackupPanel();
   panel.style.display = 'flex';
 }
@@ -4907,6 +4941,7 @@ function renderBackupPanel() {
     ${!backupFileHandle && supportsFileSystemAccess() ? `<button class="pill-btn" onclick="setupLocalBackupFile();toggleBackupPanel()">Connect a backup file</button>` : ''}
     ${backupFileHandle && !backupFileArmed ? `<button class="pill-btn success" onclick="reconnectLocalBackupFile();toggleBackupPanel()">Reconnect file</button>` : ''}
     <button class="pill-btn" onclick="openRestoreModal();toggleBackupPanel()">Restore from backup…</button>
+    ${backupSessionKey ? `<button class="pill-btn" style="opacity:0.7" onclick="resetBackupPassphrase()">Reset passphrase</button>` : ''}
   `;
 }
 
