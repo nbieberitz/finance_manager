@@ -990,9 +990,58 @@ body.test-mode-active { padding-top: calc(2rem + 46px) !important; }
 textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 
 #restore-modal .backup-modal-box { max-width: 480px; }
-.restore-preview-box {
-  display: none; background: var(--surface2); border: 1px solid var(--border-mid);
-  border-radius: var(--radius-sm); padding: 12px 14px;
+
+/* ── Restore preview (full-screen, tabbed) ───────────────────
+   Opens once a pasted backup blob decrypts successfully. Every
+   figure on screen is computed straight from the decrypted
+   payload — it never touches (or overwrites) the live clients /
+   lawnEvents / pockets / etc. globals, so browsing the preview
+   can never risk corrupting the real account. ── */
+#restore-preview-screen {
+  display: none;
+  position: fixed; inset: 0;
+  z-index: 10001;
+  background:
+    radial-gradient(ellipse 900px 520px at 12% -8%, rgba(245,158,11,0.07), transparent 60%),
+    radial-gradient(ellipse 900px 600px at 105% 4%, rgba(74,222,128,0.055), transparent 55%),
+    var(--bg);
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalFade 0.2s var(--ease);
+}
+.rp-topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  flex-wrap: wrap;
+  padding: 0.9rem 1.5rem;
+  background: var(--surface-grad);
+  border-bottom: 1px solid var(--border);
+}
+.rp-topbar-left { display: flex; align-items: center; gap: 14px; }
+.rp-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+.rp-subtitle { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--text-faint); line-height: 1.6; margin-top: 3px; }
+.rp-mismatch {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--red);
+  background: var(--red-pale); border-bottom: 1px solid var(--red-border);
+  padding: 8px 1.5rem;
+}
+.rp-tabs {
+  display: flex; gap: 6px; padding: 10px 1.5rem;
+  background: rgba(255,255,255,0.014); border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+.rp-tab {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500;
+  padding: 7px 16px; border-radius: var(--radius-pill);
+  border: 1px solid var(--border-mid); background: var(--surface2); color: var(--text-muted);
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.rp-tab:hover { color: var(--text); border-color: var(--text-faint); }
+.rp-tab.active { background: var(--grad-green); color: #0A1A0E; font-weight: 600; border-color: transparent; }
+.rp-body { flex: 1; min-height: 0; overflow-y: auto; padding: 1.75rem 1rem 4rem; }
+@media (max-width: 640px) {
+  .rp-topbar { flex-direction: column; align-items: stretch; }
+  #rp-restore-btn { width: 100%; text-align: center; }
 }
 .backup-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .backup-modal-actions button { flex: 0 0 auto; }
@@ -1632,19 +1681,48 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
       <div class="backup-modal-title">Restore from backup</div>
       <button class="pill-btn" onclick="closeRestoreModal()">✕ Close</button>
     </div>
-    <div class="backup-modal-desc">Paste an encrypted backup below. You'll see a preview before anything on your real account changes.</div>
+    <div class="backup-modal-desc">Paste an encrypted backup below. You'll get a full preview — every tab, just like the live app — before anything on your real account changes.</div>
     <textarea id="restore-blob-input" class="backup-input" placeholder="Paste FMBK1:... backup text here"></textarea>
     <input id="restore-passphrase-input" class="backup-input" type="password" placeholder="Backup passphrase" onkeydown="if(event.key==='Enter')decryptAndPreviewBackup()" />
     <div class="backup-error-text" id="restore-error"></div>
     <div class="backup-modal-actions">
       <button class="pill-btn" onclick="decryptAndPreviewBackup()">Decrypt &amp; preview</button>
     </div>
-    <div class="restore-preview-box" id="restore-preview-wrap">
-      <div id="restore-preview"></div>
+  </div>
+</div>
+
+<!-- ── Local Backup: full-screen restore preview ────────────
+     Tabbed, read-only view of a decrypted backup — mirrors the
+     live app's own pages (Dashboard / Jobs / Pockets / Recurring
+     / Checks) plus a full History tab, so you can review exactly
+     what you're about to restore before committing to it. ── -->
+<div id="restore-preview-screen">
+  <div class="rp-topbar">
+    <div class="rp-topbar-left">
+      <button class="pill-btn" onclick="closeRestorePreviewScreen()">← Back</button>
+      <div>
+        <div class="rp-title">Backup Preview</div>
+        <div class="rp-subtitle" id="rp-meta"></div>
+      </div>
     </div>
-    <div class="backup-modal-actions">
-      <button class="pill-btn danger" id="restore-confirm-btn" style="display:none;color:var(--red);border-color:var(--red-border)" onclick="confirmRestore()">Restore this — overwrite my real data</button>
-    </div>
+    <button class="pill-btn danger" id="rp-restore-btn" style="color:var(--red);border-color:var(--red-border)" onclick="confirmRestore()">Restore this — overwrite my real data</button>
+  </div>
+  <div class="rp-mismatch" id="rp-mismatch" style="display:none"></div>
+  <div class="rp-tabs">
+    <button class="rp-tab active" data-rp-tab="dashboard" onclick="switchRestoreTab('dashboard')">Dashboard</button>
+    <button class="rp-tab" data-rp-tab="jobs" onclick="switchRestoreTab('jobs')">Jobs</button>
+    <button class="rp-tab" data-rp-tab="pockets" onclick="switchRestoreTab('pockets')">Pockets</button>
+    <button class="rp-tab" data-rp-tab="recurring" onclick="switchRestoreTab('recurring')">Recurring</button>
+    <button class="rp-tab" data-rp-tab="checks" onclick="switchRestoreTab('checks')">Checks</button>
+    <button class="rp-tab" data-rp-tab="history" onclick="switchRestoreTab('history')">History</button>
+  </div>
+  <div class="rp-body">
+    <div class="container" id="rp-panel-dashboard"></div>
+    <div class="container" id="rp-panel-jobs" style="display:none"></div>
+    <div class="container" id="rp-panel-pockets" style="display:none"></div>
+    <div class="container" id="rp-panel-recurring" style="display:none"></div>
+    <div class="container" id="rp-panel-checks" style="display:none"></div>
+    <div class="container" id="rp-panel-history" style="display:none"></div>
   </div>
 </div>
 
@@ -4849,13 +4927,14 @@ function openRestoreModal() {
   document.getElementById('restore-blob-input').value = '';
   document.getElementById('restore-passphrase-input').value = '';
   document.getElementById('restore-error').style.display = 'none';
-  document.getElementById('restore-preview-wrap').style.display = 'none';
-  document.getElementById('restore-confirm-btn').style.display = 'none';
+  document.getElementById('restore-preview-screen').style.display = 'none';
   pendingRestorePayload = null;
+  rpData = null;
   document.getElementById('restore-modal').style.display = 'flex';
 }
 function closeRestoreModal() {
   document.getElementById('restore-modal').style.display = 'none';
+  document.getElementById('restore-preview-screen').style.display = 'none';
 }
 
 async function decryptAndPreviewBackup() {
@@ -4866,30 +4945,813 @@ async function decryptAndPreviewBackup() {
   if (!blobStr.trim() || !pass) { errEl.textContent = 'Paste the backup text and enter its passphrase.'; errEl.style.display = 'block'; return; }
   try {
     const payload = await decryptBackupBlob(blobStr, pass);
-    renderBackupPreview(payload);
+    openRestorePreviewScreen(payload);
   } catch (e) {
-    document.getElementById('restore-preview-wrap').style.display = 'none';
-    document.getElementById('restore-confirm-btn').style.display = 'none';
     errEl.textContent = e.message || 'Could not decrypt that backup.';
     errEl.style.display = 'block';
   }
 }
 
-function renderBackupPreview(payload) {
-  const d = payload.data || {};
-  const mismatch = currentUser && payload.uid && payload.uid !== currentUser.uid;
-  document.getElementById('restore-preview').innerHTML = `
-    ${mismatch ? `<div style="color:var(--red);font-size:11px;margin-bottom:8px">⚠ This backup belongs to a different signed-in account — double check before restoring.</div>` : ''}
-    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted);line-height:1.9">
-      Backed up: ${new Date(payload.createdAt).toLocaleString()}<br>
-      Bank: $${(d.balances?.bank || 0).toFixed(2)} · Cash: $${(d.balances?.cash || 0).toFixed(2)}<br>
-      Clients: ${(d.clients || []).length} · Jobs: ${(d.lawnEvents || []).length} · Other entries: ${(d.otherMoney || []).length}<br>
-      Pockets: ${(d.pockets || []).length} · Recurring rules: ${(d.recurringRules || []).length}<br>
-      History entries: ${(d.historyLog || []).length}
-    </div>`;
-  document.getElementById('restore-preview-wrap').style.display = 'block';
-  document.getElementById('restore-confirm-btn').style.display = 'inline-flex';
+/* ══════════════════════════════════════════════════════════
+   Restore preview — full-screen, tabbed, read-only view of a
+   decrypted backup's contents (Dashboard / Jobs / Pockets /
+   Recurring / Checks / History — the same pages the live app
+   has). Everything below reads only from `rpData` (the backup's
+   own .data object) and writes only into rp-* DOM nodes; none of
+   it ever touches the live clients / lawnEvents / pockets / etc.
+   globals or their Firestore-backed render functions, so simply
+   browsing a preview can never risk corrupting the real account.
+   ══════════════════════════════════════════════════════════ */
+
+let rpData = null;          // the backup's .data object currently being previewed
+let rpNetCash = 0;           // computed once per opened backup (payload is static, so no need to recompute per-render)
+let rpTrendsRange = 'all';   // independent of the live dashboard's trendsRange
+let rpHistoryPage = 1;
+let rpHistoryFilter = 'all'; // 'all' | null (income/expenses) | a job id — same semantics as the live app's fhJobFilter
+const RP_HISTORY_PAGE_SIZE = 50;
+
+function openRestorePreviewScreen(payload) {
+  rpData = payload.data || {};
   pendingRestorePayload = payload;
+  rpNetCash = rpComputeNetCash();
+  rpTrendsRange = 'all';
+  rpHistoryPage = 1;
+  rpHistoryFilter = 'all';
+
+  const mismatch = currentUser && payload.uid && payload.uid !== currentUser.uid;
+  const mismatchEl = document.getElementById('rp-mismatch');
+  mismatchEl.style.display = mismatch ? 'block' : 'none';
+  mismatchEl.textContent = mismatch ? '⚠ This backup belongs to a different signed-in account — double check before restoring.' : '';
+
+  const d = rpData;
+  const counts = `${(d.clients||[]).length} clients · ${(d.lawnEvents||[]).length} jobs/checks · ${(d.pockets||[]).length} pockets · ${(d.recurringRules||[]).length} recurring · ${(d.historyLog||[]).length} history entries`;
+  document.getElementById('rp-meta').innerHTML = `Backed up ${new Date(payload.createdAt).toLocaleString()}<br>${counts}`;
+
+  document.getElementById('restore-modal').style.display = 'none';
+  const screen = document.getElementById('restore-preview-screen');
+  screen.style.display = 'flex';
+  screen.scrollTop = 0;
+  switchRestoreTab('dashboard');
+}
+
+function closeRestorePreviewScreen() {
+  document.getElementById('restore-preview-screen').style.display = 'none';
+  document.getElementById('restore-modal').style.display = 'flex';
+}
+
+function switchRestoreTab(tab) {
+  ['dashboard','jobs','pockets','recurring','checks','history'].forEach(t => {
+    const panel = document.getElementById('rp-panel-' + t);
+    if (panel) panel.style.display = (t === tab) ? 'block' : 'none';
+  });
+  document.querySelectorAll('.rp-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.rpTab === tab));
+  const body = document.querySelector('#restore-preview-screen .rp-body');
+  if (body) body.scrollTop = 0;
+  if (!rpData) return;
+  if (tab === 'dashboard') renderRpDashboard();
+  else if (tab === 'jobs') renderRpJobs();
+  else if (tab === 'pockets') renderRpPockets();
+  else if (tab === 'recurring') renderRpRecurring();
+  else if (tab === 'checks') renderRpChecks();
+  else if (tab === 'history') renderRpHistory();
+}
+
+// Jumps straight to the History tab pre-filtered to a given job (or 'all' /
+// null for income & expenses) — used by the "view all in History" links on
+// the Jobs and Checks tabs.
+function rpGoToHistory(filterVal) {
+  rpHistoryFilter = filterVal;
+  rpHistoryPage = 1;
+  switchRestoreTab('history');
+}
+
+/* ── Pure data helpers, mirroring the live app's own logic but
+   reading from the static backup payload instead of the live
+   clients/lawnEvents/pockets/etc. globals ── */
+
+function rpGetRate(name) {
+  const c = (rpData.clients || []).find(c => c.name === name);
+  return c ? c.rate : 0;
+}
+function rpEventAmount(j) {
+  return j.amount !== undefined ? j.amount : rpGetRate(j.client);
+}
+function rpComputeBalances() {
+  let bank = 0, cash = 0;
+  (rpData.lawnEvents || []).forEach(j => {
+    if (j.job === 'ca_it') {
+      if (j.status === 'cashed') bank += rpEventAmount(j);
+      return;
+    }
+    if (j.status !== 'paid' || !j.paymentMethod) return;
+    const amt = rpEventAmount(j);
+    if (j.paymentMethod === 'bank') bank += amt;
+    else if (j.paymentMethod === 'cash') cash += amt;
+  });
+  (rpData.otherMoney || []).forEach(e => {
+    const amt = parseFloat(e.amount) || 0;
+    if (e.type === 'transfer') {
+      if (e.fromMethod === 'bank') bank -= amt; else if (e.fromMethod === 'cash') cash -= amt;
+      if (e.toMethod === 'bank') bank += amt; else if (e.toMethod === 'cash') cash += amt;
+      return;
+    }
+    if (!e.method) return;
+    const delta = e.type === 'expense' ? -amt : amt;
+    if (e.method === 'bank') bank += delta;
+    else if (e.method === 'cash') cash += delta;
+  });
+  return { bank: Math.round(bank * 100) / 100, cash: Math.round(cash * 100) / 100 };
+}
+function rpComputeTithe() {
+  const bank = Math.round((
+    (rpData.lawnEvents||[]).filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && !j.tithePaid)
+      .reduce((s,j)=>s+rpEventAmount(j),0) +
+    (rpData.lawnEvents||[]).filter(j => j.job === 'ca_it' && j.status === 'cashed' && j.titheDeductible && !j.tithePaid)
+      .reduce((s,j)=>s+rpEventAmount(j),0) +
+    (rpData.otherMoney||[]).filter(e => e.type === 'income' && e.titheDeductible !== false && e.method !== 'cash' && !e.tithePaid)
+      .reduce((s,e)=>s+parseFloat(e.amount),0)
+  ) * 0.1 * 100) / 100;
+  const cash = Math.round((
+    (rpData.lawnEvents||[]).filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && !j.tithePaid)
+      .reduce((s,j)=>s+rpEventAmount(j),0) +
+    (rpData.otherMoney||[]).filter(e => e.type === 'income' && e.titheDeductible !== false && e.method === 'cash' && !e.tithePaid)
+      .reduce((s,e)=>s+parseFloat(e.amount),0)
+  ) * 0.1 * 100) / 100;
+  return { bank, cash, total: Math.round((bank + cash) * 100) / 100 };
+}
+function rpComputeNetCash() {
+  const lawnEvents = rpData.lawnEvents || [];
+  const otherMoney = rpData.otherMoney || [];
+  const paidJobs = lawnEvents.filter(j=>j.status==='paid').reduce((s,j)=>s+rpEventAmount(j),0);
+  const itCashed = lawnEvents.filter(j=>j.status==='cashed').reduce((s,j)=>s+rpEventAmount(j),0);
+  const income   = otherMoney.filter(e=>e.type!=='expense' && e.type!=='transfer').reduce((s,e)=>s+parseFloat(e.amount),0);
+  const expenses = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
+  const titheOwed = rpComputeTithe().total;
+  return Math.round((paidJobs + itCashed + income - expenses - titheOwed) * 100) / 100;
+}
+function rpSumPocketBalances() {
+  return Math.round((rpData.pockets || []).reduce((s,p) => s + (p.balance || 0), 0) * 100) / 100;
+}
+function rpFreeAmount() {
+  return Math.max(0, Math.round((rpNetCash - rpSumPocketBalances()) * 100) / 100);
+}
+function rpGetPocketColor(pocketId) {
+  const pockets = rpData.pockets || [];
+  const idx = pockets.findIndex(p => p.id === pocketId);
+  return POCKET_COLORS[idx % POCKET_COLORS.length] || '#888';
+}
+function rpRuleAmountDisplay(r) {
+  if (r.kind === 'lawn' && r.amount === undefined) return `$${rpGetRate(r.client)}/event (rate)`;
+  return `$${parseFloat(r.amount).toFixed(2)}`;
+}
+
+function rpGetCashFlowEvents() {
+  const flows = [];
+  (rpData.lawnEvents || []).forEach(j => {
+    if (j.job === 'ca_it') {
+      if (j.status === 'cashed') flows.push({ date: j.date, amount: rpEventAmount(j), kind: 'income' });
+    } else if (j.status === 'paid') {
+      flows.push({ date: j.date, amount: rpEventAmount(j), kind: 'income' });
+    }
+  });
+  (rpData.otherMoney || []).forEach(e => {
+    if (e.type === 'transfer') return;
+    const amt = parseFloat(e.amount) || 0;
+    if (!amt) return;
+    flows.push({ date: e.date, amount: amt, kind: e.type === 'expense' ? 'expense' : 'income' });
+  });
+  flows.sort((a, b) => a.date.localeCompare(b.date));
+  return flows;
+}
+function rpBuildCashTimeline() {
+  const flows = rpGetCashFlowEvents();
+  if (!flows.length) return [];
+  let running = 0;
+  const byDate = new Map();
+  flows.forEach(f => {
+    running += f.kind === 'expense' ? -f.amount : f.amount;
+    byDate.set(f.date, Math.round(running * 100) / 100);
+  });
+  return Array.from(byDate, ([date, balance]) => ({ date, balance })).sort((a, b) => a.date.localeCompare(b.date));
+}
+function rpBuildMonthlyTotals() {
+  const flows = rpGetCashFlowEvents();
+  const map = new Map();
+  flows.forEach(f => {
+    const month = f.date.slice(0, 7);
+    if (!map.has(month)) map.set(month, { income: 0, expense: 0 });
+    const bucket = map.get(month);
+    if (f.kind === 'expense') bucket.expense += f.amount; else bucket.income += f.amount;
+  });
+  return Array.from(map, ([month, v]) => ({
+    month, income: Math.round(v.income * 100) / 100, expense: Math.round(v.expense * 100) / 100
+  })).sort((a, b) => a.month.localeCompare(b.month));
+}
+
+/* ── Trends (reuses the live app's own rangeCutoffStr / filterTimelineByRange
+   / filterMonthlyByRange / showTrendTip / hideTrendTip, which are already
+   pure functions of their arguments — only the chart-drawing + container
+   IDs are duplicated here, pointed at the preview's own rp-trend-* nodes) ── */
+
+function rpRenderTrendRangeToggle() {
+  const wrap = document.getElementById('rp-trend-range-toggle');
+  if (!wrap) return;
+  const opts = [['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['1y', '1Y'], ['all', 'All']];
+  wrap.innerHTML = opts.map(([val, label]) =>
+    `<button class="trend-range-btn${rpTrendsRange === val ? ' active' : ''}" onclick="rpSetTrendsRange('${val}')">${label}</button>`
+  ).join('');
+}
+function rpSetTrendsRange(r) {
+  rpTrendsRange = r;
+  rpRenderTrendLineChart(filterTimelineByRange(rpBuildCashTimeline(), rpTrendsRange));
+  rpRenderTrendBarChart(filterMonthlyByRange(rpBuildMonthlyTotals(), rpTrendsRange));
+  rpRenderTrendRangeToggle();
+}
+function rpRenderTrendLineChart(timeline) {
+  const wrap = document.getElementById('rp-trend-line-wrap');
+  const badge = document.getElementById('rp-trend-delta-badge');
+  if (!wrap) return;
+  if (timeline.length < 2) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:2.2rem 1rem">Not enough history yet — a few more dated entries and a trend line will show up here.</div>`;
+    if (badge) badge.innerHTML = '';
+    return;
+  }
+  const W = 600, H = 150, padX = 4, padT = 14, padB = 6;
+  const values = timeline.map(p => p.balance);
+  let min = Math.min(...values, 0), max = Math.max(...values, 0);
+  if (min === max) { min -= 10; max += 10; }
+  const spread = max - min;
+  const x = i => padX + (i / (timeline.length - 1)) * (W - padX * 2);
+  const y = v => padT + (1 - (v - min) / spread) * (H - padT - padB);
+
+  const linePts = timeline.map((p, i) => `${x(i).toFixed(1)},${y(p.balance).toFixed(1)}`).join(' ');
+  const areaPts = `${x(0).toFixed(1)},${y(min).toFixed(1)} ${linePts} ${x(timeline.length - 1).toFixed(1)},${y(min).toFixed(1)}`;
+  const dots = timeline.map((p, i) =>
+    `<circle class="trend-dot" cx="${x(i).toFixed(1)}" cy="${y(p.balance).toFixed(1)}" r="3"
+      onmouseenter="showTrendTip(event,'${fmt(p.date)}','$${p.balance.toFixed(2)}')" onmouseleave="hideTrendTip()" />`
+  ).join('');
+  const showZero = min < 0 && max > 0;
+
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" class="trend-svg" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="rpTrendLineGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="var(--green-bright)" />
+          <stop offset="100%" stop-color="var(--accent)" />
+        </linearGradient>
+        <linearGradient id="rpTrendAreaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--green)" stop-opacity="0.28" />
+          <stop offset="100%" stop-color="var(--green)" stop-opacity="0" />
+        </linearGradient>
+      </defs>
+      ${showZero ? `<line x1="${padX}" y1="${y(0).toFixed(1)}" x2="${W - padX}" y2="${y(0).toFixed(1)}" class="trend-zero-line" />` : ''}
+      <polygon points="${areaPts}" fill="url(#rpTrendAreaGrad)" />
+      <polyline points="${linePts}" fill="none" stroke="url(#rpTrendLineGrad)" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round" />
+      ${dots}
+    </svg>
+    <div class="trend-axis-labels"><span>${fmt(timeline[0].date)}</span><span>${fmt(timeline[timeline.length - 1].date)}</span></div>
+  `;
+
+  if (badge) {
+    const delta = Math.round((timeline[timeline.length - 1].balance - timeline[0].balance) * 100) / 100;
+    const sign = delta >= 0 ? '+' : '−';
+    badge.innerHTML = `<span class="${delta >= 0 ? 'trend-delta-up' : 'trend-delta-down'}">${sign}$${Math.abs(delta).toFixed(2)}</span>`;
+  }
+}
+function rpRenderTrendBarChart(monthly) {
+  const wrap = document.getElementById('rp-trend-bar-wrap');
+  if (!wrap) return;
+  if (!monthly.length) {
+    wrap.innerHTML = `<div class="empty-state" style="padding:2.2rem 1rem">No monthly data yet.</div>`;
+    return;
+  }
+  const maxVal = Math.max(...monthly.map(m => Math.max(m.income, m.expense)), 1);
+  wrap.innerHTML = `<div class="trend-bars">${monthly.map(m => {
+    const incH = m.income > 0 ? Math.max(3, (m.income / maxVal) * 100) : 0;
+    const expH = m.expense > 0 ? Math.max(3, (m.expense / maxVal) * 100) : 0;
+    const label = new Date(m.month + '-02').toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    return `<div class="trend-bar-group">
+      <div class="trend-bar-pair">
+        <div class="trend-bar" style="height:${incH}%;background-image:${glossGradient(COLOR_GREEN)}"
+          onmouseenter="showTrendTip(event,'${label} income','$${m.income.toFixed(2)}')" onmouseleave="hideTrendTip()"></div>
+        <div class="trend-bar" style="height:${expH}%;background-image:${glossGradient('#F87171')}"
+          onmouseenter="showTrendTip(event,'${label} expenses','$${m.expense.toFixed(2)}')" onmouseleave="hideTrendTip()"></div>
+      </div>
+      <div class="trend-bar-label">${label}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// Mirrors the live app's renderFundsDistribution(barId, legendId), but
+// reads pockets/free-amount from the backup payload instead of the live
+// globals, and takes netCash explicitly instead of reading `lastNetCash`.
+function rpRenderFundsDistribution(barId, legendId) {
+  const wrap = document.getElementById(barId);
+  const legend = document.getElementById(legendId);
+  if (!wrap || !legend) return;
+  const pockets = rpData.pockets || [];
+  const sumPockets = rpSumPocketBalances();
+  const total = Math.max(rpNetCash, sumPockets, 0);
+  const overflow = sumPockets > rpNetCash ? Math.round((sumPockets - rpNetCash) * 100) / 100 : 0;
+
+  let segments;
+  if (total <= 0) {
+    segments = [{ label: 'Savings', amount: 0, color: COLOR_GREEN }];
+  } else {
+    const free = rpFreeAmount();
+    segments = [{ label: 'Savings', amount: free, color: COLOR_GREEN }];
+    pockets.forEach(p => {
+      if ((p.balance || 0) <= 0) return;
+      segments.push({ label: p.name, amount: p.balance, color: rpGetPocketColor(p.id) });
+    });
+  }
+
+  wrap.innerHTML = `<div class="funds-bar-track">${segments.map((s, i) => {
+    const pct = Math.min(100, total > 0 ? (s.amount / total * 100) : 100);
+    if (pct <= 0) return '';
+    const pctRound = Math.round(pct);
+    const isFree = i === 0;
+    const fill = isFree
+      ? `repeating-linear-gradient(135deg, rgba(255,255,255,0.08) 0 6px, transparent 6px 12px), ${glossGradient(s.color)}`
+      : glossGradient(s.color);
+    return `<div class="funds-seg${isFree ? ' seg-free' : ''}" data-key="seg-${i}" data-target-width="${pct.toFixed(2)}%" style="width:0%;background-image:${fill}" title="${s.label} — $${s.amount.toFixed(2)} (${pctRound}%)">${
+      pct >= 9 ? `<span class="funds-seg-pct on-light">${pctRound}%</span>` : ''
+    }</div>`;
+  }).join('')}</div>`;
+
+  legend.innerHTML = segments.map((s, i) => {
+    const pct = Math.round(total > 0 ? (s.amount / total * 100) : 100);
+    return `<div class="funds-legend-item" data-key="seg-${i}">
+      <span class="funds-swatch" style="background-image:${glossGradient(s.color)}"></span>
+      <span class="funds-legend-name">${s.label}</span>
+      <span>$${s.amount.toFixed(2)}</span>
+      <span class="funds-legend-pct" style="color:${s.color}">${pct}%</span>
+    </div>`;
+  }).join('') + (overflow > 0
+    ? `<div class="funds-overflow-note"><span>⚠</span>$${overflow.toFixed(2)} set aside ahead of being paid — settles once those events are marked paid</div>`
+    : '');
+
+  const segEls = [...wrap.querySelectorAll('.funds-seg')];
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    segEls.forEach(el => { el.style.width = el.dataset.targetWidth; });
+  }));
+  const itemEls = [...legend.querySelectorAll('.funds-legend-item')];
+  const setActive = key => {
+    segEls.forEach(s => s.classList.toggle('is-dim', !!key && s.dataset.key !== key));
+    itemEls.forEach(it => it.classList.toggle('is-dim', !!key && it.dataset.key !== key));
+  };
+  segEls.forEach(s => {
+    s.addEventListener('mouseenter', () => setActive(s.dataset.key));
+    s.addEventListener('mouseleave', () => setActive(null));
+  });
+  itemEls.forEach(it => {
+    it.addEventListener('mouseenter', () => setActive(it.dataset.key));
+    it.addEventListener('mouseleave', () => setActive(null));
+  });
+}
+
+/* ── Small read-only HTML builders shared by a couple of tabs ── */
+
+// Deliberately NOT reusing the live app's historyEntryHTML() here: that
+// function bakes in edit/delete/undo buttons wired to editHistory /
+// deleteHistory / undoPaid, which act on the LIVE historyLog (and can
+// write to Firestore). Backup entry ids frequently collide with live ones
+// — restoring your own account's backup is the common case — so reusing
+// it verbatim could let a click inside a read-only preview silently edit
+// or delete real data. This version renders the same look with no actions.
+function rpHistoryEntryHTML(h) {
+  const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client',pocket:'dot-pocket',recurring:'dot-recurring'}[h.type]||'dot-add';
+  const d = new Date(h.ts);
+  return `<div class="history-entry" style="cursor:default">
+    <div class="history-dot ${dc}"></div>
+    <div class="history-action">${h.message}</div>
+    <div class="history-time">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}<br>${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+  </div>`;
+}
+
+function rpRecurringSummaryText(rules) {
+  const active = (rules || []).filter(r => r.active);
+  if (!active.length) return 'No recurring rules yet.';
+  const soonest = [...active].sort((a, b) => a.nextDate.localeCompare(b.nextDate))[0];
+  return `${active.length} active rule${active.length > 1 ? 's' : ''} · next: ${ruleLabel(soonest)} on ${fmt(soonest.nextDate)}`;
+}
+function rpOtherMoneyTable(otherMoney) {
+  const sorted = [...otherMoney].sort((a, b) => b.date.localeCompare(a.date) || (b.id||'').localeCompare(a.id||''));
+  if (!sorted.length) return '<div class="empty-state">No entries yet.</div>';
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Category</th><th>Method</th></tr></thead>
+    <tbody>${sorted.map(e => {
+      const isExp = e.type === 'expense';
+      const isTransfer = e.type === 'transfer';
+      const cls = isTransfer ? 'badge-transfer' : e.type === 'gift' ? 'badge-gift' : isExp ? 'badge-expense' : 'badge-income';
+      const lbl = isTransfer ? '⇄ Transfer' : e.type === 'gift' ? 'Gift / birthday' : isExp ? 'Expense' : 'Income';
+      const amountCell = isTransfer
+        ? `<td class="mono" style="color:var(--blue)">$${parseFloat(e.amount).toFixed(2)}</td>`
+        : `<td class="mono ${isExp ? 'amount-neg' : 'amount-pos'}">${isExp ? '-' : '+'}$${parseFloat(e.amount).toFixed(2)}</td>`;
+      const methodCell = isTransfer
+        ? `<td class="mono">${e.fromMethod === 'cash' ? 'Cash' : 'Bank'} → ${e.toMethod === 'cash' ? 'Cash' : 'Bank'}</td>`
+        : `<td class="mono">${e.method ? (e.method === 'cash' ? 'Cash' : 'Bank') : '—'}</td>`;
+      return `<tr>
+        <td class="mono">${fmt(e.date)}</td>
+        <td>${e.desc}</td>
+        ${amountCell}
+        <td><span class="badge ${cls}">${lbl}</span>${e.type === 'income' && e.titheDeductible === false ? ' <span class="mono" style="font-size:10px;color:var(--text-faint)">no tithe</span>' : ''}</td>
+        ${methodCell}
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+function rpWishlistTable(wishlist) {
+  const sorted = [...wishlist].sort((a, b) => (b.date||'').localeCompare(a.date||'') || (b.id||'').localeCompare(a.id||''));
+  if (!sorted.length) return '<div class="empty-state">No items yet.</div>';
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>Title</th><th>Price</th><th>Category</th><th>Description</th><th>Link</th></tr></thead>
+    <tbody>${sorted.map(w => {
+      const cls = w.category === 'other' ? 'badge-wother' : 'badge-witem';
+      const lbl = w.category === 'other' ? 'Other' : 'Item';
+      const linkCell = w.link ? `<a class="wl-link" href="${w.link}" target="_blank" rel="noopener noreferrer">Visit ↗</a>` : '<span class="mono">—</span>';
+      return `<tr>
+        <td>${w.title}</td>
+        <td class="mono">$${parseFloat(w.price).toFixed(2)}</td>
+        <td><span class="badge ${cls}">${lbl}</span></td>
+        <td class="wl-desc">${w.desc || '—'}</td>
+        <td>${linkCell}</td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+/* ── Tab renderers ── */
+
+function renderRpDashboard() {
+  const d = rpData;
+  const lawnEvents = d.lawnEvents || [];
+  const otherMoney = d.otherMoney || [];
+
+  const unpaid     = lawnEvents.filter(j=>j.status==='unpaid').reduce((s,j)=>s+rpEventAmount(j),0);
+  const check      = lawnEvents.filter(j=>j.status==='check').reduce((s,j)=>s+rpEventAmount(j),0);
+  const paidJobs   = lawnEvents.filter(j=>j.status==='paid').reduce((s,j)=>s+rpEventAmount(j),0);
+  const itUncashed = lawnEvents.filter(j=>j.status==='uncashed').reduce((s,j)=>s+rpEventAmount(j),0);
+  const itCashed   = lawnEvents.filter(j=>j.status==='cashed').reduce((s,j)=>s+rpEventAmount(j),0);
+  const income     = otherMoney.filter(e=>e.type!=='expense' && e.type!=='transfer').reduce((s,e)=>s+parseFloat(e.amount),0);
+  const expenses   = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
+  const tithe      = rpComputeTithe();
+  const titheOwed  = tithe.total;
+  const bal        = d.balances || rpComputeBalances();
+
+  const owedParts = [unpaid>0?'$'+unpaid.toFixed(2)+' unpaid':'', check>0?'$'+check.toFixed(2)+' by check':'', itUncashed>0?'$'+itUncashed.toFixed(2)+' uncashed':''].filter(Boolean);
+
+  const panel = document.getElementById('rp-panel-dashboard');
+  panel.innerHTML = `
+    <div class="summary-grid">
+      <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${rpNetCash.toFixed(2)}</div><div class="metric-sub">paid + payroll + income − expenses − tithe</div></div>
+      <div class="metric amber"><div class="metric-label">Owed to you</div><div class="metric-value">$${(unpaid+check+itUncashed).toFixed(2)}</div><div class="metric-sub">${owedParts.join(' · ') || '&nbsp;'}</div></div>
+      <div class="metric blue"><div class="metric-label">Total earned</div><div class="metric-value">$${(paidJobs+itCashed+income).toFixed(2)}</div><div class="metric-sub">events + payroll + other income</div></div>
+      <div class="metric red"><div class="metric-label">Expenses</div><div class="metric-value">$${expenses.toFixed(2)}</div><div class="metric-sub">&nbsp;</div></div>
+      <div class="metric tithe${titheOwed>0?' tithe-active':''}">
+        <div class="metric-label">Tithe owed</div>
+        <div class="metric-value">$${titheOwed.toFixed(2)}</div>
+        <div class="metric-sub">${titheOwed>0?`$${tithe.bank.toFixed(2)} bank · $${tithe.cash.toFixed(2)} cash`:'10% of paid events + other income'}</div>
+      </div>
+      <div class="metric purple"><div class="metric-label">In bank</div><div class="metric-value">$${parseFloat(bal.bank||0).toFixed(2)}</div></div>
+      <div class="metric"><div class="metric-label">Cash on hand</div><div class="metric-value" style="color:var(--amber)">$${parseFloat(bal.cash||0).toFixed(2)}</div></div>
+    </div>
+
+    <section>
+      <div class="section-header static">
+        <div class="section-title"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-8M21 8h-6v6"/></svg>Trends</div>
+        <div class="header-actions"><div class="trend-range-toggle" id="rp-trend-range-toggle"></div></div>
+      </div>
+      <div class="trend-section-body">
+        <div class="trend-charts-grid">
+          <div class="trend-card">
+            <div class="trend-card-head"><span class="trend-card-title">Cash over time</span><span id="rp-trend-delta-badge"></span></div>
+            <div id="rp-trend-line-wrap" class="trend-line-wrap"></div>
+          </div>
+          <div class="trend-card">
+            <div class="trend-card-head">
+              <span class="trend-card-title">Income vs. expenses</span>
+              <span class="trend-legend-mini"><span class="trend-legend-dot" style="background:var(--green)"></span>In <span class="trend-legend-dot" style="background:var(--red)"></span>Out</span>
+            </div>
+            <div id="rp-trend-bar-wrap" class="trend-bar-wrap"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header static">
+        <div class="section-title"><svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>Distribution of Funds</div>
+        <div class="header-actions"><button class="pill-btn" onclick="switchRestoreTab('pockets')">View pockets →</button></div>
+      </div>
+      <div class="funds-section-body" onclick="switchRestoreTab('pockets')">
+        <div id="rp-funds-bar-wrap"></div>
+        <div class="funds-legend" id="rp-funds-legend"></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header static">
+        <div class="section-title"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Recurring</div>
+        <div class="header-actions"><button class="pill-btn" onclick="switchRestoreTab('recurring')">View recurring →</button></div>
+      </div>
+      <div class="funds-section-body" onclick="switchRestoreTab('recurring')" style="padding:1rem 1.25rem;cursor:pointer">
+        <div style="font-size:12px;color:var(--text-muted)">${rpRecurringSummaryText(d.recurringRules)}</div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header static">
+        <div class="section-title"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Jobs</div>
+      </div>
+      <div class="jobs-grid">${JOBS.map(job => {
+        const openCount = job.id === 'ca_it'
+          ? lawnEvents.filter(j => jobOf(j) === job.id && j.status === 'uncashed').length
+          : lawnEvents.filter(j => jobOf(j) === job.id && j.status !== 'paid').length;
+        const subLabel = openCount > 0
+          ? (job.id === 'ca_it' ? openCount+' uncashed check'+(openCount>1?'s':'') : openCount+' open event'+(openCount>1?'s':''))
+          : (job.id === 'ca_it' ? 'All clear' : 'All settled');
+        return `<button class="job-btn" onclick="switchRestoreTab('${job.id === 'ca_it' ? 'checks' : 'jobs'}')">
+          <div class="job-btn-icon">${job.icon}</div>
+          <div class="job-btn-label">${job.label}</div>
+          <div class="job-btn-sub">${subLabel}</div>
+        </button>`;
+      }).join('')}</div>
+    </section>
+
+    <section>
+      <div class="section-header static">
+        <div class="section-title"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Income &amp; Expenses</div>
+      </div>
+      ${rpOtherMoneyTable(otherMoney)}
+    </section>
+
+    <section>
+      <div class="section-header static">
+        <div class="section-title"><svg viewBox="0 0 24 24"><path d="M6 2l-3 4v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>Wishlist</div>
+      </div>
+      ${rpWishlistTable(d.wishlist || [])}
+    </section>
+
+    <section>
+      <div class="section-header static">
+        <div class="section-title"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>History</div>
+        <div class="header-actions"><button class="pill-btn" onclick="rpGoToHistory('all')">Full history →</button></div>
+      </div>
+      <div>${!(d.historyLog||[]).length ? '<div class="empty-state">No history yet.</div>' : (d.historyLog||[]).slice(0,15).map(rpHistoryEntryHTML).join('')}</div>
+    </section>
+  `;
+
+  rpRenderTrendRangeToggle();
+  rpRenderTrendLineChart(filterTimelineByRange(rpBuildCashTimeline(), rpTrendsRange));
+  rpRenderTrendBarChart(filterMonthlyByRange(rpBuildMonthlyTotals(), rpTrendsRange));
+  rpRenderFundsDistribution('rp-funds-bar-wrap', 'rp-funds-legend');
+}
+
+function renderRpJobs() {
+  const regularJobs = JOBS.filter(j => j.id !== 'ca_it');
+  const lawnEvents = rpData.lawnEvents || [];
+  const clientsAll = rpData.clients || [];
+  const historyLog = rpData.historyLog || [];
+  const panel = document.getElementById('rp-panel-jobs');
+
+  panel.innerHTML = regularJobs.map(job => {
+    const clients = clientsAll.filter(c => jobOf(c) === job.id).sort((a,b) => a.name.localeCompare(b.name));
+    const clientsHtml = !clients.length ? '<div class="empty-state">No clients yet.</div>' : clients.map(c => {
+      const clientJobs = lawnEvents.filter(j => j.client === c.name && jobOf(j) === job.id && j.status !== 'paid')
+        .sort((a,b) => b.date.localeCompare(a.date) || (b.id||'').localeCompare(a.id||''));
+      const jobCount = clientJobs.length;
+      const owed = clientJobs.reduce((s,j)=>s+rpEventAmount(j),0);
+      const jobRows = clientJobs.map(j => `
+        <tr>
+          <td class="mono">${fmt(j.date)}</td>
+          <td class="mono amount-pos">$${rpEventAmount(j).toFixed(2)}</td>
+          <td>${statusBadge(j.status)}</td>
+        </tr>`).join('');
+      return `
+        <div style="border-bottom:1px solid var(--border)">
+          <div style="display:flex;align-items:center;padding:10px 1.25rem;gap:10px;flex-wrap:wrap">
+            <div style="font-weight:500">${c.name}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${jobCount>0 ? `${jobCount} event${jobCount>1?'s':''} · $${owed.toFixed(2)} owed` : 'no open events'}</div>
+            <div style="flex:1"></div>
+            <div style="color:var(--text-muted);font-size:12px">${c.note||''}</div>
+            <div class="mono" style="font-size:12px;color:var(--text-muted)">$${c.rate}/event</div>
+          </div>
+          ${jobCount > 0 ? `<div class="table-wrap"><table>
+            <thead><tr><th>Date</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody>${jobRows}</tbody>
+          </table></div>` : ''}
+        </div>`;
+    }).join('');
+
+    const paid = lawnEvents.filter(j => jobOf(j) === job.id && j.status === 'paid').sort((a,b) => b.date.localeCompare(a.date) || (b.id||'').localeCompare(a.id||''));
+    const paidTotal = paid.reduce((s,j)=>s+rpEventAmount(j),0);
+    const jobHistory = historyLog.filter(h => getEntryJob(h) === job.id);
+
+    return `
+      <section>
+        <div class="section-header static">
+          <div class="section-title"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>Clients${regularJobs.length>1 ? ' — '+job.label : ''}</div>
+        </div>
+        ${clientsHtml}
+      </section>
+      <section>
+        <div class="section-header static">
+          <div class="section-title"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Paid Events</div>
+          <div class="header-actions"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)">${paid.length ? `${paid.length} event${paid.length>1?'s':''} · $${paidTotal.toFixed(2)}` : ''}</span></div>
+        </div>
+        ${!paid.length ? '<div class="empty-state">No paid events yet.</div>' : `<div class="table-wrap"><table>
+          <thead><tr><th>Date</th><th>Client</th><th>Amount</th></tr></thead>
+          <tbody>${paid.map(j => `<tr><td class="mono">${fmt(j.date)}</td><td>${j.client}</td><td class="mono amount-pos">$${rpEventAmount(j).toFixed(2)}</td></tr>`).join('')}</tbody>
+        </table></div>`}
+      </section>
+      <section>
+        <div class="section-header static">
+          <div class="section-title"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>History</div>
+        </div>
+        <div style="max-height:340px;overflow-y:auto">${!jobHistory.length ? '<div class="empty-state">No history yet.</div>' : jobHistory.slice(0,40).map(rpHistoryEntryHTML).join('')}</div>
+        ${jobHistory.length > 40 ? `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center"><button class="pill-btn" onclick="rpGoToHistory('${job.id}')">View all ${jobHistory.length} in History tab →</button></div>` : ''}
+      </section>`;
+  }).join('');
+}
+
+function renderRpPockets() {
+  const pockets = rpData.pockets || [];
+  const pocketRules = rpData.pocketRules || [];
+  const wishlist = rpData.wishlist || [];
+  const historyLog = rpData.historyLog || [];
+  const sumPockets = rpSumPocketBalances();
+  const free = rpFreeAmount();
+  const panel = document.getElementById('rp-panel-pockets');
+
+  const pocketsHtml = !pockets.length ? '<div class="empty-state">No pockets yet.</div>' : pockets.map(p => {
+    const item = wishlist.find(w => w.id === p.wishlistItemId);
+    const price = item ? parseFloat(item.price) : null;
+    const rawPct = price ? Math.round((p.balance||0)/price*100) : null;
+    const pct = rawPct !== null ? Math.min(100, rawPct) : null;
+    const isComplete = price && (p.balance||0) >= price;
+    const color = rpGetPocketColor(p.id);
+    const rulesForPocket = pocketRules.filter(r => r.pocketId === p.id);
+    const rulesHtml = rulesForPocket.length
+      ? rulesForPocket.map(r => {
+          const job = getJob(r.jobId);
+          return `<div class="pocket-rule-row"><div style="flex:1">${r.percent}% of every <strong>${job ? job.label : '(removed job)'}</strong> event</div></div>`;
+        }).join('')
+      : `<div class="pocket-rule-empty">No rules — money only moves here manually.</div>`;
+    return `
+      <div class="pocket-row" style="padding:12px 1.25rem;border-bottom:1px solid var(--border)${isComplete?';background:rgba(74,222,128,0.04)':''}">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="funds-swatch" style="background-image:${glossGradient(isComplete?COLOR_GREEN:color)}${isComplete?';box-shadow:0 0 6px rgba(74,222,128,0.5)':''}"></span>
+          <div style="font-weight:500">${p.name}</div>
+          ${isComplete ? `<span class="pocket-complete-badge">✓ GOAL MET</span>` : ''}
+          <div style="flex:1"></div>
+          <div class="mono" style="color:var(--text-muted);font-size:12px">${item ? `→ ${item.title}` : (p.wishlistItemId ? '(linked item removed)' : 'General fund')}</div>
+          <div class="mono" style="font-size:13px;color:${isComplete?COLOR_GREEN:color}">$${(p.balance||0).toFixed(2)}${price?` / $${price.toFixed(2)}`:''}${pct!==null?` (${pct}%)`:''}</div>
+        </div>
+        ${price ? `<div class="pocket-progress-track" style="margin-top:8px"><div class="pocket-progress-fill" style="width:${pct}%;background-image:${glossGradient(isComplete?COLOR_GREEN:color)}${isComplete?';box-shadow:0 0 8px rgba(74,222,128,0.45)':''}"></div></div>` : ''}
+        <div class="pocket-rules-list">${rulesHtml}</div>
+      </div>`;
+  }).join('');
+
+  const pocketHistory = historyLog.filter(h => h.type === 'pocket');
+
+  panel.innerHTML = `
+    <div class="summary-grid">
+      <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${rpNetCash.toFixed(2)}</div></div>
+      <div class="metric"><div class="metric-label">Free / Savings</div><div class="metric-value">$${free.toFixed(2)}</div></div>
+      <div class="metric blue"><div class="metric-label">In pockets</div><div class="metric-value">$${sumPockets.toFixed(2)}</div></div>
+    </div>
+    <section>
+      <div class="section-header static">
+        <div class="section-title"><svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>Distribution of Funds</div>
+      </div>
+      <div style="padding:1.1rem 1.25rem">
+        <div id="rp-pk-funds-bar-wrap"></div>
+        <div class="funds-legend" id="rp-pk-funds-legend"></div>
+      </div>
+    </section>
+    <section>
+      <div class="section-header static">
+        <div class="section-title"><svg viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0016.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 002 8.5c0 2.29 1.51 4.04 3 5.5l7 7z"/></svg>Pockets</div>
+      </div>
+      ${pocketsHtml}
+    </section>
+    <section>
+      <div class="section-header static">
+        <div class="section-title"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Pockets History</div>
+      </div>
+      <div style="max-height:340px;overflow-y:auto">${!pocketHistory.length ? '<div class="empty-state">No pocket changes yet.</div>' : pocketHistory.slice(0,40).map(rpHistoryEntryHTML).join('')}</div>
+    </section>
+  `;
+
+  rpRenderFundsDistribution('rp-pk-funds-bar-wrap', 'rp-pk-funds-legend');
+}
+
+function renderRpRecurring() {
+  const recurringRules = rpData.recurringRules || [];
+  const panel = document.getElementById('rp-panel-recurring');
+  const sorted = [...recurringRules].sort((a,b) => a.nextDate.localeCompare(b.nextDate) || (a.id||'').localeCompare(b.id||''));
+  panel.innerHTML = `
+    <section>
+      <div class="section-header static">
+        <div class="section-title"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Recurring Rules</div>
+      </div>
+      ${!sorted.length ? '<div class="empty-state">No recurring rules yet.</div>' : `<div class="table-wrap"><table>
+        <thead><tr><th>What</th><th>Amount</th><th>Every</th><th>Next</th><th>Status</th></tr></thead>
+        <tbody>${sorted.map(r => `
+          <tr>
+            <td>${ruleLabel(r)}</td>
+            <td class="mono">${rpRuleAmountDisplay(r)}</td>
+            <td class="mono">${r.intervalDays} day${r.intervalDays>1?'s':''}</td>
+            <td class="mono">${fmt(r.nextDate)}</td>
+            <td>${r.active ? '<span class="badge badge-paid">Active</span>' : '<span class="badge badge-unpaid">Paused</span>'}</td>
+          </tr>`).join('')}
+        </tbody></table></div>`}
+    </section>
+  `;
+}
+
+function renderRpChecks() {
+  const lawnEvents = rpData.lawnEvents || [];
+  const historyLog = rpData.historyLog || [];
+  const panel = document.getElementById('rp-panel-checks');
+
+  const uncashed = lawnEvents.filter(j => j.job==='ca_it' && j.status==='uncashed').sort((a,b) => b.dateEnd.localeCompare(a.dateEnd) || (b.id||'').localeCompare(a.id||''));
+  const uncashedTotal = uncashed.reduce((s,j)=>s+rpEventAmount(j),0);
+  const cashed = lawnEvents.filter(j => j.job==='ca_it' && j.status==='cashed').sort((a,b) => b.dateEnd.localeCompare(a.dateEnd) || (b.id||'').localeCompare(a.id||''));
+  const cashedTotal = cashed.reduce((s,j)=>s+rpEventAmount(j),0);
+  const checksHistory = historyLog.filter(h => getEntryJob(h) === 'ca_it');
+
+  const rowsHtml = (list) => list.map(j => `
+    <tr>
+      <td class="mono">${itCheckLabel(j)}</td>
+      <td class="mono amount-pos">$${rpEventAmount(j).toFixed(2)}</td>
+      <td class="mono" style="font-size:11px;color:var(--text-faint)">${j.titheDeductible ? '✓ tithe' : '—'}</td>
+    </tr>`).join('');
+
+  panel.innerHTML = `
+    <section>
+      <div class="section-header static">
+        <div class="section-title"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Uncashed Checks</div>
+        <div class="header-actions"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)">${uncashed.length ? `${uncashed.length} check${uncashed.length>1?'s':''} · $${uncashedTotal.toFixed(2)}` : ''}</span></div>
+      </div>
+      ${!uncashed.length ? '<div class="empty-state">No uncashed checks.</div>' : `<div class="table-wrap"><table>
+        <thead><tr><th>Pay Period</th><th>Amount</th><th>Tithe</th></tr></thead>
+        <tbody>${rowsHtml(uncashed)}</tbody></table></div>`}
+    </section>
+    <section>
+      <div class="section-header static">
+        <div class="section-title"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Cashed Checks</div>
+        <div class="header-actions"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)">${cashed.length ? `${cashed.length} check${cashed.length>1?'s':''} · $${cashedTotal.toFixed(2)}` : ''}</span></div>
+      </div>
+      ${!cashed.length ? '<div class="empty-state">No cashed checks yet.</div>' : `<div class="table-wrap"><table>
+        <thead><tr><th>Pay Period</th><th>Amount</th><th>Tithe</th></tr></thead>
+        <tbody>${rowsHtml(cashed)}</tbody></table></div>`}
+    </section>
+    <section>
+      <div class="section-header static">
+        <div class="section-title"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>History</div>
+      </div>
+      <div style="max-height:340px;overflow-y:auto">${!checksHistory.length ? '<div class="empty-state">No history yet.</div>' : checksHistory.slice(0,40).map(rpHistoryEntryHTML).join('')}</div>
+      ${checksHistory.length > 40 ? `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center"><button class="pill-btn" onclick="rpGoToHistory('ca_it')">View all ${checksHistory.length} in History tab →</button></div>` : ''}
+    </section>
+  `;
+}
+
+function rpSetHistoryFilter(val) {
+  rpHistoryFilter = val === 'all' ? 'all' : (val === 'null' ? null : val);
+  rpHistoryPage = 1;
+  renderRpHistory();
+}
+
+function renderRpHistory() {
+  const historyLog = rpData.historyLog || [];
+  const panel = document.getElementById('rp-panel-history');
+  const list = rpHistoryFilter === 'all' ? historyLog : historyLog.filter(h => getEntryJob(h) === rpHistoryFilter);
+  const totalPages = Math.max(1, Math.ceil(list.length / RP_HISTORY_PAGE_SIZE));
+  rpHistoryPage = Math.max(1, Math.min(rpHistoryPage, totalPages));
+  const start = (rpHistoryPage - 1) * RP_HISTORY_PAGE_SIZE;
+  const entries = list.slice(start, start + RP_HISTORY_PAGE_SIZE);
+
+  panel.innerHTML = `
+    <section>
+      <div class="section-header static">
+        <div class="section-title"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>History</div>
+        <div class="header-actions">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)">${list.length} entr${list.length===1?'y':'ies'}</span>
+          <select id="rp-history-filter" onchange="rpSetHistoryFilter(this.value)" style="width:auto;padding:5px 8px;font-size:11px">
+            <option value="all"${rpHistoryFilter==='all'?' selected':''}>All entries</option>
+            ${JOBS.map(j => `<option value="${j.id}"${rpHistoryFilter===j.id?' selected':''}>${j.label}</option>`).join('')}
+            <option value="null"${rpHistoryFilter===null?' selected':''}>Income &amp; Expenses</option>
+          </select>
+        </div>
+      </div>
+      ${!entries.length ? '<div class="empty-state">No entries.</div>' : entries.map(rpHistoryEntryHTML).join('')}
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 1.25rem;border-top:1px solid var(--border)">
+        <button class="pill-btn" ${rpHistoryPage<=1?'disabled':''} onclick="rpHistoryPage--;renderRpHistory()">← Prev</button>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)">Page ${rpHistoryPage} of ${totalPages}</span>
+        <button class="pill-btn" ${rpHistoryPage>=totalPages?'disabled':''} onclick="rpHistoryPage++;renderRpHistory()">Next →</button>
+      </div>
+    </section>
+  `;
 }
 
 async function wipeAndWriteCollection(colName, items) {
@@ -4939,7 +5801,7 @@ async function confirmRestore() {
     return;
   }
 
-  const btn = document.getElementById('restore-confirm-btn');
+  const btn = document.getElementById('rp-restore-btn');
   btn.disabled = true; btn.textContent = 'Restoring…';
   try {
     await archiveCurrentStateBeforeRestore();
