@@ -971,6 +971,9 @@ body.test-mode-active { padding-top: calc(2rem + 46px) !important; }
   background: rgba(11,13,11,0.88); backdrop-filter: blur(6px);
   z-index: 10001; align-items: center; justify-content: center; padding: 1.5rem;
 }
+/* stacks above the restore modal — the pre-restore archive step asks for
+   its own fresh passphrase while the restore modal is still open behind it */
+#backup-passphrase-modal { z-index: 10002; }
 .backup-modal-box {
   background: var(--surface-grad); border: 1px solid var(--border-mid);
   border-radius: var(--radius-lg); padding: 1.5rem; width: 100%; max-width: 380px;
@@ -1610,12 +1613,14 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 <!-- ── Local Backup: passphrase modal ─────────────────────── -->
 <div id="backup-passphrase-modal">
   <div class="backup-modal-box">
-    <div class="backup-modal-title">🔒 Backup passphrase</div>
-    <div class="backup-modal-desc" id="bp-purpose">Set a passphrase to encrypt your local backups. This device remembers it so you won't be asked again — but you'll still need the passphrase itself to restore from another device or browser, so don't forget it.</div>
-    <input id="backup-passphrase-input" class="backup-input" type="password" placeholder="At least 6 characters" onkeydown="if(event.key==='Enter')submitBackupPassphrase()" />
+    <div class="backup-modal-title">🔒 Set this backup's passphrase</div>
+    <div class="backup-modal-desc" id="bp-purpose">Every backup gets its own passphrase — nothing is saved on this device, so type it twice to make sure it's right, and keep it somewhere safe. Without it, this specific backup file can't be restored.</div>
+    <input id="backup-passphrase-input" class="backup-input" type="password" placeholder="At least 6 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('backup-passphrase-confirm-input').focus();}" />
+    <input id="backup-passphrase-confirm-input" class="backup-input" type="password" placeholder="Type it again to confirm" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitBackupPassphrase()" />
+    <div class="backup-error-text" id="bp-error"></div>
     <div class="backup-modal-actions">
       <button class="pill-btn" onclick="cancelBackupPassphrase()">Cancel</button>
-      <button class="pill-btn success" onclick="submitBackupPassphrase()">Confirm</button>
+      <button class="pill-btn success" onclick="submitBackupPassphrase()">Encrypt &amp; back up</button>
     </div>
   </div>
 </div>
@@ -4622,57 +4627,35 @@ function closePurchaseCelebration() {
 // ── Local Encrypted Backup + Restore ────────────────────────
 // Disaster recovery in case Firestore data is ever lost. Manual only —
 // no automatic writes. Clicking "Back up now" encrypts (AES-GCM) the
-// full current state and downloads it. The very first time you ever
-// back up, you're asked to set a passphrase; it's derived (PBKDF2) into
-// a non-extractable key and remembered on this device from then on, so
-// backing up never asks again. Restoring always asks for the passphrase
-// fresh — it's the deliberate gate before a real overwrite. Restore lets
-// you paste an encrypted backup back in, preview it decrypted, then
+// full current state and downloads it. Every single backup — including
+// the automatic safety snapshot taken right before a restore overwrites
+// anything — asks for a brand-new passphrase, typed once and then again
+// to confirm they match. That passphrase is stretched (PBKDF2, fresh
+// random salt) into a one-time AES-256 key that lives only in the local
+// variables of the call that used it. Nothing is ever written to
+// IndexedDB, localStorage, or anywhere else on-device, so there's no
+// remembered key to reset or to worry about someone else on this device
+// reusing — the key is trashed the moment the function returns.
+// Forgetting a backup's passphrase means that specific backup file is
+// unrecoverable; that's the deliberate tradeoff for never persisting
+// key material. Restore lets you paste an encrypted backup back in,
+// type the passphrase it was made with, preview it decrypted, then
 // overwrite live Firestore data after a Google re-auth prompt. The
-// pre-restore state is archived first so a bad restore is undoable.
-// Backups and restores are both disabled while test mode is active —
-// sandbox data must never get written into a real backup, and a real
-// restore must never fire while you're looking at fake numbers.
+// pre-restore state is archived first (under its own new passphrase)
+// so a bad restore is undoable. Backups and restores are both disabled
+// while test mode is active — sandbox data must never get written into
+// a real backup, and a real restore must never fire while you're
+// looking at fake numbers.
 // ══════════════════════════════════════════════════════════
 
 const BACKUP_MAGIC = 'FMBK1';
 const PBKDF2_ITERATIONS = 250000;
 
-let backupSessionKey   = null;  // CryptoKey, derived once ever, then remembered on-device
-let backupSessionSalt  = null;  // Uint8Array paired with the key above
 let backupPassResolve  = null;
 let backupPassReject   = null;
 let backupInFlight     = false; // guards against a double-click firing two downloads
 let backupLastAt = null;        // Date of most recent successful local backup
 let pendingRestorePayload = null;
-
-/* ---- tiny IndexedDB wrapper (only place a FileSystemFileHandle can be persisted) ---- */
-function idbOpen() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('fm-backup', 1);
-    req.onupgradeneeded = () => req.result.createObjectStore('kv');
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-async function idbSet(key, val) {
-  const db_ = await idbOpen();
-  return new Promise((resolve, reject) => {
-    const tx = db_.transaction('kv', 'readwrite');
-    tx.objectStore('kv').put(val, key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-async function idbGet(key) {
-  const db_ = await idbOpen();
-  return new Promise((resolve, reject) => {
-    const tx = db_.transaction('kv', 'readonly');
-    const req = tx.objectStore('kv').get(key);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => reject(req.error);
-  });
-}
 
 /* ---- crypto helpers ---- */
 function bufToB64(buf) {
@@ -4698,37 +4681,45 @@ async function deriveBackupKey(passphrase, saltBytes) {
   );
 }
 
-/* ---- passphrase modal (armed once per tab session, held only in memory) ---- */
+/* ---- passphrase modal: always prompts fresh, never reuses a prior key ----
+   Resolves with a one-time { key, salt } pair for the caller to encrypt
+   with immediately. Nothing here is stored — once the caller is done
+   with them, key and salt simply fall out of scope and are gone. ---- */
 function ensureBackupArmed() {
-  if (backupSessionKey) return Promise.resolve();
   return new Promise((resolve, reject) => {
     backupPassResolve = resolve;
     backupPassReject = reject;
     document.getElementById('backup-passphrase-input').value = '';
+    document.getElementById('backup-passphrase-confirm-input').value = '';
+    document.getElementById('bp-error').style.display = 'none';
     document.getElementById('backup-passphrase-modal').style.display = 'flex';
     setTimeout(() => document.getElementById('backup-passphrase-input').focus(), 50);
   });
 }
 async function submitBackupPassphrase() {
+  const errEl = document.getElementById('bp-error');
   const val = document.getElementById('backup-passphrase-input').value;
-  if (!val || val.length < 6) { toast('Use at least 6 characters'); return; }
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  try {
-    backupSessionKey = await deriveBackupKey(val, salt);
-    backupSessionSalt = salt;
-    try { await idbSet('backupKey', backupSessionKey); await idbSet('backupSalt', salt); } catch (e2) { /* remembering failed — will just ask again next time */ }
-    document.getElementById('backup-passphrase-modal').style.display = 'none';
-    if (backupPassResolve) backupPassResolve();
-  } catch (e) {
-    toast('Could not set up encryption — try again');
+  const confirmVal = document.getElementById('backup-passphrase-confirm-input').value;
+  if (!val || val.length < 6) {
+    errEl.textContent = 'Use at least 6 characters.'; errEl.style.display = 'block';
+    return;
   }
-}
-async function resetBackupPassphrase() {
-  backupSessionKey = null;
-  backupSessionSalt = null;
-  try { await idbSet('backupKey', null); await idbSet('backupSalt', null); } catch (e) { /* ignore */ }
-  toast('Passphrase forgotten — next backup will ask you to set a new one');
-  renderBackupPanel();
+  if (val !== confirmVal) {
+    errEl.textContent = "Those don't match — type both the same.";
+    errEl.style.display = 'block';
+    document.getElementById('backup-passphrase-confirm-input').value = '';
+    document.getElementById('backup-passphrase-confirm-input').focus();
+    return;
+  }
+  errEl.style.display = 'none';
+  try {
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const key = await deriveBackupKey(val, salt);
+    document.getElementById('backup-passphrase-modal').style.display = 'none';
+    if (backupPassResolve) backupPassResolve({ key, salt });
+  } catch (e) {
+    errEl.textContent = 'Could not set up encryption — try again.'; errEl.style.display = 'block';
+  }
 }
 function cancelBackupPassphrase() {
   document.getElementById('backup-passphrase-modal').style.display = 'none';
@@ -4750,12 +4741,13 @@ async function buildBackupPayload() {
     data: { balances, clients, lawnEvents, otherMoney, wishlist, pockets, pocketRules, recurringRules, historyLog: fullHistory }
   };
 }
-async function encryptBackupPayload(payloadObj) {
-  await ensureBackupArmed();
+async function encryptBackupPayload(payloadObj, key, salt) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const plaintext = new TextEncoder().encode(JSON.stringify(payloadObj));
-  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, backupSessionKey, plaintext);
-  return `${BACKUP_MAGIC}:${bufToB64(backupSessionSalt)}:${bufToB64(iv)}:${bufToB64(ciphertext)}`;
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, plaintext);
+  // key/salt are only ever local variables passed in by the caller — nothing
+  // module-level holds onto them, so there's nothing left to trash by hand.
+  return `${BACKUP_MAGIC}:${bufToB64(salt)}:${bufToB64(iv)}:${bufToB64(ciphertext)}`;
 }
 async function decryptBackupBlob(blobStr, passphrase) {
   const parts = (blobStr || '').trim().split(':');
@@ -4786,12 +4778,7 @@ function downloadBackupBlob(blobStr) {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
-async function initLocalBackup() {
-  try {
-    const storedKey = await idbGet('backupKey');
-    const storedSalt = await idbGet('backupSalt');
-    if (storedKey && storedSalt) { backupSessionKey = storedKey; backupSessionSalt = storedSalt; }
-  } catch (e) { /* ignore — first backup ever will just ask for a passphrase to set */ }
+function initLocalBackup() {
   updateBackupBadge();
 }
 
@@ -4799,11 +4786,12 @@ async function runLocalBackup() {
   if (!currentUser || testMode) return; // never back up sandbox data
   if (backupInFlight) return; // one click, one download
 
-  try { await ensureBackupArmed(); } catch (e) { return; } // dismissed the one-time passphrase-set prompt
+  let armed;
+  try { armed = await ensureBackupArmed(); } catch (e) { return; } // cancelled the passphrase prompt
 
   backupInFlight = true;
   try {
-    const blob = await encryptBackupPayload(await buildBackupPayload());
+    const blob = await encryptBackupPayload(await buildBackupPayload(), armed.key, armed.salt);
     downloadBackupBlob(blob);
     backupLastAt = new Date();
     updateBackupBadge();
@@ -4849,10 +4837,9 @@ function renderBackupPanel() {
   }
   const lastText = backupLastAt ? backupLastAt.toLocaleTimeString() : 'never yet';
   panel.innerHTML = `
-    <div class="backup-panel-status">Downloads an encrypted backup file.<br>Last backup: ${lastText}</div>
+    <div class="backup-panel-status">Downloads an encrypted backup file.<br>You'll set a new passphrase for it each time.<br>Last backup: ${lastText}</div>
     <button class="pill-btn" onclick="runLocalBackup();toggleBackupPanel()">Back up now</button>
     <button class="pill-btn" onclick="openRestoreModal();toggleBackupPanel()">Restore from backup…</button>
-    ${backupSessionKey ? `<button class="pill-btn" style="opacity:0.7" onclick="resetBackupPassphrase()">Reset passphrase</button>` : ''}
   `;
 }
 
@@ -4932,7 +4919,8 @@ async function restoreFullState(data) {
 }
 async function archiveCurrentStateBeforeRestore() {
   try {
-    const blob = await encryptBackupPayload(await buildBackupPayload());
+    const armed = await ensureBackupArmed(); // its own new passphrase, same as any other backup
+    const blob = await encryptBackupPayload(await buildBackupPayload(), armed.key, armed.salt);
     await userDoc().collection('restoreArchive').doc(String(Date.now())).set({ createdAt: new Date().toISOString(), blob });
   } catch (e) {
     console.error('Pre-restore archive failed (continuing anyway):', e);
