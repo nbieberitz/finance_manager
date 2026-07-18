@@ -1113,6 +1113,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
         Income &amp; Expenses
       </div>
       <div class="header-actions">
+        <button class="pill-btn" tabindex="-1" onclick="event.stopPropagation(); showFullHistory(1, null)">Full history</button>
         <button class="pill-btn" tabindex="-1">+ Add entry</button>
       </div>
     </div>
@@ -2885,7 +2886,7 @@ function renderHistory() {
   }
   wrap.innerHTML = historyLog.slice(0, 30).map(historyEntryHTML).join('');
   const extras = [];
-  if (historyLog.length > 30) extras.push(`<button class="pill-btn" onclick="showFullHistory(1, null)">Full history — ${historyLog.length}${allHistoryLoaded?'':'+' } entries</button>`);
+  if (historyLog.length > 30) extras.push(`<button class="pill-btn" onclick="showFullHistory(1, 'all')">Full history — ${historyLog.length}${allHistoryLoaded?'':'+' } entries</button>`);
   if (!allHistoryLoaded) extras.push(`<button class="pill-btn" onclick="loadMoreHistory()">Load more…</button>`);
   if (extras.length) wrap.innerHTML += `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center;display:flex;gap:8px;justify-content:center">${extras.join('')}</div>`;
 }
@@ -2919,18 +2920,21 @@ function renderAllHistory() {
 
 let fullHistoryPage = 1;
 const FH_PAGE_SIZE = 50;
-let fhJobFilter; // undefined = not yet set; null = showing all jobs; job id = scoped to that job
+let fhJobFilter; // undefined = not yet set; 'all' = every entry; null = income/expenses (job:null); job id = scoped to that job
 
 function showFullHistory(page, jobFilter) {
   if (jobFilter !== undefined) fhJobFilter = jobFilter;
-  const list = fhJobFilter ? historyLog.filter(h => getEntryJob(h) === fhJobFilter) : historyLog;
+  const list = fhJobFilter === 'all' ? historyLog : historyLog.filter(h => getEntryJob(h) === fhJobFilter);
   const totalPages = Math.ceil(list.length / FH_PAGE_SIZE);
   fullHistoryPage = Math.max(1, Math.min(page, Math.max(1, totalPages)));
   const start = (fullHistoryPage - 1) * FH_PAGE_SIZE;
   const entries = list.slice(start, start + FH_PAGE_SIZE);
   const loadMoreBtn = !allHistoryLoaded
     ? `<button class="pill-btn" style="margin-top:8px" onclick="loadMoreHistory()">Load more from server…</button>` : '';
-  document.getElementById('fh-title').textContent = fhJobFilter ? `Full History — ${getJob(fhJobFilter).label}` : 'Full History — All Jobs';
+  document.getElementById('fh-title').textContent =
+    fhJobFilter === 'all' ? 'Full History — All Jobs'
+    : fhJobFilter === null ? 'Full History — Income & Expenses'
+    : `Full History — ${getJob(fhJobFilter).label}`;
   document.getElementById('fh-entries').innerHTML = (entries.length
     ? entries.map(historyEntryHTML).join('')
     : '<div class="empty-state">No entries.</div>') + loadMoreBtn;
