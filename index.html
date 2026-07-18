@@ -1787,10 +1787,7 @@ function loadFromFirestore() {
 let saveTimer;
 function save() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    await saveToFirestore();
-    runLocalBackup(); // fire-and-forget: encrypted local backup, throttled internally, no-ops in test mode
-  }, 800);
+  saveTimer = setTimeout(saveToFirestore, 800);
 }
 
 async function loadMoreHistory() {
@@ -4623,14 +4620,16 @@ function closePurchaseCelebration() {
 
 // ══════════════════════════════════════════════════════════
 // ── Local Encrypted Backup + Restore ────────────────────────
-// Disaster recovery in case Firestore data is ever lost. On every
-// autosave, the current full state gets encrypted (AES-GCM, key from
-// a passphrase you set) and written either to a single file you pick
-// once (Chrome/Edge desktop — via File System Access API) or, as a
-// universal fallback, downloaded into your Downloads folder. Restore
-// lets you paste an encrypted backup back in, preview it decrypted,
-// then overwrite live Firestore data after a Google re-auth prompt.
-// The pre-restore state is archived first so a bad restore is undoable.
+// Disaster recovery in case Firestore data is ever lost. Manual only —
+// no automatic writes. Clicking "Back up now" encrypts (AES-GCM) the
+// full current state and downloads it. The very first time you ever
+// back up, you're asked to set a passphrase; it's derived (PBKDF2) into
+// a non-extractable key and remembered on this device from then on, so
+// backing up never asks again. Restoring always asks for the passphrase
+// fresh — it's the deliberate gate before a real overwrite. Restore lets
+// you paste an encrypted backup back in, preview it decrypted, then
+// overwrite live Firestore data after a Google re-auth prompt. The
+// pre-restore state is archived first so a bad restore is undoable.
 // Backups and restores are both disabled while test mode is active —
 // sandbox data must never get written into a real backup, and a real
 // restore must never fire while you're looking at fake numbers.
@@ -4638,17 +4637,12 @@ function closePurchaseCelebration() {
 
 const BACKUP_MAGIC = 'FMBK1';
 const PBKDF2_ITERATIONS = 250000;
-const BACKUP_FILE_MIN_INTERVAL_MS = 3000;        // coalesce rapid edits when writing to the picked file
-const BACKUP_DOWNLOAD_MIN_INTERVAL_MS = 5*60*1000; // avoid flooding Downloads: at most once per 5 min
 
-let backupSessionKey   = null;  // CryptoKey, derived once per tab session
+let backupSessionKey   = null;  // CryptoKey, derived once ever, then remembered on-device
 let backupSessionSalt  = null;  // Uint8Array paired with the key above
 let backupPassResolve  = null;
 let backupPassReject   = null;
-let backupFileHandle   = null;  // FileSystemFileHandle, if one's been picked
-let backupFileArmed    = false; // true once write permission is confirmed THIS session
-let backupLastFileWriteAt = 0;
-let backupLastDownloadAt  = 0;
+let backupInFlight     = false; // guards against a double-click firing two downloads
 let backupLastAt = null;        // Date of most recent successful local backup
 let pendingRestorePayload = null;
 
@@ -4781,9 +4775,7 @@ async function decryptBackupBlob(blobStr, passphrase) {
   return payload;
 }
 
-/* ---- where the encrypted blob actually goes ---- */
-function supportsFileSystemAccess() { return 'showSaveFilePicker' in window; }
-
+/* ---- writes the encrypted blob to the Downloads folder ---- */
 function downloadBackupBlob(blobStr) {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const file = new Blob([blobStr], { type: 'text/plain' });
@@ -4794,109 +4786,35 @@ function downloadBackupBlob(blobStr) {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
-async function setupLocalBackupFile() {
-  if (testMode) { toast('Exit test mode first'); return; }
-  if (!supportsFileSystemAccess()) {
-    localStorage.setItem('fm_backup_configured', '1');
-    toast('This browser only supports the Downloads-folder method — that\'s now active');
-    updateBackupBadge();
-    return;
-  }
-  try {
-    const handle = await window.showSaveFilePicker({
-      suggestedName: 'finance-manager-backup.txt',
-      types: [{ description: 'Encrypted backup', accept: { 'text/plain': ['.txt'] } }]
-    });
-    await idbSet('backupFileHandle', handle);
-    backupFileHandle = handle;
-    backupFileArmed = true;
-    localStorage.setItem('fm_backup_configured', '1');
-    toast('Local backup file connected ✓');
-    updateBackupBadge();
-    runLocalBackup({ force: true });
-  } catch (e) {
-    if (e.name !== 'AbortError') console.error('setupLocalBackupFile:', e);
-  }
-}
-
-async function reconnectLocalBackupFile() {
-  if (testMode) { toast('Exit test mode first'); return; }
-  if (!backupFileHandle) return setupLocalBackupFile();
-  try {
-    const status = await backupFileHandle.requestPermission({ mode: 'readwrite' });
-    backupFileArmed = (status === 'granted');
-    updateBackupBadge();
-    if (backupFileArmed) { toast('Local backup file reconnected ✓'); runLocalBackup({ force: true }); }
-    else toast('Permission not granted — using Downloads instead this session');
-  } catch (e) {
-    toast('Could not reconnect — using Downloads instead this session');
-  }
-}
-
 async function initLocalBackup() {
-  try {
-    const handle = await idbGet('backupFileHandle');
-    if (handle) {
-      backupFileHandle = handle;
-      const status = await handle.queryPermission({ mode: 'readwrite' });
-      backupFileArmed = (status === 'granted');
-    }
-  } catch (e) { /* ignore — badge will just prompt setup */ }
   try {
     const storedKey = await idbGet('backupKey');
     const storedSalt = await idbGet('backupSalt');
     if (storedKey && storedSalt) { backupSessionKey = storedKey; backupSessionSalt = storedSalt; }
-  } catch (e) { /* ignore — first backup this session will just ask for the passphrase */ }
+  } catch (e) { /* ignore — first backup ever will just ask for a passphrase to set */ }
   updateBackupBadge();
 }
 
-async function runLocalBackup(opts = {}) {
-  const force = !!opts.force;
+async function runLocalBackup() {
   if (!currentUser || testMode) return; // never back up sandbox data
+  if (backupInFlight) return; // one click, one download
 
-  try { await ensureBackupArmed(); } catch (e) { return; } // dismissed — skip, next trigger will retry
+  try { await ensureBackupArmed(); } catch (e) { return; } // dismissed the one-time passphrase-set prompt
 
-  const now = Date.now();
-  const useFile = backupFileHandle && backupFileArmed;
-  if (useFile && !force && (now - backupLastFileWriteAt) < BACKUP_FILE_MIN_INTERVAL_MS) return;
-  if (!useFile && !force && (now - backupLastDownloadAt) < BACKUP_DOWNLOAD_MIN_INTERVAL_MS) return;
-
-  let blob;
+  backupInFlight = true;
   try {
-    blob = await encryptBackupPayload(await buildBackupPayload());
+    const blob = await encryptBackupPayload(await buildBackupPayload());
+    downloadBackupBlob(blob);
+    backupLastAt = new Date();
+    updateBackupBadge();
+    toast('Backup downloaded ✓');
   } catch (e) {
     console.error('Local backup: build/encrypt failed', e);
-    return;
-  }
-
-  if (useFile) {
-    try {
-      const writable = await backupFileHandle.createWritable();
-      await writable.write(blob);
-      await writable.close();
-      backupLastFileWriteAt = now; backupLastAt = new Date();
-      updateBackupBadge();
-    } catch (e) {
-      console.error('Local backup: file write failed, falling back to a download', e);
-      backupFileArmed = false;
-      downloadBackupBlob(blob);
-      backupLastDownloadAt = now; backupLastAt = new Date();
-      updateBackupBadge();
-    }
-  } else {
-    downloadBackupBlob(blob);
-    backupLastDownloadAt = now; backupLastAt = new Date();
-    updateBackupBadge();
+    toast('Backup failed — check the console');
+  } finally {
+    backupInFlight = false;
   }
 }
-
-// Best-effort extra flush the moment the tab is backgrounded/closed — only if
-// already armed this session, so this never pops a passphrase prompt on exit.
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden' && currentUser && backupSessionKey && !testMode) {
-    runLocalBackup({ force: true });
-  }
-});
 
 /* ---- header badge + panel ---- */
 function updateBackupBadge() {
@@ -4906,17 +4824,12 @@ function updateBackupBadge() {
   badge.style.display = 'inline-flex';
   badge.classList.remove('ok', 'warn');
   if (testMode) { label.textContent = 'Backup: paused (test)'; badge.classList.add('warn'); return; }
-  if (backupFileHandle && backupFileArmed) { label.textContent = 'Backup: file'; badge.classList.add('ok'); }
-  else if (backupFileHandle && !backupFileArmed) { label.textContent = 'Backup: reconnect'; badge.classList.add('warn'); }
-  else if (localStorage.getItem('fm_backup_configured')) { label.textContent = 'Backup: downloads'; badge.classList.add('ok'); }
-  else { label.textContent = 'Set up backup'; badge.classList.add('warn'); }
+  label.textContent = 'Backup';
 }
 
 function toggleBackupPanel() {
   const panel = document.getElementById('backup-panel');
   if (panel.style.display === 'flex') { panel.style.display = 'none'; return; }
-  // Reconnect state has one obvious action — skip the panel and use this click directly.
-  if (!testMode && backupFileHandle && !backupFileArmed) { reconnectLocalBackupFile(); return; }
   renderBackupPanel();
   panel.style.display = 'flex';
 }
@@ -4934,16 +4847,10 @@ function renderBackupPanel() {
     panel.innerHTML = `<div class="backup-panel-status">Backups are paused while test mode is on — sandbox data never gets backed up or restored over your real account. Exit test mode to resume.</div>`;
     return;
   }
-  const modeText = (backupFileHandle && backupFileArmed) ? 'Writing to your picked file'
-    : (backupFileHandle && !backupFileArmed) ? 'File picked, needs reconnect'
-    : localStorage.getItem('fm_backup_configured') ? 'Using Downloads folder'
-    : 'Not set up yet';
   const lastText = backupLastAt ? backupLastAt.toLocaleTimeString() : 'never yet';
   panel.innerHTML = `
-    <div class="backup-panel-status"><strong>${modeText}</strong><br>Last backup: ${lastText}</div>
-    <button class="pill-btn" onclick="runLocalBackup({force:true});toggleBackupPanel()">Back up now</button>
-    ${!backupFileHandle && supportsFileSystemAccess() ? `<button class="pill-btn" onclick="setupLocalBackupFile();toggleBackupPanel()">Connect a backup file</button>` : ''}
-    ${backupFileHandle && !backupFileArmed ? `<button class="pill-btn success" onclick="reconnectLocalBackupFile();toggleBackupPanel()">Reconnect file</button>` : ''}
+    <div class="backup-panel-status">Downloads an encrypted backup file.<br>Last backup: ${lastText}</div>
+    <button class="pill-btn" onclick="runLocalBackup();toggleBackupPanel()">Back up now</button>
     <button class="pill-btn" onclick="openRestoreModal();toggleBackupPanel()">Restore from backup…</button>
     ${backupSessionKey ? `<button class="pill-btn" style="opacity:0.7" onclick="resetBackupPassphrase()">Reset passphrase</button>` : ''}
   `;
