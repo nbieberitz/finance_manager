@@ -68,18 +68,36 @@
   --blue-dim: #3B82F6;
   --blue-pale: #0A1628;
   --blue-border: #0F2040;
+  --blue-glow: rgba(96,165,250,0.35);
 
   --purple: #C084FC;
   --purple-bright: #D8B4FE;
   --purple-dim: #A855F7;
   --purple-pale: #1A0A2A;
   --purple-border: #2A1040;
+  --purple-glow: rgba(192,132,252,0.35);
+
+  --rose: #FB7185;
+  --rose-bright: #FDA4AF;
+  --rose-dim: #E11D48;
+  --rose-pale: #2A0A14;
+  --rose-border: #3D1020;
+  --rose-glow: rgba(251,113,133,0.35);
+
+  --teal: #2DD4BF;
+  --teal-bright: #5EEAD4;
+  --teal-dim: #0D9488;
+  --teal-pale: #042A24;
+  --teal-border: #0A3D34;
+  --teal-glow: rgba(45,212,191,0.35);
 
   --grad-accent: linear-gradient(135deg, var(--accent-bright), var(--accent) 60%, var(--accent-dim));
   --grad-green:  linear-gradient(135deg, var(--green-bright), var(--green) 60%, var(--green-dim));
   --grad-blue:   linear-gradient(135deg, var(--blue-bright), var(--blue) 60%, var(--blue-dim));
   --grad-red:    linear-gradient(135deg, var(--red-bright), var(--red) 60%, var(--red-dim));
   --grad-purple: linear-gradient(135deg, var(--purple-bright), var(--purple) 60%, var(--purple-dim));
+  --grad-rose:   linear-gradient(135deg, var(--rose-bright), var(--rose) 60%, var(--rose-dim));
+  --grad-teal:   linear-gradient(135deg, var(--teal-bright), var(--teal) 60%, var(--teal-dim));
 
   --shadow-card: 0 1px 0 rgba(255,255,255,0.035) inset, 0 14px 32px -22px rgba(0,0,0,0.7);
   --shadow-pop: 0 24px 60px -20px rgba(0,0,0,0.75);
@@ -785,14 +803,22 @@ html.is-mobile body { padding: 0; }
 }
 .m-home-btn {
   aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 12px; background: var(--surface-grad); border: 1px solid var(--border-mid);
-  border-radius: var(--radius-lg); box-shadow: var(--shadow-card); color: var(--text);
-  font-family: 'Syne', sans-serif; font-size: 14.5px; font-weight: 500; text-align: center;
+  gap: 12px; border: 1px solid rgba(255,255,255,0.14);
+  border-radius: var(--radius-lg); color: var(--text);
+  font-family: 'Syne', sans-serif; font-size: 14.5px; font-weight: 600; text-align: center;
   padding: 1rem; cursor: pointer;
-  transition: border-color 0.2s var(--ease), transform 0.15s var(--ease);
+  transition: transform 0.15s var(--ease), box-shadow 0.2s var(--ease);
 }
-.m-home-btn:active { transform: scale(0.95); border-color: var(--accent); }
-.m-home-btn svg { width: 30px; height: 30px; stroke: var(--green); fill: none; stroke-width: 1.6; flex-shrink: 0; }
+.m-home-btn:hover { transform: translateY(-2px); }
+.m-home-btn:active { transform: scale(0.95); }
+.m-home-btn svg { width: 30px; height: 30px; stroke: currentColor; fill: none; stroke-width: 1.7; flex-shrink: 0; }
+
+.m-home-btn.c-accent { background: var(--grad-accent); color: var(--accent-pale); box-shadow: var(--shadow-card), 0 14px 28px -16px var(--accent-glow); }
+.m-home-btn.c-purple { background: var(--grad-purple); color: var(--text);        box-shadow: var(--shadow-card), 0 14px 28px -16px var(--purple-glow); }
+.m-home-btn.c-green  { background: var(--grad-green);  color: var(--green-pale); box-shadow: var(--shadow-card), 0 14px 28px -16px var(--green-glow); }
+.m-home-btn.c-blue   { background: var(--grad-blue);   color: var(--text);        box-shadow: var(--shadow-card), 0 14px 28px -16px var(--blue-glow); }
+.m-home-btn.c-rose   { background: var(--grad-rose);   color: var(--text);        box-shadow: var(--shadow-card), 0 14px 28px -16px var(--rose-glow); }
+.m-home-btn.c-teal   { background: var(--grad-teal);   color: var(--teal-pale);  box-shadow: var(--shadow-card), 0 14px 28px -16px var(--teal-glow); }
 
 /* ── Shared page chrome ───────────────────────────────────── */
 .m-topbar {
@@ -1901,27 +1927,27 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
   <div class="m-screen" id="m-screen-home">
     <div class="m-home-header"><div class="m-logo" style="font-size:1.6rem">Finance Manager</div></div>
     <div class="m-home-grid">
-      <button class="m-home-btn" onclick="mShowPage('overview')">
+      <button class="m-home-btn c-accent" onclick="mShowPage('overview')">
         <svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-8M21 8h-6v6"/></svg>
         Finance Overview
       </button>
-      <button class="m-home-btn" onclick="mShowPage('pockets')">
+      <button class="m-home-btn c-purple" onclick="mShowPage('pockets')">
         <svg viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0016.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 002 8.5c0 2.29 1.51 4.04 3 5.5l7 7z"/></svg>
         Pockets
       </button>
-      <button class="m-home-btn" onclick="mShowPage('jobs')">
+      <button class="m-home-btn c-green" onclick="mShowPage('jobs')">
         <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
         Jobs
       </button>
-      <button class="m-home-btn" onclick="mShowPage('income')">
+      <button class="m-home-btn c-blue" onclick="mShowPage('income')">
         <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
         Income &amp; Expenses
       </button>
-      <button class="m-home-btn" onclick="mShowPage('wishlist')">
+      <button class="m-home-btn c-rose" onclick="mShowPage('wishlist')">
         <svg viewBox="0 0 24 24"><path d="M6 2l-3 4v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
         My Wishlist
       </button>
-      <button class="m-home-btn" onclick="mShowPage('history')">
+      <button class="m-home-btn c-teal" onclick="mShowPage('history')">
         <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
         All History
       </button>
