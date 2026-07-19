@@ -3,6 +3,23 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script>
+// ── Device detection ──────────────────────────────────────
+// Runs synchronously before anything else loads so there's no
+// flash of the wrong layout. Combines device type (covers real
+// phones/tablets, including iPadOS which reports as "Macintosh"
+// but exposes touch points) with a width fallback (so narrowing
+// a desktop browser also previews the mobile build).
+(function () {
+  var ua = navigator.userAgent || '';
+  var uaIsMobile = /Android|iPhone|iPod|iPad|BlackBerry|IEMobile|Opera Mini|Windows Phone|Mobile|Tablet|Silk|Kindle/i.test(ua);
+  var isIPadOS = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+  var widthIsMobile = window.innerWidth <= 1024;
+  var isMobile = uaIsMobile || isIPadOS || widthIsMobile;
+  if (isMobile) document.documentElement.classList.add('is-mobile');
+  window.IS_MOBILE_DEVICE = isMobile;
+})();
+</script>
 <title>Finance Manager</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -722,6 +739,114 @@ tr:hover td { background: var(--surface2); }
 .trend-charts-grid { display:grid; grid-template-columns:1.3fr 1fr; gap:14px; }
 @media (max-width:760px) { .trend-charts-grid { grid-template-columns:1fr; } }
 
+/* ══════════════════════════════════════════════════════════
+   MOBILE BUILD
+   Shown instead of the desktop app whenever a phone or tablet
+   is detected (see the detection script at the top of <head>).
+   Reuses the same colors, fonts, and card styles defined above
+   — only the layout differs. Nothing above this block changes
+   for the PC build.
+   ══════════════════════════════════════════════════════════ */
+#mobile-app { display: none; }
+html.is-mobile #pc-app { display: none !important; }
+html.is-mobile #mobile-app { display: block !important; }
+html.is-mobile body { padding: 0; }
+
+.m-screen { display: none; min-height: 100vh; flex-direction: column; }
+.m-screen.active { display: flex; }
+
+/* ── Auth screen ─────────────────────────────────────────── */
+.m-auth {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 2.4rem; padding: 2rem 1.5rem; text-align: center;
+}
+.m-logo {
+  font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 600; letter-spacing: -0.02em;
+  background: linear-gradient(100deg, var(--green-bright) 0%, var(--green) 35%, var(--accent) 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 18px rgba(74,222,128,0.16));
+}
+.m-signin-btn {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; max-width: 320px; padding: 16px 22px;
+  font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 500; color: var(--text);
+  background: var(--surface-grad); border: 1px solid var(--border-mid); border-radius: var(--radius);
+  box-shadow: var(--shadow-card); cursor: pointer;
+  transition: border-color 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.m-signin-btn:hover { border-color: var(--accent); transform: translateY(-2px); }
+.m-signin-btn:active { transform: scale(0.97); }
+
+/* ── Home screen ─────────────────────────────────────────── */
+.m-home-header { padding: 3rem 1.5rem 0.5rem; text-align: center; flex-shrink: 0; }
+.m-home-grid {
+  flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  padding: 1.5rem 1.25rem 2.5rem; align-content: start;
+}
+.m-home-btn {
+  aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; background: var(--surface-grad); border: 1px solid var(--border-mid);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-card); color: var(--text);
+  font-family: 'Syne', sans-serif; font-size: 14.5px; font-weight: 500; text-align: center;
+  padding: 1rem; cursor: pointer;
+  transition: border-color 0.2s var(--ease), transform 0.15s var(--ease);
+}
+.m-home-btn:active { transform: scale(0.95); border-color: var(--accent); }
+.m-home-btn svg { width: 30px; height: 30px; stroke: var(--green); fill: none; stroke-width: 1.6; flex-shrink: 0; }
+
+/* ── Shared page chrome ───────────────────────────────────── */
+.m-topbar {
+  display: flex; align-items: center; gap: 12px; padding: 1rem 1.25rem;
+  position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--border); z-index: 20; flex-shrink: 0;
+}
+.m-back-btn {
+  display: flex; align-items: center; gap: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  color: var(--text-muted); background: var(--surface2); border: 1px solid var(--border-mid);
+  border-radius: var(--radius-pill); padding: 7px 14px; cursor: pointer; flex-shrink: 0;
+  transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.m-back-btn:active { transform: scale(0.95); }
+.m-topbar-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-page-body { flex: 1; padding: 1.1rem 1.25rem 3rem; min-width: 0; overflow-x: hidden; }
+
+/* ── Finance Overview ─────────────────────────────────────── */
+.m-overview-list { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.m-overview-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.m-overview-pair .metric, .m-overview-list .metric { min-width: 0; }
+
+/* ── Generic list card (Pockets / Jobs / Wishlist / Income) ── */
+.m-card {
+  background: var(--surface-grad); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0.95rem 1.1rem; box-shadow: var(--shadow-card); margin-bottom: 10px; min-width: 0;
+}
+.m-card-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.m-card-title { font-weight: 500; flex: 1; min-width: 0; overflow-wrap: break-word; }
+.m-card-value { font-family: 'JetBrains Mono', monospace; font-size: 13px; white-space: nowrap; }
+.m-card-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 5px; line-height: 1.5; overflow-wrap: break-word; }
+.m-section-label {
+  font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.05em; margin: 1.5rem 0 0.7rem;
+}
+.m-section-label:first-child { margin-top: 0; }
+.m-progress-track { height: 5px; border-radius: 999px; background: var(--surface3); overflow: hidden; margin-top: 9px; }
+.m-progress-fill { height: 100%; border-radius: 999px; }
+.m-summary-line { font-size: 12px; color: var(--text-muted); margin-bottom: 10px; }
+.m-expand-toggle {
+  background: none; border: none; color: var(--text-faint); font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; cursor: pointer; padding: 6px 0 0; width: 100%; text-align: left;
+}
+.m-sub-rows { display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.m-sub-rows.open { display: block; }
+.m-sub-row { display: flex; justify-content: space-between; gap: 8px; padding: 7px 0; font-size: 12.5px; border-bottom: 1px solid var(--border); }
+.m-sub-row:last-child { border-bottom: none; }
+.m-sub-row-main { flex: 1; min-width: 0; color: var(--text-muted); overflow-wrap: break-word; }
+.m-sub-row-amt { font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+
+@media (max-width: 380px) {
+  .m-home-btn { font-size: 12.5px; gap: 8px; }
+  .m-home-btn svg { width: 26px; height: 26px; }
+}
+
 .trend-card { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:0.9rem 1rem 1rem; }
 .trend-card-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .trend-card-title { font-size:11px; font-weight:500; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-faint); }
@@ -1049,6 +1174,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 </style>
 </head>
 <body>
+<div id="pc-app">
 
 <div id="test-mode-banner" class="test-mode-banner">
   <div style="display:flex;align-items:center;gap:10px;min-width:0">
@@ -1752,6 +1878,113 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
     <button class="celebration-close" onclick="closePurchaseCelebration()">Done &nbsp;🎊</button>
   </div>
 </div>
+
+</div><!-- /#pc-app -->
+
+<!-- ══════════════════════════════════════════════════════════
+     MOBILE BUILD — shown instead of #pc-app on phones/tablets.
+     ══════════════════════════════════════════════════════════ -->
+<div id="mobile-app">
+
+  <!-- Not signed in -->
+  <div class="m-screen" id="m-screen-auth">
+    <div class="m-auth">
+      <div class="m-logo">Finance Manager</div>
+      <button class="m-signin-btn" onclick="mobileSignIn()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+        Sign in with Google
+      </button>
+    </div>
+  </div>
+
+  <!-- Signed in: home -->
+  <div class="m-screen" id="m-screen-home">
+    <div class="m-home-header"><div class="m-logo" style="font-size:1.6rem">Finance Manager</div></div>
+    <div class="m-home-grid">
+      <button class="m-home-btn" onclick="mShowPage('overview')">
+        <svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-8M21 8h-6v6"/></svg>
+        Finance Overview
+      </button>
+      <button class="m-home-btn" onclick="mShowPage('pockets')">
+        <svg viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0016.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 002 8.5c0 2.29 1.51 4.04 3 5.5l7 7z"/></svg>
+        Pockets
+      </button>
+      <button class="m-home-btn" onclick="mShowPage('jobs')">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Jobs
+      </button>
+      <button class="m-home-btn" onclick="mShowPage('income')">
+        <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+        Income &amp; Expenses
+      </button>
+      <button class="m-home-btn" onclick="mShowPage('wishlist')">
+        <svg viewBox="0 0 24 24"><path d="M6 2l-3 4v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        My Wishlist
+      </button>
+      <button class="m-home-btn" onclick="mShowPage('history')">
+        <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        All History
+      </button>
+    </div>
+  </div>
+
+  <!-- Finance Overview -->
+  <div class="m-screen" id="m-screen-overview">
+    <div class="m-topbar">
+      <button class="m-back-btn" onclick="mGoHome()">← Back</button>
+      <div class="m-topbar-title">Finance Overview</div>
+    </div>
+    <div class="m-page-body">
+      <div class="m-overview-list" id="m-overview-list"></div>
+    </div>
+  </div>
+
+  <!-- Pockets -->
+  <div class="m-screen" id="m-screen-pockets">
+    <div class="m-topbar">
+      <button class="m-back-btn" onclick="mGoHome()">← Back</button>
+      <div class="m-topbar-title">Pockets</div>
+    </div>
+    <div class="m-page-body" id="m-pockets-body"></div>
+  </div>
+
+  <!-- Jobs -->
+  <div class="m-screen" id="m-screen-jobs">
+    <div class="m-topbar">
+      <button class="m-back-btn" onclick="mGoHome()">← Back</button>
+      <div class="m-topbar-title">Jobs</div>
+    </div>
+    <div class="m-page-body" id="m-jobs-body"></div>
+  </div>
+
+  <!-- Income & Expenses -->
+  <div class="m-screen" id="m-screen-income">
+    <div class="m-topbar">
+      <button class="m-back-btn" onclick="mGoHome()">← Back</button>
+      <div class="m-topbar-title">Income &amp; Expenses</div>
+    </div>
+    <div class="m-page-body" id="m-income-body"></div>
+  </div>
+
+  <!-- My Wishlist -->
+  <div class="m-screen" id="m-screen-wishlist">
+    <div class="m-topbar">
+      <button class="m-back-btn" onclick="mGoHome()">← Back</button>
+      <div class="m-topbar-title">My Wishlist</div>
+    </div>
+    <div class="m-page-body" id="m-wishlist-body"></div>
+  </div>
+
+  <!-- All History -->
+  <div class="m-screen" id="m-screen-history">
+    <div class="m-topbar">
+      <button class="m-back-btn" onclick="mGoHome()">← Back</button>
+      <div class="m-topbar-title">All History</div>
+    </div>
+    <div class="m-page-body" id="m-history-body"></div>
+  </div>
+
+</div><!-- /#mobile-app -->
 
 <script>
 // ── Firebase ──────────────────────────────────────────────
@@ -2857,6 +3090,7 @@ if (pocketsOpen) renderPocketsPage();
 if (recurringOpen) renderRecurringList();
 if (currentJobId === 'ca_it') renderItChecks();
 renderAllHistory();
+if (window.IS_MOBILE_DEVICE) renderMobileApp({ netCash, unpaid, check, itUncashed, paidJobs, itCashed, income, expenses, tithe, titheOwed, balances });
 }
 
 function historyEntryHTML(h) {
@@ -3844,7 +4078,7 @@ function getCashFlowEvents() {
   const flows = [];
   lawnEvents.forEach(j => {
     if (j.job === 'ca_it') {
-      if (j.status === 'cashed') flows.push({ date: j.date, amount: eventAmount(j), kind: 'income' });
+      if (j.status === 'cashed') flows.push({ date: j.dateEnd, amount: eventAmount(j), kind: 'income' });
     } else if (j.status === 'paid') {
       flows.push({ date: j.date, amount: eventAmount(j), kind: 'income' });
     }
@@ -3943,9 +4177,9 @@ function hideTrendTip() {
   if (tip) tip.style.opacity = '0';
 }
 
-function renderTrendLineChart(timeline) {
-  const wrap = document.getElementById('trend-line-wrap');
-  const badge = document.getElementById('trend-delta-badge');
+function renderTrendLineChart(timeline, wrapId = 'trend-line-wrap', badgeId = 'trend-delta-badge') {
+  const wrap = document.getElementById(wrapId);
+  const badge = document.getElementById(badgeId);
   if (!wrap) return;
   if (timeline.length < 2) {
     wrap.innerHTML = `<div class="empty-state" style="padding:2.2rem 1rem">Not enough history yet — a few more dated entries and a trend line will show up here.</div>`;
@@ -3995,8 +4229,8 @@ function renderTrendLineChart(timeline) {
   }
 }
 
-function renderTrendBarChart(monthly) {
-  const wrap = document.getElementById('trend-bar-wrap');
+function renderTrendBarChart(monthly, wrapId = 'trend-bar-wrap') {
+  const wrap = document.getElementById(wrapId);
   if (!wrap) return;
   if (!monthly.length) {
     wrap.innerHTML = `<div class="empty-state" style="padding:2.2rem 1rem">No monthly data yet.</div>`;
@@ -5815,6 +6049,253 @@ async function confirmRestore() {
   } finally {
     btn.disabled = false; btn.textContent = 'Restore this — overwrite my real data';
   }
+}
+
+// ══════════════════════════════════════════════════════════
+// MOBILE BUILD — JS
+// Additive only: reuses the same Firebase app/auth/Firestore
+// instance and the same global data (lawnEvents, otherMoney,
+// wishlist, pockets, pocketRules, clients, historyLog, JOBS,
+// balances, etc.) and helper functions (fmt, eventAmount,
+// itCheckLabel, statusBadge, getPocketColor, getWishlistItem,
+// getJob, freeAmount, buildCashTimeline, buildMonthlyTotals,
+// loadMoreHistory) as the desktop code above. View-only for
+// now — no add/edit/delete actions on this pass.
+// ══════════════════════════════════════════════════════════
+
+// ── Navigation ────────────────────────────────────────────
+function mShowPage(name) {
+  document.querySelectorAll('.m-screen').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('m-screen-' + name);
+  if (el) el.classList.add('active');
+  window.scrollTo(0, 0);
+}
+function mGoHome() { mShowPage('home'); }
+
+function mToggleSub(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('open');
+}
+
+// ── Auth ──────────────────────────────────────────────────
+// Independent of the desktop auth.onAuthStateChanged above —
+// Firebase supports multiple observers on the same event, so
+// this only decides which mobile screen to show; the existing
+// listener still owns signing currentUser in and loading data.
+function mobileSignIn() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithRedirect(provider); // redirect, not popup — far more reliable on mobile browsers
+}
+
+auth.onAuthStateChanged(user => {
+  if (!window.IS_MOBILE_DEVICE) return;
+  mShowPage(user ? 'home' : 'auth');
+});
+
+// ── Render dispatcher (called from the end of render()) ──
+function renderMobileApp(d) {
+  renderMobileOverview(d);
+  renderMobileJobs();
+  renderMobilePockets();
+  renderMobileIncomeExpenses();
+  renderMobileWishlist();
+  renderMobileHistory();
+}
+
+// ── Finance Overview ──────────────────────────────────────
+function renderMobileOverview(d) {
+  const list = document.getElementById('m-overview-list');
+  if (!list) return;
+  const owedParts = [d.unpaid>0?'$'+d.unpaid.toFixed(2)+' unpaid':'', d.check>0?'$'+d.check.toFixed(2)+' by check':'', d.itUncashed>0?'$'+d.itUncashed.toFixed(2)+' uncashed':''].filter(Boolean);
+  list.innerHTML = `
+    <div class="trend-card">
+      <div class="trend-card-head"><span class="trend-card-title">Cash over time</span><span id="m-trend-delta-badge"></span></div>
+      <div id="m-trend-line-wrap" class="trend-line-wrap"></div>
+    </div>
+    <div class="trend-card">
+      <div class="trend-card-head">
+        <span class="trend-card-title">Income vs. expenses</span>
+        <span class="trend-legend-mini"><span class="trend-legend-dot" style="background:var(--green)"></span>In <span class="trend-legend-dot" style="background:var(--red)"></span>Out</span>
+      </div>
+      <div id="m-trend-bar-wrap" class="trend-bar-wrap"></div>
+    </div>
+    <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${d.netCash.toFixed(2)}</div><div class="metric-sub">paid + payroll + income − expenses − tithe</div></div>
+    <div class="metric amber"><div class="metric-label">Owed to you</div><div class="metric-value">$${(d.unpaid+d.check+d.itUncashed).toFixed(2)}</div><div class="metric-sub">${owedParts.join(' · ') || '&nbsp;'}</div></div>
+    <div class="metric blue"><div class="metric-label">Total earned</div><div class="metric-value">$${(d.paidJobs+d.itCashed+d.income).toFixed(2)}</div><div class="metric-sub">events + payroll + other income</div></div>
+    <div class="metric red"><div class="metric-label">Expenses</div><div class="metric-value">$${d.expenses.toFixed(2)}</div><div class="metric-sub">&nbsp;</div></div>
+    <div class="metric tithe${d.titheOwed>0?' tithe-active':''}">
+      <div class="metric-label">Tithe owed</div>
+      <div class="metric-value">$${d.titheOwed.toFixed(2)}</div>
+      <div class="metric-sub">${d.titheOwed>0?`$${d.tithe.bank.toFixed(2)} bank · $${d.tithe.cash.toFixed(2)} cash`:'10% of paid events + other income'}</div>
+    </div>
+    <div class="m-overview-pair">
+      <div class="metric purple"><div class="metric-label">In bank</div><div class="metric-value">$${parseFloat(d.balances.bank).toFixed(2)}</div></div>
+      <div class="metric"><div class="metric-label">Cash on hand</div><div class="metric-value" style="color:var(--amber)">$${parseFloat(d.balances.cash).toFixed(2)}</div></div>
+    </div>
+  `;
+  // Reuses the exact desktop chart renderers, just pointed at the mobile
+  // element ids — and always the full history, since mobile has no
+  // 1M/3M/6M/1Y toggle.
+  renderTrendLineChart(buildCashTimeline(), 'm-trend-line-wrap', 'm-trend-delta-badge');
+  renderTrendBarChart(buildMonthlyTotals(), 'm-trend-bar-wrap');
+}
+
+// ── Jobs ──────────────────────────────────────────────────
+function renderMobileJobs() {
+  const wrap = document.getElementById('m-jobs-body');
+  if (!wrap) return;
+  let html = '';
+
+  html += `<div class="m-section-label">${getJob('lawn_mowing').label}</div>`;
+  const lawnClients = clients.filter(c => jobOf(c) === 'lawn_mowing');
+  if (!lawnClients.length) {
+    html += `<div class="empty-state">No clients yet.</div>`;
+  } else {
+    html += lawnClients.map(c => {
+      const openEvents = lawnEvents.filter(j => j.client === c.name && jobOf(j) === 'lawn_mowing' && j.status !== 'paid')
+        .sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+      const owed = openEvents.reduce((s,j) => s + eventAmount(j), 0);
+      const subId = 'm-sub-client-' + c.id;
+      return `<div class="m-card">
+        <div class="m-card-row">
+          <div class="m-card-title">${c.name}</div>
+          <div class="m-card-value">$${c.rate}/event</div>
+        </div>
+        ${c.note ? `<div class="m-card-sub">${c.note}</div>` : ''}
+        ${openEvents.length ? `
+          <button class="m-expand-toggle" onclick="mToggleSub('${subId}')">▾ ${openEvents.length} open event${openEvents.length>1?'s':''} · $${owed.toFixed(2)} owed</button>
+          <div class="m-sub-rows" id="${subId}">
+            ${openEvents.map(j => `<div class="m-sub-row"><span class="m-sub-row-main">${fmt(j.date)} — ${statusBadge(j.status)}</span><span class="m-sub-row-amt">$${eventAmount(j).toFixed(2)}</span></div>`).join('')}
+          </div>` : `<div class="m-card-sub">No open events</div>`}
+      </div>`;
+    }).join('');
+  }
+
+  html += `<div class="m-section-label">${getJob('ca_it').label}</div>`;
+  const uncashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'uncashed').sort((a,b) => b.dateEnd.localeCompare(a.dateEnd));
+  const cashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'cashed').sort((a,b) => b.dateEnd.localeCompare(a.dateEnd));
+  const uncashedTotal = uncashed.reduce((s,j) => s + eventAmount(j), 0);
+  const cashedTotal = cashed.reduce((s,j) => s + eventAmount(j), 0);
+  html += `<div class="m-card">
+    <div class="m-card-row"><div class="m-card-title">Uncashed checks</div><div class="m-card-value">$${uncashedTotal.toFixed(2)}</div></div>
+    ${uncashed.length ? `
+      <button class="m-expand-toggle" onclick="mToggleSub('m-sub-uncashed')">▾ ${uncashed.length} check${uncashed.length>1?'s':''}</button>
+      <div class="m-sub-rows" id="m-sub-uncashed">
+        ${uncashed.map(j => `<div class="m-sub-row"><span class="m-sub-row-main">${itCheckLabel(j)}</span><span class="m-sub-row-amt">$${eventAmount(j).toFixed(2)}</span></div>`).join('')}
+      </div>` : `<div class="m-card-sub">No uncashed checks</div>`}
+  </div>
+  <div class="m-card">
+    <div class="m-card-row"><div class="m-card-title">Cashed checks</div><div class="m-card-value">$${cashedTotal.toFixed(2)}</div></div>
+    ${cashed.length ? `
+      <button class="m-expand-toggle" onclick="mToggleSub('m-sub-cashed')">▾ ${cashed.length} check${cashed.length>1?'s':''}</button>
+      <div class="m-sub-rows" id="m-sub-cashed">
+        ${cashed.map(j => `<div class="m-sub-row"><span class="m-sub-row-main">${itCheckLabel(j)}</span><span class="m-sub-row-amt">$${eventAmount(j).toFixed(2)}</span></div>`).join('')}
+      </div>` : `<div class="m-card-sub">No cashed checks yet</div>`}
+  </div>`;
+
+  wrap.innerHTML = html;
+}
+
+// ── Pockets ───────────────────────────────────────────────
+function renderMobilePockets() {
+  const wrap = document.getElementById('m-pockets-body');
+  if (!wrap) return;
+  let html = `<div class="m-summary-line">$${freeAmount().toFixed(2)} free — not yet assigned to a pocket</div>`;
+  if (!pockets.length) {
+    html += `<div class="empty-state">No pockets yet.</div>`;
+  } else {
+    html += pockets.map(p => {
+      const item = getWishlistItem(p.wishlistItemId);
+      const price = item ? parseFloat(item.price) : null;
+      const pct = price ? Math.min(100, Math.round((p.balance||0) / price * 100)) : null;
+      const isComplete = price && (p.balance||0) >= price;
+      const color = getPocketColor(p.id);
+      const rulesForPocket = pocketRules.filter(r => r.pocketId === p.id);
+      const rulesText = rulesForPocket.map(r => { const j = getJob(r.jobId); return `${r.percent}% of ${j ? j.label : '(removed job)'}`; }).join(', ');
+      return `<div class="m-card">
+        <div class="m-card-row">
+          <div class="m-card-title">${p.name}${isComplete ? ' <span class="pocket-complete-badge">✓ GOAL MET</span>' : ''}</div>
+          <div class="m-card-value" style="color:${isComplete?COLOR_GREEN:color}">$${(p.balance||0).toFixed(2)}${price?` / $${price.toFixed(2)}`:''}</div>
+        </div>
+        <div class="m-card-sub">${item ? `→ ${item.title}` : (p.wishlistItemId ? '(linked item removed)' : 'General fund')}${rulesText ? ` · ${rulesText}` : ''}</div>
+        ${price ? `<div class="m-progress-track"><div class="m-progress-fill" style="width:${pct}%;background:${isComplete?COLOR_GREEN:color}"></div></div>` : ''}
+      </div>`;
+    }).join('');
+  }
+  wrap.innerHTML = html;
+}
+
+// ── Income & Expenses ─────────────────────────────────────
+function renderMobileIncomeExpenses() {
+  const wrap = document.getElementById('m-income-body');
+  if (!wrap) return;
+  const sorted = [...otherMoney].sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+  if (!sorted.length) { wrap.innerHTML = `<div class="empty-state">No entries yet.</div>`; return; }
+  wrap.innerHTML = sorted.map(e => {
+    const isExp = e.type==='expense', isTransfer = e.type==='transfer';
+    const cls = isTransfer?'badge-transfer': e.type==='gift'?'badge-gift': isExp?'badge-expense':'badge-income';
+    const lbl = isTransfer?'⇄ Transfer': e.type==='gift'?'Gift / birthday': isExp?'Expense':'Income';
+    const amt = isTransfer ? `<div class="m-card-value" style="color:var(--blue)">$${parseFloat(e.amount).toFixed(2)}</div>`
+      : `<div class="m-card-value ${isExp?'amount-neg':'amount-pos'}">${isExp?'-':'+'}$${parseFloat(e.amount).toFixed(2)}</div>`;
+    const methodLine = isTransfer
+      ? `${e.fromMethod==='cash'?'Cash':'Bank'} → ${e.toMethod==='cash'?'Cash':'Bank'}`
+      : (e.method ? (e.method==='cash'?'Cash':'Bank') : '—');
+    return `<div class="m-card">
+      <div class="m-card-row">
+        <div class="m-card-title">${e.desc}</div>
+        ${amt}
+      </div>
+      <div class="m-card-sub"><span class="badge ${cls}">${lbl}</span>&nbsp; ${fmt(e.date)} · ${methodLine}${e.type==='income'&&e.titheDeductible===false?' · no tithe':''}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── My Wishlist ───────────────────────────────────────────
+function renderMobileWishlist() {
+  const wrap = document.getElementById('m-wishlist-body');
+  if (!wrap) return;
+  const sorted = [...wishlist].sort((a,b) => (b.date||'').localeCompare(a.date||'') || b.id.localeCompare(a.id));
+  if (!sorted.length) { wrap.innerHTML = `<div class="empty-state">No items yet.</div>`; return; }
+  wrap.innerHTML = sorted.map(w => {
+    const cls = w.category==='other' ? 'badge-wother' : 'badge-witem';
+    const lbl = w.category==='other' ? 'Other' : 'Item';
+    return `<div class="m-card">
+      <div class="m-card-row">
+        <div class="m-card-title">${w.title}</div>
+        <div class="m-card-value">$${parseFloat(w.price).toFixed(2)}</div>
+      </div>
+      <div class="m-card-sub">
+        <span class="badge ${cls}">${lbl}</span>${w.desc ? ` &nbsp;${w.desc}` : ''}
+        ${w.link ? `<br /><a class="wl-link" href="${w.link}" target="_blank" rel="noopener noreferrer">Visit ↗</a>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── All History ───────────────────────────────────────────
+function historyEntryStaticHTML(h) {
+  const dc = {add:'dot-add',paid:'dot-paid',delete:'dot-delete',other:'dot-other',client:'dot-client',pocket:'dot-pocket',recurring:'dot-recurring'}[h.type]||'dot-add';
+  const d = new Date(h.ts);
+  return `<div class="history-entry">
+    <div class="history-dot ${dc}"></div>
+    <div class="history-action">${h.message}</div>
+    <div class="history-time">${d.toLocaleDateString('en-US',{month:'short',day:'numeric'})}<br>${d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}</div>
+  </div>`;
+}
+function renderMobileHistory() {
+  const wrap = document.getElementById('m-history-body');
+  if (!wrap) return;
+  if (!historyLog.length) {
+    wrap.innerHTML = allHistoryLoaded ? `<div class="empty-state">No history yet.</div>` : `<div class="empty-state" style="cursor:pointer" onclick="mLoadMoreHistory()">Loading history…</div>`;
+    return;
+  }
+  let html = `<div class="m-card" style="padding:0">${historyLog.map(historyEntryStaticHTML).join('')}</div>`;
+  if (!allHistoryLoaded) html += `<div style="text-align:center;padding:14px 0"><button class="pill-btn" onclick="mLoadMoreHistory()">Load more…</button></div>`;
+  wrap.innerHTML = html;
+}
+async function mLoadMoreHistory() {
+  await loadMoreHistory();
+  renderMobileHistory();
 }
 </script>
 </body>
