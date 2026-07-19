@@ -6226,11 +6226,14 @@ function renderMobileJobs() {
 function renderMobilePockets() {
   const wrap = document.getElementById('m-pockets-body');
   if (!wrap) return;
-  let html = `<div class="m-summary-line">$${freeAmount().toFixed(2)} free — not yet assigned to a pocket</div>`;
+  const sumPockets = sumPocketBalances();
+  const free = freeAmount();
+
+  let pocketsHtml;
   if (!pockets.length) {
-    html += `<div class="empty-state">No pockets yet.</div>`;
+    pocketsHtml = `<div class="empty-state">No pockets yet.</div>`;
   } else {
-    html += pockets.map(p => {
+    pocketsHtml = pockets.map(p => {
       const item = getWishlistItem(p.wishlistItemId);
       const price = item ? parseFloat(item.price) : null;
       const pct = price ? Math.min(100, Math.round((p.balance||0) / price * 100)) : null;
@@ -6248,7 +6251,68 @@ function renderMobilePockets() {
       </div>`;
     }).join('');
   }
-  wrap.innerHTML = html;
+
+  // Same summary-grid / section markup the desktop Pockets page uses —
+  // those classes aren't desktop-scoped, so reusing them here gives the
+  // mobile page the same boxed-card look instead of bare text.
+  wrap.innerHTML = `
+    <div class="summary-grid">
+      <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${lastNetCash.toFixed(2)}</div></div>
+      <div class="metric"><div class="metric-label">Free / Savings</div><div class="metric-value">$${free.toFixed(2)}</div></div>
+      <div class="metric blue"><div class="metric-label">In pockets</div><div class="metric-value">$${sumPockets.toFixed(2)}</div></div>
+    </div>
+
+    <section>
+      <div class="section-header static">
+        <div class="section-title">
+          <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="9" y2="18"/></svg>
+          Distribution of Funds
+        </div>
+      </div>
+      <div style="padding:1.1rem 1.25rem">
+        <div id="m-pk-funds-bar-wrap"></div>
+        <div class="funds-legend" id="m-pk-funds-legend"></div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header static">
+        <div class="section-title">
+          <svg viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0016.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 002 8.5c0 2.29 1.51 4.04 3 5.5l7 7z"/></svg>
+          Pockets
+        </div>
+      </div>
+      <div style="padding:1.1rem 1.25rem">
+        <div class="m-summary-line">$${free.toFixed(2)} free — not yet assigned to a pocket</div>
+        ${pocketsHtml}
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header static">
+        <div class="section-title">
+          <svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          Pockets History
+        </div>
+      </div>
+      <div id="m-pocket-history-wrap"></div>
+    </section>
+  `;
+
+  renderFundsDistribution('m-pk-funds-bar-wrap', 'm-pk-funds-legend');
+  renderMobilePocketHistory();
+}
+
+// Read-only history rows (no edit/delete/undo) — same pattern used by
+// renderMobileHistory()'s historyEntryStaticHTML below, filtered to
+// pocket-only entries so it mirrors the desktop Pockets History card.
+function renderMobilePocketHistory() {
+  const wrap = document.getElementById('m-pocket-history-wrap');
+  if (!wrap) return;
+  const filtered = historyLog.filter(h => h.type === 'pocket');
+  wrap.innerHTML = filtered.length
+    ? filtered.slice(0, 40).map(historyEntryStaticHTML).join('')
+    : `<div class="empty-state">No pocket changes yet.</div>`;
 }
 
 // ── Income & Expenses ─────────────────────────────────────
