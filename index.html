@@ -4231,11 +4231,11 @@ function renderTrendLineChart(timeline, wrapId = 'trend-line-wrap', badgeId = 't
   wrap.innerHTML = `
     <svg viewBox="0 0 ${W} ${H}" class="trend-svg" preserveAspectRatio="none">
       <defs>
-        <linearGradient id="trendLineGrad" x1="0" y1="0" x2="1" y2="0">
+        <linearGradient id="trendLineGrad" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${W}" y2="0">
           <stop offset="0%" stop-color="var(--green-bright)" />
           <stop offset="100%" stop-color="var(--accent)" />
         </linearGradient>
-        <linearGradient id="trendAreaGrad" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id="trendAreaGrad" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="${H}">
           <stop offset="0%" stop-color="var(--green)" stop-opacity="0.28" />
           <stop offset="100%" stop-color="var(--green)" stop-opacity="0" />
         </linearGradient>
@@ -5455,11 +5455,11 @@ function rpRenderTrendLineChart(timeline) {
   wrap.innerHTML = `
     <svg viewBox="0 0 ${W} ${H}" class="trend-svg" preserveAspectRatio="none">
       <defs>
-        <linearGradient id="rpTrendLineGrad" x1="0" y1="0" x2="1" y2="0">
+        <linearGradient id="rpTrendLineGrad" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${W}" y2="0">
           <stop offset="0%" stop-color="var(--green-bright)" />
           <stop offset="100%" stop-color="var(--accent)" />
         </linearGradient>
-        <linearGradient id="rpTrendAreaGrad" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id="rpTrendAreaGrad" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="${H}">
           <stop offset="0%" stop-color="var(--green)" stop-opacity="0.28" />
           <stop offset="100%" stop-color="var(--green)" stop-opacity="0" />
         </linearGradient>
