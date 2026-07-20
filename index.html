@@ -1290,6 +1290,30 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 .admin-job-row .aj-icon { font-size: 18px; width: 24px; text-align: center; }
 .admin-job-row .aj-label { flex: 1; font-size: 13px; }
 .admin-job-row .aj-kind { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); }
+
+/* Admin — per-user job management (toggle any job for any account) */
+.admin-users-list { display: flex; flex-direction: column; gap: 8px; max-height: 54vh; overflow-y: auto; }
+.admin-user-row {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
+}
+.admin-user-head { display: flex; align-items: center; gap: 8px; }
+.admin-user-head img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: var(--surface3); }
+.admin-user-id { flex: 1; min-width: 0; }
+.admin-user-name { font-size: 13px; color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin-user-email { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.admin-user-jobs { display: flex; flex-wrap: wrap; gap: 6px; }
+.aj-toggle {
+  font-size: 11px; font-family: 'JetBrains Mono', monospace; padding: 4px 10px;
+  border-radius: var(--radius-pill); border: 1px solid var(--border-mid); background: transparent;
+  cursor: pointer; color: var(--text-faint); display: inline-flex; align-items: center; gap: 4px;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.aj-toggle svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 1.7; flex-shrink: 0; }
+.aj-toggle.on { color: var(--green); border-color: var(--green-border); background: var(--green-pale); }
+.aj-toggle.off:hover { border-color: var(--text-faint); color: var(--text-muted); }
+.aj-toggle:disabled { opacity: 0.5; cursor: default; }
+.admin-badge-tag { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--purple-bright); background: var(--purple-pale); border: 1px solid var(--purple-border); border-radius: var(--radius-pill); padding: 1px 6px; }
 </style>
 </head>
 <body>
@@ -2048,6 +2072,14 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
     <div class="modal-title">⚙ Job Admin <button class="modal-close-x" onclick="closeAdminModal()">✕</button></div>
 
     <div>
+      <div class="admin-section-label">All accounts</div>
+      <div class="modal-desc">See every account and flip any job on or off for them directly — no invite or removal code needed.</div>
+      <div class="form-actions" style="margin-top:8px">
+        <button class="btn btn-primary" onclick="openAdminUsersModal()">👥 Manage users' jobs</button>
+      </div>
+    </div>
+
+    <div>
       <div class="admin-section-label">Job removal code</div>
       <div class="modal-desc">Generate a code and read it out to whoever's removing a job — it stops working after 5 minutes, or the moment you generate a new one.</div>
       <div id="admin-removal-code-display"><div class="modal-desc">No active code — generate one when someone needs it.</div></div>
@@ -2099,6 +2131,14 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
     </div>
 
     <div id="admin-new-code-result"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="admin-users-modal">
+  <div class="modal-box modal-wide">
+    <div class="modal-title">👥 Manage Users' Jobs <button class="modal-close-x" onclick="closeAdminUsersModal()">✕</button></div>
+    <div class="modal-desc">Tap a job to grant or remove it for that account. Changes apply immediately — this bypasses invite/removal codes entirely.</div>
+    <div class="admin-users-list" id="admin-users-list"><div class="empty-state">Loading accounts…</div></div>
   </div>
 </div>
 
@@ -2426,6 +2466,14 @@ auth.onAuthStateChanged(user => {
   const area = document.getElementById('auth-area');
   if (user) {
     currentUser = user;
+    // Keep a copy of basic profile info on the user doc — this is the
+    // only way the admin "manage users" panel has to tell accounts apart,
+    // since uids alone aren't readable at a glance.
+    db.collection('users').doc(user.uid).set({
+      displayName: user.displayName || null,
+      email: user.email || null,
+      photoURL: user.photoURL || null
+    }, { merge: true }).catch(() => {});
     area.innerHTML = `
       <div class="auth-user">
         <span class="sync-dot"></span>
@@ -2496,6 +2544,12 @@ const JOBS = [
 let enabledJobs    = ['lawn_mowing', 'ca_it']; // this account's unlocked job ids (pre-load default)
 let customJobTypes = [];                        // job docs from Firestore, kind: client_service | periodic_income
 let isAdmin         = false;
+
+// Admin "manage users" panel — live list of every account plus a listener
+// that's only attached while that modal is open (mirrors removalCodeTimer's
+// pattern of only running while its modal is visible).
+let adminUsersList  = [];
+let adminUsersUnsub = null;
 
 function getAllJobs() { return JOBS.concat(customJobTypes); }
 // Falls back gracefully for a job id that no longer resolves (e.g. its
@@ -4663,6 +4717,76 @@ async function adminRegenerateCode(jobId) {
       <div class="code-display">${code}</div>`;
   } catch (e) {
     document.getElementById('admin-new-code-result').innerHTML = '<div class="modal-error" style="display:block">Could not regenerate that code.</div>';
+  }
+}
+
+// ── Admin: manage users' jobs directly ─────────────────────
+// Lists every account (from the `users` collection) and lets an admin
+// flip any job on/off for any account with a single click — no invite
+// code or removal code involved. Requires Firestore rules that let an
+// isAdmin account list/read the users collection and update just the
+// enabledJobs field on other accounts' docs (see setup notes) — without
+// that rule change this will load with a permission error.
+
+function openAdminUsersModal() {
+  document.getElementById('admin-users-modal').style.display = 'flex';
+  renderAdminUsersList();
+  if (adminUsersUnsub) adminUsersUnsub();
+  adminUsersUnsub = db.collection('users').onSnapshot(snap => {
+    adminUsersList = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    adminUsersList.sort((a, b) =>
+      (a.displayName || a.email || a.uid).localeCompare(b.displayName || b.email || b.uid));
+    renderAdminUsersList();
+  }, () => {
+    document.getElementById('admin-users-list').innerHTML =
+      '<div class="modal-error" style="display:block">Could not load accounts — check the Firestore rules allow an admin to list the users collection (see setup notes).</div>';
+  });
+}
+
+function closeAdminUsersModal() {
+  document.getElementById('admin-users-modal').style.display = 'none';
+  if (adminUsersUnsub) { adminUsersUnsub(); adminUsersUnsub = null; }
+}
+
+function renderAdminUsersList() {
+  const wrap = document.getElementById('admin-users-list');
+  if (!wrap) return;
+  if (!adminUsersList.length) { wrap.innerHTML = '<div class="empty-state">No accounts found yet.</div>'; return; }
+  const jobs = getAllJobs();
+  wrap.innerHTML = adminUsersList.map(u => {
+    const enabled = Array.isArray(u.enabledJobs) ? u.enabledJobs : [];
+    const jobToggles = jobs.map(j => {
+      const on = enabled.includes(j.id);
+      return `<button class="aj-toggle ${on ? 'on' : 'off'}" onclick="adminToggleUserJob('${u.uid}','${j.id}',${!on},this)">${j.icon}<span>${j.label}${on ? ' ✓' : ''}</span></button>`;
+    }).join('');
+    return `
+      <div class="admin-user-row">
+        <div class="admin-user-head">
+          <img src="${u.photoURL || ''}" onerror="this.style.display='none'" />
+          <div class="admin-user-id">
+            <div class="admin-user-name">${u.displayName || u.email || u.uid}${u.isAdmin ? ' <span class=\"admin-badge-tag\">admin</span>' : ''}</div>
+            <div class="admin-user-email">${u.email || u.uid}</div>
+          </div>
+        </div>
+        <div class="admin-user-jobs">${jobToggles}</div>
+      </div>`;
+  }).join('');
+}
+
+async function adminToggleUserJob(uid, jobId, enable, btnEl) {
+  if (btnEl) btnEl.disabled = true;
+  try {
+    await db.collection('users').doc(uid).update({
+      enabledJobs: enable
+        ? firebase.firestore.FieldValue.arrayUnion(jobId)
+        : firebase.firestore.FieldValue.arrayRemove(jobId)
+    });
+    toast(`${getJob(jobId).label} ${enable ? 'added to' : 'removed from'} that account`);
+    // The live listener above re-renders once Firestore confirms the write,
+    // so no manual DOM update is needed here.
+  } catch (e) {
+    if (btnEl) btnEl.disabled = false;
+    toast('Could not update that account — check Firestore rules.');
   }
 }
 
