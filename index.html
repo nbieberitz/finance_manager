@@ -867,6 +867,23 @@ html.is-mobile body { padding: 0; }
 .m-sub-row:last-child { border-bottom: none; }
 .m-sub-row-main { flex: 1; min-width: 0; color: var(--text-muted); overflow-wrap: break-word; }
 .m-sub-row-amt { font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+.m-section-label { display: flex; align-items: center; justify-content: space-between; }
+.m-job-remove {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: none; letter-spacing: 0;
+  background: none; border: none; color: var(--text-faint); cursor: pointer; padding: 2px 4px;
+}
+.m-job-remove:hover { color: var(--red); }
+.m-job-add-btn {
+  width: 100%; margin-top: 1.5rem; padding: 14px; border-radius: var(--radius-sm);
+  border: 1.5px dashed var(--border-mid); background: transparent; color: var(--text-muted);
+  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.m-admin-badge-btn {
+  position: fixed; top: 14px; right: 14px; z-index: 20; display: none;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 5px 10px;
+  border-radius: var(--radius-pill); border: 1px solid var(--purple-border);
+  background: var(--purple-pale); color: var(--purple-bright);
+}
 
 @media (max-width: 380px) {
   .m-home-btn { font-size: 12.5px; gap: 8px; }
@@ -1197,6 +1214,82 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 .backup-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .backup-modal-actions button { flex: 0 0 auto; }
 .backup-error-text { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--red); display: none; }
+
+/* ── Jobs: emoji icon support (existing rule only sizes <svg>) ── */
+.job-btn-icon { font-size: 25px; line-height: 1; }
+.job-btn.new-job-btn { border-style: dashed; background: transparent; }
+.job-btn.new-job-btn .job-btn-icon { background: transparent; border: 1.5px dashed var(--border-mid); }
+.job-btn.new-job-btn:hover .job-btn-icon { border-color: var(--accent); background: var(--accent-pale); }
+.job-btn.new-job-btn .job-btn-label { color: var(--text-muted); }
+.job-remove-x {
+  position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface3); border: 1px solid var(--border-mid); color: var(--text-faint);
+  font-size: 13px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity 0.15s var(--ease), color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.job-btn { position: relative; }
+.job-btn:hover .job-remove-x { opacity: 1; }
+.job-remove-x:hover { color: var(--red); border-color: var(--red-border); }
+
+/* ── Generic modals (Add Job / Remove Job / Admin) — same visual
+   language as .backup-modal-box, kept under a neutral name since
+   they aren't backup-related. ── */
+#generic-modal-root { position: fixed; inset: 0; z-index: 10003; display: none; }
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(11,13,11,0.88); backdrop-filter: blur(6px);
+  z-index: 10003; align-items: center; justify-content: center; padding: 1.5rem;
+  animation: modalFade 0.2s var(--ease);
+}
+.modal-box {
+  background: var(--surface-grad); border: 1px solid var(--border-mid);
+  border-radius: var(--radius-lg); padding: 1.5rem; width: 100%; max-width: 400px;
+  display: flex; flex-direction: column; gap: 14px;
+  animation: modalPop 0.3s var(--ease-spring); box-shadow: var(--shadow-pop);
+  max-height: 88vh; overflow-y: auto;
+}
+.modal-box.modal-wide { max-width: 560px; }
+.modal-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600; color: var(--text); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.modal-desc { font-family: 'Inter', sans-serif; font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.modal-actions button { flex: 0 0 auto; }
+.modal-close-x { background: none; border: none; color: var(--text-faint); font-size: 18px; cursor: pointer; line-height: 1; padding: 2px 4px; }
+.modal-close-x:hover { color: var(--text); }
+.modal-error { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--red); display: none; }
+
+/* 6-digit code entry — large, spaced, monospace so it reads like a PIN */
+.code-input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm); padding: 14px 12px; color: var(--text);
+  font-family: 'JetBrains Mono', monospace; font-size: 26px; letter-spacing: 0.35em;
+  text-align: center;
+}
+.code-input:focus { outline: none; border-color: var(--accent); }
+
+/* Big display of a freshly-generated code (admin side) */
+.code-display {
+  font-family: 'JetBrains Mono', monospace; font-size: 32px; letter-spacing: 0.28em;
+  text-align: center; color: var(--accent-bright); background: var(--accent-pale);
+  border: 1px solid var(--gold-border); border-radius: var(--radius-sm); padding: 14px 8px;
+}
+.code-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); text-align: center; }
+
+/* Admin panel */
+.admin-badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 4px 11px;
+  border-radius: var(--radius-pill); border: 1px solid var(--purple-border);
+  background: var(--purple-pale); color: var(--purple-bright); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+}
+.admin-badge:hover { border-color: var(--purple); }
+.admin-section-label { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600; color: var(--text); margin: 4px 0 2px; }
+.admin-job-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.admin-job-row .aj-icon { font-size: 18px; width: 24px; text-align: center; }
+.admin-job-row .aj-label { flex: 1; font-size: 13px; }
+.admin-job-row .aj-kind { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); }
 </style>
 </head>
 <body>
@@ -1620,6 +1713,17 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 
 </div>
 
+<!-- Generic "periodic income" job view — used by any custom job type
+     (kind: periodic_income) created via the admin panel. ca_it above is
+     untouched and keeps its own dedicated view. -->
+<div class="container" id="generic-job-view" style="display:none">
+  <div class="job-view-header">
+    <button class="pill-btn" onclick="closeGenericJob()">← All jobs</button>
+    <div class="job-view-title" id="generic-job-title"></div>
+  </div>
+  <div id="generic-job-body"></div>
+</div>
+
 <div class="container" id="pockets-view" style="display:none">
 
   <div class="job-view-header">
@@ -1908,9 +2012,102 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 </div><!-- /#pc-app -->
 
 <!-- ══════════════════════════════════════════════════════════
+     Job admin/unlock modals — deliberately OUTSIDE both #pc-app
+     and #mobile-app (which hide one another via .is-mobile) so
+     Add/Remove Job work the same on phones and desktop.
+     ══════════════════════════════════════════════════════════ -->
+
+<div class="modal-overlay" id="add-job-modal">
+  <div class="modal-box">
+    <div class="modal-title">+ New Job <button class="modal-close-x" onclick="closeAddJobModal()">✕</button></div>
+    <div class="modal-desc">Enter the 6-digit code you were given to add a job to your account.</div>
+    <input type="text" class="code-input" id="add-job-code" maxlength="6" inputmode="numeric" autocomplete="off" placeholder="······" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)" />
+    <div class="modal-error" id="add-job-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAddJobModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAddJobCode()">Add job</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="remove-job-modal">
+  <div class="modal-box">
+    <div class="modal-title">Remove job <button class="modal-close-x" onclick="closeRemoveJobModal()">✕</button></div>
+    <div class="modal-desc">Removing "<span id="remove-job-label"></span>" hides it from your dashboard — nothing in its history is deleted, and you can add it back later with a new code. Ask for today's removal code (it only works for 5 minutes) and enter it below.</div>
+    <input type="text" class="code-input" id="remove-job-code" maxlength="6" inputmode="numeric" autocomplete="off" placeholder="······" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)" />
+    <div class="modal-error" id="remove-job-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeRemoveJobModal()">Cancel</button>
+      <button class="btn" style="background:var(--red-dim);color:#fff" onclick="submitRemoveJobCode()">Remove job</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="admin-modal">
+  <div class="modal-box modal-wide">
+    <div class="modal-title">⚙ Job Admin <button class="modal-close-x" onclick="closeAdminModal()">✕</button></div>
+
+    <div>
+      <div class="admin-section-label">Job removal code</div>
+      <div class="modal-desc">Generate a code and read it out to whoever's removing a job — it stops working after 5 minutes, or the moment you generate a new one.</div>
+      <div id="admin-removal-code-display"><div class="modal-desc">No active code — generate one when someone needs it.</div></div>
+      <div class="form-actions" style="margin-top:8px">
+        <button class="btn btn-primary" onclick="adminGenerateRemovalCode()">Generate removal code</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="admin-section-label">Job types</div>
+      <div class="modal-desc">Anything listed here can be granted to an account via its invite code. Adding a job type here never changes anyone's dashboard by itself — an account only sees it once that code is entered.</div>
+      <div id="admin-job-type-list"></div>
+    </div>
+
+    <div>
+      <div class="admin-section-label">Create a new job type</div>
+      <div class="add-form open" style="padding:0;border:none;background:none">
+        <div class="form-grid">
+          <div><label>Label</label><input type="text" id="aj-label" placeholder="e.g. Dog Walking" /></div>
+          <div><label>Icon (emoji)</label><input type="text" id="aj-icon" placeholder="🐕" maxlength="4" /></div>
+          <div>
+            <label>Shape</label>
+            <select id="aj-kind" onchange="adminUpdateJobKindFields()">
+              <option value="client_service">Client-based service (clients + rate + events)</option>
+              <option value="periodic_income">Periodic pay (recurring pay periods)</option>
+            </select>
+          </div>
+          <div>
+            <label>Tithe</label>
+            <select id="aj-tithe-mode">
+              <option value="always">Always tithe-deductible</option>
+              <option value="toggle">Ask each time (checkbox)</option>
+              <option value="never">Never tithe-deductible</option>
+            </select>
+          </div>
+          <div id="aj-noun-wrap" style="display:none"><label>Entry name</label><input type="text" id="aj-noun" placeholder="e.g. Paycheck" value="Paycheck" /></div>
+          <div id="aj-datemode-wrap" style="display:none">
+            <label>Pay period</label>
+            <select id="aj-datemode">
+              <option value="range">Start + end date</option>
+              <option value="single">Single date</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="adminCreateJobType()">Create job type</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="admin-new-code-result"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
      MOBILE BUILD — shown instead of #pc-app on phones/tablets.
      ══════════════════════════════════════════════════════════ -->
 <div id="mobile-app">
+  <button class="m-admin-badge-btn" id="m-admin-badge-btn" onclick="openAdminModal()">⚙ admin</button>
+
 
   <!-- Not signed in -->
   <div class="m-screen" id="m-screen-auth">
@@ -2041,7 +2238,7 @@ function loadFromFirestore() {
   pendingHistoryEntries = [];
 
   // Track first fire of all listeners before doing initial render
-  const ready = { main: false, clients: false, events: false, other: false, wishlist: false, pockets: false, pocketRules: false, recurring: false };
+  const ready = { main: false, clients: false, events: false, other: false, wishlist: false, pockets: false, pocketRules: false, recurring: false, jobTypes: false };
   let initialRenderDone = false;
 
   async function checkReady() {
@@ -2053,19 +2250,41 @@ function loadFromFirestore() {
     await processRecurringRules();
   }
 
-  // Main doc (balances)
+  // Main doc (balances, enabledJobs, isAdmin)
   unsubscribers.push(userDoc().onSnapshot(snap => {
     if (snap.exists) {
       const d = snap.data();
       balances = d.balances || { bank: 0, cash: 0 };
       delete balances.tithe_bank;
       delete balances.tithe_cash;
+      isAdmin = d.isAdmin === true;
+      if (Array.isArray(d.enabledJobs)) {
+        enabledJobs = d.enabledJobs;
+      } else {
+        // Predates this feature — grandfather this account into the same
+        // 2 jobs it already had, and persist that so it's a real field
+        // going forward instead of re-checking this every load.
+        enabledJobs = ['lawn_mowing', 'ca_it'];
+        userDoc().set({ enabledJobs }, { merge: true });
+      }
     } else {
       balances = { bank: 0, cash: 0 };
-      userDoc().set({ balances });
+      enabledJobs = ['lawn_mowing', 'ca_it'];
+      userDoc().set({ balances, enabledJobs }, { merge: true });
     }
     if (!ready.main) { ready.main = true; checkReady(); }
     else if (initialRenderDone) render();
+    updateAdminUI();
+  }));
+
+  // Job type definitions — shared across every account. Which of these an
+  // account actually sees on its dashboard is still governed by that
+  // account's own enabledJobs list above; this collection just holds the
+  // catalog of what a 6-digit code could unlock.
+  unsubscribers.push(db.collection('jobTypes').onSnapshot(snap => {
+    customJobTypes = snap.docs.map(d => d.data());
+    if (!ready.jobTypes) { ready.jobTypes = true; checkReady(); }
+    else if (initialRenderDone) { render(); if (document.getElementById('admin-modal').style.display === 'flex') renderAdminJobTypeList(); }
   }));
 
   // Clients — sorted alphabetically so the list order is stable regardless
@@ -2149,8 +2368,9 @@ async function loadMoreHistory() {
 async function saveToFirestore() {
   if (!currentUser || testMode) return;
 
-  // Main doc holds only balances now
-  await userDoc().set({ balances });
+  // Merge (not overwrite) — this doc also carries enabledJobs/isAdmin now,
+  // and a bare .set() here would otherwise wipe those every debounced save.
+  await userDoc().set({ balances }, { merge: true });
 
   // Upsert only changed records into their subcollection
   const upsertItems = async (colName, ids, dataArr) => {
@@ -2211,11 +2431,13 @@ auth.onAuthStateChanged(user => {
         <span class="sync-dot"></span>
         <img src="${user.photoURL || ''}" onerror="this.style.display='none'" />
         <span>${user.displayName || user.email}</span>
+        <button class="admin-badge" id="admin-badge-btn" style="display:none" onclick="openAdminModal()">⚙ admin</button>
         <button class="btn-signout" onclick="loadFromFirestore()" title="Refresh data">↻ refresh</button>
         <button class="btn-signout" onclick="signOut()">sign out</button>
       </div>`;
     loadFromFirestore();
     initLocalBackup();
+    updateAdminUI();
   } else {
     currentUser = null;
     const badge = document.getElementById('backup-badge');
@@ -2259,10 +2481,27 @@ let balances   = { bank: 0, cash: 0 };
 // Add more jobs here later — each gets its own square button on the main
 // page and its own scoped Clients / Events / Paid Events / History.
 const JOBS = [
-  { id: 'lawn_mowing', label: 'Lawn Mowing', icon: '<svg viewBox="0 0 24 24"><path d="M9 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M19 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M3 17V8l6-4 6 4h3a3 3 0 013 3v6"/><path d="M9 4v9"/></svg>' },
-  { id: 'ca_it', label: 'CA – IT', icon: '<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8M12 17v4"/></svg>' }
+  { id: 'lawn_mowing', kind: 'client_service', label: 'Lawn Mowing', icon: '<svg viewBox="0 0 24 24"><path d="M9 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M19 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M3 17V8l6-4 6 4h3a3 3 0 013 3v6"/><path d="M9 4v9"/></svg>' },
+  { id: 'ca_it', kind: 'periodic_income', label: 'CA – IT', icon: '<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8M12 17v4"/></svg>' }
 ];
-function getJob(id) { return JOBS.find(j => j.id === id); }
+
+// ── Per-account job enablement + Firestore-defined custom job types ──
+// The 2 built-ins above are still hardcoded and behave exactly as before.
+// Beyond that, `customJobTypes` holds job *definitions* fetched from the
+// `jobTypes` Firestore collection (shared across all accounts); an account
+// only sees one once its id is in that account's own `enabledJobs` list.
+// This is how new job types get added without growing this file: define
+// once in Firestore (via the admin panel), then any account can unlock it
+// with the 6-digit code tied to that job type.
+let enabledJobs    = ['lawn_mowing', 'ca_it']; // this account's unlocked job ids (pre-load default)
+let customJobTypes = [];                        // job docs from Firestore, kind: client_service | periodic_income
+let isAdmin         = false;
+
+function getAllJobs() { return JOBS.concat(customJobTypes); }
+// Falls back gracefully for a job id that no longer resolves (e.g. its
+// custom job type doc was later removed) instead of throwing.
+function getJob(id) { return getAllJobs().find(j => j.id === id) || { id, kind: 'client_service', label: id, icon: '❓' }; }
+function getEnabledJobs() { return getAllJobs().filter(j => enabledJobs.includes(j.id)); }
 // Items created before jobs existed have no .job field — they were all
 // lawn mowing, so that's the safe default rather than losing them.
 function jobOf(item) { return item.job || 'lawn_mowing'; }
@@ -2567,6 +2806,7 @@ let currentJobId = null; // null = on the main page; otherwise the open job's id
 
 function openJob(id) {
   if (id === 'ca_it') { openCaIt(); return; }
+  if (getJob(id).kind === 'periodic_income') { openGenericJob(id); return; }
   currentJobId = id;
   document.getElementById('job-view-title').textContent = getJob(id).label;
   document.getElementById('main-view').style.display = 'none';
@@ -2638,22 +2878,29 @@ function closeRecurring() {
 function renderJobsGrid() {
   const grid = document.getElementById('jobs-grid');
   if (!grid) return;
-  grid.innerHTML = JOBS.map(job => {
-    const openCount = job.id === 'ca_it'
+  grid.innerHTML = getEnabledJobs().map(job => {
+    const isPeriodic = job.kind === 'periodic_income';
+    const openCount = isPeriodic
       ? lawnEvents.filter(j => jobOf(j) === job.id && j.status === 'uncashed').length
       : lawnEvents.filter(j => jobOf(j) === job.id && j.status !== 'paid').length;
     const subLabel = openCount > 0
-      ? (job.id === 'ca_it'
+      ? (isPeriodic
           ? openCount + ' uncashed check' + (openCount > 1 ? 's' : '')
           : openCount + ' open event' + (openCount > 1 ? 's' : ''))
-      : (job.id === 'ca_it' ? 'All clear' : 'All settled');
+      : (isPeriodic ? 'All clear' : 'All settled');
     return `
       <button class="job-btn" onclick="openJob('${job.id}')">
+        <span class="job-remove-x" onclick="event.stopPropagation(); openRemoveJobModal('${job.id}')" title="Remove this job">✕</span>
         <div class="job-btn-icon">${job.icon}</div>
         <div class="job-btn-label">${job.label}</div>
         <div class="job-btn-sub">${subLabel}</div>
       </button>`;
-  }).join('');
+  }).join('') + `
+      <button class="job-btn new-job-btn" onclick="openAddJobModal()">
+        <div class="job-btn-icon">+</div>
+        <div class="job-btn-label">New Job</div>
+        <div class="job-btn-sub">Have a code?</div>
+      </button>`;
 }
 
 // Figures out which job a history entry belongs to. New entries carry an
@@ -2857,7 +3104,10 @@ function logHistory(type, message, extra = {}) {
 function computeBalances() {
   let bank = 0, cash = 0;
   lawnEvents.forEach(j => {
-    if (j.job === 'ca_it') {
+    // 'uncashed'/'cashed' is the status vocabulary for any periodic-income
+    // job (ca_it, or a custom job type of that same kind) — cashed always
+    // deposits to bank, matching a paycheck rather than a cash-in-hand job.
+    if (j.status === 'cashed' || j.status === 'uncashed') {
       if (j.status === 'cashed') bank += eventAmount(j);
       return;
     }
@@ -2889,15 +3139,15 @@ function computeTithe() {
   // (defaults to true for entries created before this option existed).
   // Gift/birthday and expense entries are never eligible regardless.
   const bank = Math.round((
-    lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && !j.tithePaid)
+    lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && j.titheDeductible !== false && !j.tithePaid)
             .reduce((s, j) => s + eventAmount(j), 0) +
-    lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'cashed' && j.titheDeductible && !j.tithePaid)
+    lawnEvents.filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid)
             .reduce((s, j) => s + eventAmount(j), 0) +
     otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method !== 'cash' && !e.tithePaid)
               .reduce((s, e) => s + parseFloat(e.amount), 0)
   ) * 0.1 * 100) / 100;
   const cash = Math.round((
-    lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && !j.tithePaid)
+    lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && j.titheDeductible !== false && !j.tithePaid)
             .reduce((s, j) => s + eventAmount(j), 0) +
     otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method === 'cash' && !e.tithePaid)
               .reduce((s, e) => s + parseFloat(e.amount), 0)
@@ -3141,8 +3391,8 @@ function payTithe() {
   // Mark all untithed paid events so they no longer count toward tithe
   const affectedIds = [];
   lawnEvents = lawnEvents.map(j => {
-    if (j.status === 'paid' && !j.tithePaid) { affectedIds.push(j.id); return {...j, tithePaid: true}; }
-    if (j.job === 'ca_it' && j.status === 'cashed' && j.titheDeductible && !j.tithePaid) { affectedIds.push(j.id); return {...j, tithePaid: true}; }
+    if (j.status === 'paid' && j.titheDeductible !== false && !j.tithePaid) { affectedIds.push(j.id); return {...j, tithePaid: true}; }
+    if (j.status === 'cashed' && j.titheDeductible && !j.tithePaid) { affectedIds.push(j.id); return {...j, tithePaid: true}; }
     return j;
   });
   affectedIds.forEach(id => pendingEventWrites.add(id));
@@ -3252,8 +3502,9 @@ function renderJobHistory() {
 // history modal in sync with whatever it's currently showing.
 function renderAllHistory() {
   renderHistory();
-  if (currentJobId && currentJobId !== 'ca_it') renderJobHistory();
+  if (currentJobId && currentJobId !== 'ca_it' && getJob(currentJobId).kind !== 'periodic_income') renderJobHistory();
   if (currentJobId === 'ca_it') renderItHistory();
+  if (currentJobId && currentJobId !== 'ca_it' && getJob(currentJobId).kind === 'periodic_income') renderGenericJobHistory(currentJobId);
   const modal = document.getElementById('full-history-modal');
   if (modal && modal.style.display !== 'none') showFullHistory(fullHistoryPage);
 }
@@ -3539,11 +3790,18 @@ async function undoPaid(hid) {
     const job = lawnEvents.find(j=>j.id===h.jobId);
     if (!job) { toast('Event no longer exists'); return; }
     const restore = h.prevStatus || 'unpaid';
+    // Client-service entries (lawn_mowing-shaped) have .client/.date;
+    // periodic-income entries (ca_it, or a custom job of that kind) don't —
+    // this used to reference those fields unconditionally and would throw
+    // before ever restoring/logging a cashed CA-IT paycheck's undo.
+    const label = job.client
+      ? `${job.client} event (${fmt(job.date)})`
+      : genericEntryLabel(job, getJob(getEntryJob(h)).config || {});
     lawnEvents = lawnEvents.map(j=>j.id===h.jobId ? {...j, status:restore, paymentMethod:null, paymentAmount:null} : j);
     pendingEventWrites.add(h.jobId);
     historyLog = historyLog.filter(h=>h.id!==hid);
     if (currentUser) await historyCol().doc(hid).delete();
-    logHistory('add', `Undid payment — ${job.client} event (${fmt(job.date)}) restored to ${restore}`, { job: getEntryJob(h) });
+    logHistory('add', `Undid payment — ${label} restored to ${restore}`, { job: getEntryJob(h) });
   }
 
   // Bulk undo
@@ -3875,6 +4133,536 @@ function saveItCheck(id) {
   save(); render(); renderJobsGrid(); toast('Paycheck updated ✓');
   if (old.status !== 'cashed' && status === 'cashed' && pocketAllocations.length) {
     checkPocketsForGoalCompletion(pocketAllocations.map(a => a.pocketId));
+  }
+}
+
+// ── Generic "periodic income" job engine ───────────────────
+// A config-driven version of the CA-IT pattern above, for any job type
+// created later (through the admin panel, stored in Firestore) that also
+// shapes its income as recurring pay periods rather than per-client events.
+// ca_it itself is untouched and keeps using its own dedicated view/functions
+// above — this is purely additive so nothing about it can regress.
+//
+// A job's shape here is decided entirely by its `config` (read from its
+// Firestore jobTypes doc): dateMode ('range' pay-period-with-start/end, or
+// 'single' one date per entry), titheMode ('always' | 'never' | 'toggle'),
+// and entryNoun (what to call one entry — "Paycheck", "Session", etc).
+// Entries live in the same `jobs` Firestore subcollection as everything
+// else (tagged `.job` = this job's id), so they automatically flow through
+// the dashboard totals, tithe, balances, and Pocket rules with no changes
+// needed there beyond the couple of generalizations made above.
+
+const CAL_SVG = '<svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
+
+function genericEntryLabel(j, cfg) {
+  return (cfg.dateMode || 'range') === 'single' ? fmt(j.date) : `${fmt(j.dateStart)} – ${fmt(j.dateEnd)}`;
+}
+
+function openGenericJob(id) {
+  currentJobId = id;
+  document.getElementById('main-view').style.display = 'none';
+  document.getElementById('generic-job-title').textContent = getJob(id).label;
+  document.getElementById('generic-job-view').style.display = 'block';
+  buildGenericJobShell(id);
+  renderGenericJobOpen(id);
+  renderGenericJobClosed(id);
+  renderGenericJobHistory(id);
+  window.scrollTo(0, 0);
+}
+
+function closeGenericJob() {
+  currentJobId = null;
+  document.getElementById('generic-job-view').style.display = 'none';
+  document.getElementById('main-view').style.display = 'block';
+  render();
+  window.scrollTo(0, 0);
+}
+
+// Builds the section shell (fields depend on this job's config) once per
+// open; the 3 render* functions below repaint just their own wrap on every
+// subsequent change, same pattern as the CA-IT view above.
+function buildGenericJobShell(jobId) {
+  const job = getJob(jobId), cfg = job.config || {};
+  const noun = cfg.entryNoun || 'Entry';
+  const dateMode = cfg.dateMode || 'range';
+  const titheMode = cfg.titheMode || 'always';
+  const wrap = document.getElementById('generic-job-body');
+  if (!wrap) return;
+
+  const dateFieldsHtml = dateMode === 'single'
+    ? `<div><label>Date</label>
+        <div class="date-field">
+          <input type="text" id="gj-date" placeholder="MM/DD/YYYY — blank = today" />
+          <button type="button" class="date-pick-btn" onclick="openDatePicker('gj-date')" aria-label="Pick date">${CAL_SVG}</button>
+          <input type="date" id="gj-date-picker" class="date-picker-hidden" onchange="applyDatePicker('gj-date')" tabindex="-1" />
+        </div>
+      </div>`
+    : `<div><label>Period Start</label>
+        <div class="date-field">
+          <input type="text" id="gj-start" placeholder="MM/DD/YYYY" />
+          <button type="button" class="date-pick-btn" onclick="openDatePicker('gj-start')" aria-label="Pick start">${CAL_SVG}</button>
+          <input type="date" id="gj-start-picker" class="date-picker-hidden" onchange="applyDatePicker('gj-start')" tabindex="-1" />
+        </div>
+      </div>
+      <div><label>Period End</label>
+        <div class="date-field">
+          <input type="text" id="gj-end" placeholder="MM/DD/YYYY" />
+          <button type="button" class="date-pick-btn" onclick="openDatePicker('gj-end')" aria-label="Pick end">${CAL_SVG}</button>
+          <input type="date" id="gj-end-picker" class="date-picker-hidden" onchange="applyDatePicker('gj-end')" tabindex="-1" />
+        </div>
+      </div>`;
+
+  const titheFieldHtml = titheMode === 'toggle'
+    ? `<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);cursor:pointer;margin-right:auto">
+         <input type="checkbox" id="gj-tithe" style="accent-color:var(--accent)"> Tithe deductible
+       </label>`
+    : '';
+
+  wrap.innerHTML = `
+    <section>
+      <div class="section-header static">
+        <div class="section-title">${job.icon} Uncashed</div>
+        <div class="header-actions"><span id="gj-open-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span></div>
+      </div>
+      <div id="gj-open-wrap"><div class="empty-state">Nothing uncashed.</div></div>
+    </section>
+
+    <section>
+      <div class="section-header static">
+        <div class="section-title">${noun}s</div>
+        <div class="header-actions"><button class="pill-btn success" onclick="toggleForm('gj-add-form')">+ Add ${noun.toLowerCase()}</button></div>
+      </div>
+      <div class="add-form" id="gj-add-form">
+        <div class="form-grid">
+          ${dateFieldsHtml}
+          <div><label>Amount ($)</label><input type="number" id="gj-amount" min="0" step="0.01" placeholder="0.00" /></div>
+        </div>
+        <div class="form-actions">
+          ${titheFieldHtml}
+          <button class="btn btn-primary" onclick="addGenericEntry('${jobId}')">Add ${noun.toLowerCase()}</button>
+          <button class="btn btn-ghost" onclick="toggleForm('gj-add-form')">Cancel</button>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header" onclick="toggleSection('gj-closed-body')">
+        <div class="section-title">Cashed</div>
+        <div class="header-actions">
+          <span id="gj-closed-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
+          <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearGenericCashed('${jobId}')">Clear all</button>
+        </div>
+      </div>
+      <div id="gj-closed-body" style="display:none"><div id="gj-closed-wrap"><div class="empty-state">Nothing cashed yet.</div></div></div>
+    </section>
+
+    <section>
+      <div class="section-header" onclick="toggleSection('gj-history-body')">
+        <div class="section-title">History</div>
+        <div class="header-actions"><button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearJobHistory('${jobId}')">Clear</button></div>
+      </div>
+      <div id="gj-history-body"><div id="gj-history-wrap"><div class="empty-state">No history yet.</div></div></div>
+    </section>`;
+}
+
+function genericTableHtml(list, jobId, cfg, isOpen) {
+  const titheMode = cfg.titheMode || 'always';
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>${(cfg.dateMode||'range')==='single'?'Date':'Pay Period'}</th><th>Amount</th>${titheMode!=='never'?'<th>Tithe</th>':''}<th></th></tr></thead>
+    <tbody>${list.map(j => `
+      <tr id="gj-row-${j.id}">
+        <td class="mono">${genericEntryLabel(j, cfg)}</td>
+        <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}</td>
+        ${titheMode!=='never' ? `<td class="mono" style="font-size:11px;color:var(--text-faint)">${j.titheDeductible ? '✓ tithe' : '—'}</td>` : ''}
+        <td><div class="row-actions">
+          ${isOpen
+            ? `<button class="act-btn edit" onclick="editGenericEntry('${jobId}','${j.id}')">edit</button>
+               <button class="act-btn success" onclick="markGenericCashed('${jobId}','${j.id}')">mark cashed</button>`
+            : `<button class="act-btn success" onclick="uncashGenericEntry('${jobId}','${j.id}')">undo</button>`}
+          <button class="act-btn danger" onclick="deleteGenericEntry('${jobId}','${j.id}')">delete</button>
+        </div></td>
+      </tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function renderGenericJobOpen(jobId) {
+  const cfg = (getJob(jobId).config) || {};
+  const open = lawnEvents.filter(j => j.job === jobId && j.status === 'uncashed')
+    .sort((a,b) => (b.dateEnd||b.date||'').localeCompare(a.dateEnd||a.date||'') || b.id.localeCompare(a.id));
+  const total = open.reduce((s,j) => s + eventAmount(j), 0);
+  const summary = document.getElementById('gj-open-summary');
+  if (summary) summary.textContent = open.length ? `${open.length} · $${total.toFixed(2)}` : '';
+  const wrap = document.getElementById('gj-open-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = open.length ? genericTableHtml(open, jobId, cfg, true) : '<div class="empty-state">Nothing uncashed.</div>';
+}
+
+function renderGenericJobClosed(jobId) {
+  const cfg = (getJob(jobId).config) || {};
+  const closed = lawnEvents.filter(j => j.job === jobId && j.status === 'cashed')
+    .sort((a,b) => (b.dateEnd||b.date||'').localeCompare(a.dateEnd||a.date||'') || b.id.localeCompare(a.id));
+  const total = closed.reduce((s,j) => s + eventAmount(j), 0);
+  const summary = document.getElementById('gj-closed-summary');
+  if (summary) summary.textContent = closed.length ? `${closed.length} · $${total.toFixed(2)}` : '';
+  const wrap = document.getElementById('gj-closed-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = closed.length ? genericTableHtml(closed, jobId, cfg, false) : '<div class="empty-state">Nothing cashed yet.</div>';
+}
+
+function renderGenericJobHistory(jobId) {
+  const wrap = document.getElementById('gj-history-wrap');
+  if (!wrap) return;
+  const filtered = historyLog.filter(h => getEntryJob(h) === jobId);
+  if (!filtered.length) {
+    wrap.innerHTML = allHistoryLoaded
+      ? '<div class="empty-state">No history yet.</div>'
+      : '<div class="empty-state" style="cursor:pointer" onclick="loadMoreHistory()">Loading history…</div>';
+    return;
+  }
+  wrap.innerHTML = filtered.slice(0, 30).map(historyEntryHTML).join('');
+  const extras = [];
+  if (filtered.length > 30) extras.push(`<button class="pill-btn" onclick="showFullHistory(1,'${jobId}')">Full history — ${filtered.length}${allHistoryLoaded ? '' : '+'} entries</button>`);
+  if (!allHistoryLoaded) extras.push(`<button class="pill-btn" onclick="loadMoreHistory()">Load more…</button>`);
+  if (extras.length) wrap.innerHTML += `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center;display:flex;gap:8px;justify-content:center">${extras.join('')}</div>`;
+}
+
+async function addGenericEntry(jobId) {
+  const job = getJob(jobId), cfg = job.config || {};
+  const dateMode = cfg.dateMode || 'range', titheMode = cfg.titheMode || 'always';
+  const amount = parseFloat(document.getElementById('gj-amount').value);
+  if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
+
+  let dateFields;
+  if (dateMode === 'single') {
+    dateFields = { date: parseFlexibleDate(document.getElementById('gj-date').value) };
+  } else {
+    const dateStart = parseFlexibleDate(document.getElementById('gj-start').value);
+    const dateEnd = parseFlexibleDate(document.getElementById('gj-end').value);
+    if (!dateStart || !dateEnd) { alert('Enter a valid pay period.'); return; }
+    dateFields = { dateStart, dateEnd };
+  }
+  const titheDeductible = titheMode === 'toggle' ? document.getElementById('gj-tithe').checked : (titheMode === 'always');
+
+  const newEntry = { id: 'g' + Date.now() + Math.floor(Math.random() * 1000), job: jobId, ...dateFields, amount, status: 'uncashed', titheDeductible };
+  lawnEvents.push(newEntry);
+  pendingEventWrites.add(newEntry.id);
+  logHistory('add', `Added ${(cfg.entryNoun || 'entry').toLowerCase()} — ${genericEntryLabel(newEntry, cfg)} ($${amount.toFixed(2)})`, { job: jobId });
+
+  document.getElementById('gj-amount').value = '';
+  if (dateMode === 'single') { document.getElementById('gj-date').value = ''; }
+  else { document.getElementById('gj-start').value = ''; document.getElementById('gj-end').value = ''; }
+  document.getElementById('gj-add-form').classList.remove('open');
+
+  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); toast(`${cfg.entryNoun || 'Entry'} added ✓`);
+}
+
+function markGenericCashed(jobId, id) {
+  const j = lawnEvents.find(j => j.id === id);
+  if (!j) return;
+  const prev = j.status;
+  const amount = eventAmount(j);
+  const allocations = applyPocketRules(jobId, amount);
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
+  pendingEventWrites.add(id);
+  logHistory('paid', `Marked ${getJob(jobId).label} cashed — ${genericEntryLabel(j, getJob(jobId).config || {})} ($${amount.toFixed(2)})`, { jobId: id, prevStatus: prev, job: jobId });
+  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast('Marked as cashed ✓');
+  if (allocations.length) checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
+}
+
+function uncashGenericEntry(jobId, id) {
+  const j = lawnEvents.find(j => j.id === id);
+  if (!j) return;
+  reversePocketAllocations(j, 'moved back to uncashed');
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', tithePaid: false, pocketAllocations: [] } : jb);
+  pendingEventWrites.add(id);
+  logHistory('add', `Reversed cashed — ${genericEntryLabel(j, getJob(jobId).config || {})} ($${eventAmount(j).toFixed(2)})`, { job: jobId });
+  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast('Moved back to uncashed');
+}
+
+function deleteGenericEntry(jobId, id) {
+  if (!confirm('Delete this entry?')) return;
+  const j = lawnEvents.find(j => j.id === id);
+  if (j.status === 'cashed') reversePocketAllocations(j, 'entry deleted');
+  lawnEvents = lawnEvents.filter(jb => jb.id !== id);
+  pendingEventDeletes.add(id); pendingEventWrites.delete(id);
+  logHistory('delete', `Deleted entry — ${genericEntryLabel(j, getJob(jobId).config || {})} ($${eventAmount(j).toFixed(2)})`, { job: jobId });
+  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast('Entry deleted');
+}
+
+function clearGenericCashed(jobId) {
+  const toDelete = lawnEvents.filter(j => j.job === jobId && j.status === 'cashed');
+  if (!toDelete.length) return;
+  if (!confirm(`Delete all ${toDelete.length} cashed entr${toDelete.length > 1 ? 'ies' : 'y'}? This cannot be undone.`)) return;
+  toDelete.forEach(j => reversePocketAllocations(j, 'cashed entries cleared'));
+  const ids = toDelete.map(j => j.id);
+  lawnEvents = lawnEvents.filter(j => !ids.includes(j.id));
+  ids.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
+  logHistory('delete', `Cleared ${ids.length} cashed entr${ids.length > 1 ? 'ies' : 'y'}`, { job: jobId });
+  save(); render(); renderJobsGrid(); renderGenericJobClosed(jobId); toast('Cleared');
+}
+
+function editGenericEntry(jobId, id) {
+  const cfg = getJob(jobId).config || {};
+  const dateMode = cfg.dateMode || 'range', titheMode = cfg.titheMode || 'always';
+  const j = lawnEvents.find(j => j.id === id);
+  const row = document.getElementById('gj-row-' + id);
+  if (!row || !j) return;
+  row.classList.add('edit-row');
+
+  const dateInputsHtml = dateMode === 'single'
+    ? `<input id="gje-date-${id}" type="text" value="${isoToDisplay(j.date)}" placeholder="MM/DD/YYYY" style="width:100px" />
+       <button type="button" class="date-pick-btn" onclick="openDatePicker('gje-date-${id}')" aria-label="Pick date">${CAL_SVG}</button>
+       <input type="date" id="gje-date-${id}-picker" class="date-picker-hidden" onchange="applyDatePicker('gje-date-${id}')" tabindex="-1" />`
+    : `<div class="date-field">
+        <input id="gje-start-${id}" type="text" value="${isoToDisplay(j.dateStart)}" placeholder="MM/DD/YYYY" style="width:100px" />
+        <button type="button" class="date-pick-btn" onclick="openDatePicker('gje-start-${id}')" aria-label="Pick start">${CAL_SVG}</button>
+        <input type="date" id="gje-start-${id}-picker" class="date-picker-hidden" onchange="applyDatePicker('gje-start-${id}')" tabindex="-1" />
+      </div>
+      <span style="color:var(--text-faint)">–</span>
+      <div class="date-field">
+        <input id="gje-end-${id}" type="text" value="${isoToDisplay(j.dateEnd)}" placeholder="MM/DD/YYYY" style="width:100px" />
+        <button type="button" class="date-pick-btn" onclick="openDatePicker('gje-end-${id}')" aria-label="Pick end">${CAL_SVG}</button>
+        <input type="date" id="gje-end-${id}-picker" class="date-picker-hidden" onchange="applyDatePicker('gje-end-${id}')" tabindex="-1" />
+      </div>`;
+
+  const titheHtml = titheMode === 'toggle'
+    ? `<label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);margin-top:4px;cursor:pointer">
+         <input type="checkbox" id="gje-tithe-${id}"${j.titheDeductible ? ' checked' : ''} style="accent-color:var(--accent)"> Tithe
+       </label>`
+    : '';
+
+  row.innerHTML = `
+    <td><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${dateInputsHtml}</div></td>
+    <td><input id="gje-amount-${id}" type="number" value="${eventAmount(j)}" min="0" step="0.01" style="width:90px" /></td>
+    ${titheMode !== 'never' ? `<td>${titheHtml}</td>` : ''}
+    <td><div class="row-actions">
+      <button class="act-btn save" onclick="saveGenericEntry('${jobId}','${id}')">save</button>
+      <button class="act-btn" onclick="renderGenericJobOpen('${jobId}')">cancel</button>
+    </div></td>`;
+}
+
+function saveGenericEntry(jobId, id) {
+  const cfg = getJob(jobId).config || {};
+  const dateMode = cfg.dateMode || 'range', titheMode = cfg.titheMode || 'always';
+  const amount = parseFloat(document.getElementById('gje-amount-' + id).value);
+  if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
+
+  const dateFields = dateMode === 'single'
+    ? { date: parseFlexibleDate(document.getElementById('gje-date-' + id).value) }
+    : { dateStart: parseFlexibleDate(document.getElementById('gje-start-' + id).value), dateEnd: parseFlexibleDate(document.getElementById('gje-end-' + id).value) };
+  const titheDeductible = titheMode === 'toggle' ? document.getElementById('gje-tithe-' + id).checked : (titheMode === 'always');
+
+  lawnEvents = lawnEvents.map(j => j.id === id ? { ...j, ...dateFields, amount, titheDeductible } : j);
+  pendingEventWrites.add(id);
+  logHistory('add', `Edited entry — ${genericEntryLabel({ ...dateFields }, cfg)}, $${amount.toFixed(2)}`, { job: jobId });
+  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); toast('Entry updated ✓');
+}
+
+// ── Add Job / Remove Job / Admin ────────────────────────────
+// Security model (enforced by Firestore rules, not by this code):
+//  - jobInviteCodes/{code}: get-only for signed-in users (no list) — you
+//    can check a code you were TOLD, but can't browse the collection to
+//    find codes you weren't given.
+//  - systemCodes/{code} (removal codes): no client read at all, ever. The
+//    remove-job write just includes the code the user typed; Firestore's
+//    rule looks it up server-side and allows/denies the write. This client
+//    never learns whether a *wrong* guess was close — only pass/fail.
+// Both modals below rely entirely on the write itself succeeding or being
+// rejected — see firestore.rules for the actual enforcement.
+
+function generateSixDigitCode() {
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return String(100000 + (arr[0] % 900000));
+}
+
+function openAddJobModal() {
+  document.getElementById('add-job-code').value = '';
+  document.getElementById('add-job-error').style.display = 'none';
+  document.getElementById('add-job-modal').style.display = 'flex';
+}
+function closeAddJobModal() { document.getElementById('add-job-modal').style.display = 'none'; }
+
+async function submitAddJobCode() {
+  const code = document.getElementById('add-job-code').value.trim();
+  const errEl = document.getElementById('add-job-error');
+  errEl.style.display = 'none';
+  if (!/^\d{6}$/.test(code)) { errEl.textContent = 'Enter the 6-digit code.'; errEl.style.display = 'block'; return; }
+  try {
+    const codeDoc = await db.collection('jobInviteCodes').doc(code).get();
+    if (!codeDoc.exists) { errEl.textContent = "That code doesn't match any job."; errEl.style.display = 'block'; return; }
+    const jobId = codeDoc.data().jobId;
+    if (enabledJobs.includes(jobId)) { errEl.textContent = 'You already have this job.'; errEl.style.display = 'block'; return; }
+    await userDoc().update({
+      enabledJobs: firebase.firestore.FieldValue.arrayUnion(jobId),
+      _lastJobCode: code
+    });
+    enabledJobs = enabledJobs.concat([jobId]);
+    closeAddJobModal();
+    renderJobsGrid();
+    toast(`${getJob(jobId).label} added ✓`);
+  } catch (e) {
+    errEl.textContent = 'Something went wrong verifying that code — try again.';
+    errEl.style.display = 'block';
+  }
+}
+
+function openRemoveJobModal(jobId) {
+  document.getElementById('remove-job-label').textContent = getJob(jobId).label;
+  document.getElementById('remove-job-code').value = '';
+  document.getElementById('remove-job-error').style.display = 'none';
+  document.getElementById('remove-job-modal').dataset.jobId = jobId;
+  document.getElementById('remove-job-modal').style.display = 'flex';
+}
+function closeRemoveJobModal() { document.getElementById('remove-job-modal').style.display = 'none'; }
+
+async function submitRemoveJobCode() {
+  const jobId = document.getElementById('remove-job-modal').dataset.jobId;
+  const code = document.getElementById('remove-job-code').value.trim();
+  const errEl = document.getElementById('remove-job-error');
+  errEl.style.display = 'none';
+  if (!/^\d{6}$/.test(code)) { errEl.textContent = 'Enter the 6-digit code.'; errEl.style.display = 'block'; return; }
+  try {
+    await userDoc().update({
+      enabledJobs: firebase.firestore.FieldValue.arrayRemove(jobId),
+      _lastRemovalCode: code
+    });
+    enabledJobs = enabledJobs.filter(id => id !== jobId);
+    if (currentJobId === jobId) { closeJob(); closeGenericJob(); }
+    if (jobId === 'ca_it' && currentJobId === 'ca_it') closeCaIt();
+    closeRemoveJobModal();
+    renderJobsGrid();
+    toast(`${getJob(jobId).label} removed`);
+  } catch (e) {
+    errEl.textContent = "That code is wrong or has expired — ask for a fresh one.";
+    errEl.style.display = 'block';
+  }
+}
+
+// ── Admin panel ──────────────────────────────────────────────
+// Visible only when this account's own user doc has isAdmin: true (set by
+// hand, once, in the Firebase console — see the setup notes). Everything
+// here is also re-enforced by Firestore rules; hiding the button is a
+// convenience, not the actual security boundary.
+
+function updateAdminUI() {
+  const btn = document.getElementById('admin-badge-btn');
+  const mBtn = document.getElementById('m-admin-badge-btn');
+  if (btn) btn.style.display = isAdmin ? 'inline-flex' : 'none';
+  if (mBtn) mBtn.style.display = isAdmin ? 'flex' : 'none';
+}
+
+let removalCodeTimer = null;
+
+function openAdminModal() {
+  renderAdminJobTypeList();
+  document.getElementById('admin-new-code-result').innerHTML = '';
+  adminUpdateJobKindFields();
+  document.getElementById('admin-modal').style.display = 'flex';
+}
+function closeAdminModal() { document.getElementById('admin-modal').style.display = 'none'; clearInterval(removalCodeTimer); }
+
+function adminUpdateJobKindFields() {
+  const kind = document.getElementById('aj-kind').value;
+  document.getElementById('aj-noun-wrap').style.display = kind === 'periodic_income' ? '' : 'none';
+  document.getElementById('aj-datemode-wrap').style.display = kind === 'periodic_income' ? '' : 'none';
+}
+
+async function adminGenerateRemovalCode() {
+  const code = generateSixDigitCode();
+  const validUntilMs = Date.now() + 5 * 60 * 1000;
+  try {
+    await db.collection('systemCodes').doc(code).set({
+      purpose: 'removeJob',
+      validUntil: firebase.firestore.Timestamp.fromMillis(validUntilMs),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) {
+    document.getElementById('admin-removal-code-display').innerHTML = '<div class="modal-error" style="display:block">Could not generate a code — check the Firestore rules are deployed (see setup notes).</div>';
+    return;
+  }
+  const display = document.getElementById('admin-removal-code-display');
+  clearInterval(removalCodeTimer);
+  const renderCountdown = () => {
+    const msLeft = validUntilMs - Date.now();
+    if (msLeft <= 0) {
+      display.innerHTML = '<div class="modal-desc">That code expired — generate a new one.</div>';
+      clearInterval(removalCodeTimer);
+      return;
+    }
+    const m = Math.floor(msLeft / 60000), s = Math.floor((msLeft % 60000) / 1000);
+    display.innerHTML = `<div class="code-display">${code}</div><div class="code-meta">valid for ${m}:${String(s).padStart(2, '0')} more</div>`;
+  };
+  renderCountdown();
+  removalCodeTimer = setInterval(renderCountdown, 1000);
+}
+
+function slugify(s) {
+  return (s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')) || 'job';
+}
+
+async function adminCreateJobType() {
+  const label = document.getElementById('aj-label').value.trim();
+  const icon = document.getElementById('aj-icon').value.trim() || '⭐';
+  const kind = document.getElementById('aj-kind').value;
+  const titheMode = document.getElementById('aj-tithe-mode').value;
+  if (!label) { alert('Enter a label.'); return; }
+
+  let jobId = slugify(label);
+  const existingIds = getAllJobs().map(j => j.id);
+  if (existingIds.includes(jobId)) jobId = jobId + '_' + Date.now().toString(36).slice(-4);
+
+  const config = { titheMode };
+  if (kind === 'periodic_income') {
+    config.entryNoun = document.getElementById('aj-noun').value.trim() || 'Paycheck';
+    config.dateMode = document.getElementById('aj-datemode').value;
+  }
+
+  try {
+    await db.collection('jobTypes').doc(jobId).set({
+      id: jobId, label, icon, kind, config, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    const code = generateSixDigitCode();
+    await db.collection('jobInviteCodes').doc(code).set({ jobId, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+
+    document.getElementById('admin-new-code-result').innerHTML = `
+      <div class="admin-section-label">${label} is ready</div>
+      <div class="modal-desc">Give this code to whoever should get it — it keeps working until you regenerate it.</div>
+      <div class="code-display">${code}</div>`;
+
+    document.getElementById('aj-label').value = '';
+    document.getElementById('aj-icon').value = '';
+  } catch (e) {
+    document.getElementById('admin-new-code-result').innerHTML = '<div class="modal-error" style="display:block">Could not save that job type — check the Firestore rules are deployed (see setup notes).</div>';
+  }
+}
+
+function renderAdminJobTypeList() {
+  const wrap = document.getElementById('admin-job-type-list');
+  if (!wrap) return;
+  if (!customJobTypes.length) { wrap.innerHTML = '<div class="empty-state">No custom job types yet — create one below.</div>'; return; }
+  wrap.innerHTML = customJobTypes.map(j => `
+    <div class="admin-job-row">
+      <div class="aj-icon">${j.icon}</div>
+      <div class="aj-label">${j.label}<div class="aj-kind">${j.kind === 'periodic_income' ? 'Periodic pay' : 'Client-based service'}</div></div>
+      <button class="act-btn" onclick="adminRegenerateCode('${j.id}')">new code</button>
+    </div>`).join('');
+}
+
+async function adminRegenerateCode(jobId) {
+  try {
+    const old = await db.collection('jobInviteCodes').where('jobId', '==', jobId).get();
+    const batch = db.batch();
+    old.docs.forEach(d => batch.delete(d.ref));
+    const code = generateSixDigitCode();
+    batch.set(db.collection('jobInviteCodes').doc(code), { jobId, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    await batch.commit();
+    document.getElementById('admin-new-code-result').innerHTML = `
+      <div class="admin-section-label">${getJob(jobId).label} — new code</div>
+      <div class="modal-desc">The old code for this job no longer works.</div>
+      <div class="code-display">${code}</div>`;
+  } catch (e) {
+    document.getElementById('admin-new-code-result').innerHTML = '<div class="modal-error" style="display:block">Could not regenerate that code.</div>';
   }
 }
 
@@ -4379,7 +5167,7 @@ function renderPocketsPage() {
 }
 
 function jobOptionsHtml(selectedId) {
-  return JOBS.map(j => `<option value="${j.id}"${j.id === selectedId ? ' selected' : ''}>${j.label}</option>`).join('');
+  return getEnabledJobs().map(j => `<option value="${j.id}"${j.id === selectedId ? ' selected' : ''}>${j.label}</option>`).join('');
 }
 
 function updatePkFreeHint() {
@@ -6037,7 +6825,9 @@ async function restoreFullState(data) {
   await wipeAndWriteCollection('pocketRules', data.pocketRules || []);
   await wipeAndWriteCollection('recurring', data.recurringRules || []);
   await wipeAndWriteCollection('history', data.historyLog || []);
-  await userDoc().set({ balances: data.balances || { bank: 0, cash: 0 } });
+  // merge: true — a backup captures financial data, not which job types
+  // are currently unlocked on this account or its admin status.
+  await userDoc().set({ balances: data.balances || { bank: 0, cash: 0 } }, { merge: true });
 }
 async function archiveCurrentStateBeforeRestore() {
   try {
@@ -6172,52 +6962,73 @@ function renderMobileJobs() {
   if (!wrap) return;
   let html = '';
 
-  html += `<div class="m-section-label">${getJob('lawn_mowing').label}</div>`;
-  const lawnClients = clients.filter(c => jobOf(c) === 'lawn_mowing');
-  if (!lawnClients.length) {
-    html += `<div class="empty-state">No clients yet.</div>`;
-  } else {
-    html += lawnClients.map(c => {
-      const openEvents = lawnEvents.filter(j => j.client === c.name && jobOf(j) === 'lawn_mowing' && j.status !== 'paid')
-        .sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
-      const owed = openEvents.reduce((s,j) => s + eventAmount(j), 0);
-      const subId = 'm-sub-client-' + c.id;
-      return `<div class="m-card">
-        <div class="m-card-row">
-          <div class="m-card-title">${c.name}</div>
-          <div class="m-card-value">$${c.rate}/event</div>
-        </div>
-        ${c.note ? `<div class="m-card-sub">${c.note}</div>` : ''}
-        ${openEvents.length ? `
-          <button class="m-expand-toggle" onclick="mToggleSub('${subId}')">▾ ${openEvents.length} open event${openEvents.length>1?'s':''} · $${owed.toFixed(2)} owed</button>
-          <div class="m-sub-rows" id="${subId}">
-            ${openEvents.map(j => `<div class="m-sub-row"><span class="m-sub-row-main">${fmt(j.date)} — ${statusBadge(j.status)}</span><span class="m-sub-row-amt">$${eventAmount(j).toFixed(2)}</span></div>`).join('')}
-          </div>` : `<div class="m-card-sub">No open events</div>`}
-      </div>`;
-    }).join('');
+  if (enabledJobs.includes('lawn_mowing')) {
+    html += `<div class="m-section-label">${getJob('lawn_mowing').label} <button class="m-job-remove" onclick="openRemoveJobModal('lawn_mowing')">remove</button></div>`;
+    const lawnClients = clients.filter(c => jobOf(c) === 'lawn_mowing');
+    if (!lawnClients.length) {
+      html += `<div class="empty-state">No clients yet.</div>`;
+    } else {
+      html += lawnClients.map(c => {
+        const openEvents = lawnEvents.filter(j => j.client === c.name && jobOf(j) === 'lawn_mowing' && j.status !== 'paid')
+          .sort((a,b) => b.date.localeCompare(a.date) || b.id.localeCompare(a.id));
+        const owed = openEvents.reduce((s,j) => s + eventAmount(j), 0);
+        const subId = 'm-sub-client-' + c.id;
+        return `<div class="m-card">
+          <div class="m-card-row">
+            <div class="m-card-title">${c.name}</div>
+            <div class="m-card-value">$${c.rate}/event</div>
+          </div>
+          ${c.note ? `<div class="m-card-sub">${c.note}</div>` : ''}
+          ${openEvents.length ? `
+            <button class="m-expand-toggle" onclick="mToggleSub('${subId}')">▾ ${openEvents.length} open event${openEvents.length>1?'s':''} · $${owed.toFixed(2)} owed</button>
+            <div class="m-sub-rows" id="${subId}">
+              ${openEvents.map(j => `<div class="m-sub-row"><span class="m-sub-row-main">${fmt(j.date)} — ${statusBadge(j.status)}</span><span class="m-sub-row-amt">$${eventAmount(j).toFixed(2)}</span></div>`).join('')}
+            </div>` : `<div class="m-card-sub">No open events</div>`}
+        </div>`;
+      }).join('');
+    }
   }
 
-  html += `<div class="m-section-label">${getJob('ca_it').label}</div>`;
-  const uncashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'uncashed').sort((a,b) => b.dateEnd.localeCompare(a.dateEnd));
-  const cashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'cashed').sort((a,b) => b.dateEnd.localeCompare(a.dateEnd));
-  const uncashedTotal = uncashed.reduce((s,j) => s + eventAmount(j), 0);
-  const cashedTotal = cashed.reduce((s,j) => s + eventAmount(j), 0);
-  html += `<div class="m-card">
-    <div class="m-card-row"><div class="m-card-title">Uncashed checks</div><div class="m-card-value">$${uncashedTotal.toFixed(2)}</div></div>
-    ${uncashed.length ? `
-      <button class="m-expand-toggle" onclick="mToggleSub('m-sub-uncashed')">▾ ${uncashed.length} check${uncashed.length>1?'s':''}</button>
-      <div class="m-sub-rows" id="m-sub-uncashed">
-        ${uncashed.map(j => `<div class="m-sub-row"><span class="m-sub-row-main">${itCheckLabel(j)}</span><span class="m-sub-row-amt">$${eventAmount(j).toFixed(2)}</span></div>`).join('')}
-      </div>` : `<div class="m-card-sub">No uncashed checks</div>`}
-  </div>
-  <div class="m-card">
-    <div class="m-card-row"><div class="m-card-title">Cashed checks</div><div class="m-card-value">$${cashedTotal.toFixed(2)}</div></div>
-    ${cashed.length ? `
-      <button class="m-expand-toggle" onclick="mToggleSub('m-sub-cashed')">▾ ${cashed.length} check${cashed.length>1?'s':''}</button>
-      <div class="m-sub-rows" id="m-sub-cashed">
-        ${cashed.map(j => `<div class="m-sub-row"><span class="m-sub-row-main">${itCheckLabel(j)}</span><span class="m-sub-row-amt">$${eventAmount(j).toFixed(2)}</span></div>`).join('')}
-      </div>` : `<div class="m-card-sub">No cashed checks yet</div>`}
-  </div>`;
+  if (enabledJobs.includes('ca_it')) {
+    html += `<div class="m-section-label">${getJob('ca_it').label} <button class="m-job-remove" onclick="openRemoveJobModal('ca_it')">remove</button></div>`;
+    const uncashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'uncashed').sort((a,b) => b.dateEnd.localeCompare(a.dateEnd));
+    const cashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'cashed').sort((a,b) => b.dateEnd.localeCompare(a.dateEnd));
+    const uncashedTotal = uncashed.reduce((s,j) => s + eventAmount(j), 0);
+    const cashedTotal = cashed.reduce((s,j) => s + eventAmount(j), 0);
+    html += `<div class="m-card">
+      <div class="m-card-row"><div class="m-card-title">Uncashed checks</div><div class="m-card-value">$${uncashedTotal.toFixed(2)}</div></div>
+      ${uncashed.length ? `
+        <button class="m-expand-toggle" onclick="mToggleSub('m-sub-uncashed')">▾ ${uncashed.length} check${uncashed.length>1?'s':''}</button>
+        <div class="m-sub-rows" id="m-sub-uncashed">
+          ${uncashed.map(j => `<div class="m-sub-row"><span class="m-sub-row-main">${itCheckLabel(j)}</span><span class="m-sub-row-amt">$${eventAmount(j).toFixed(2)}</span></div>`).join('')}
+        </div>` : `<div class="m-card-sub">No uncashed checks</div>`}
+    </div>
+    <div class="m-card">
+      <div class="m-card-row"><div class="m-card-title">Cashed checks</div><div class="m-card-value">$${cashedTotal.toFixed(2)}</div></div>
+      ${cashed.length ? `
+        <button class="m-expand-toggle" onclick="mToggleSub('m-sub-cashed')">▾ ${cashed.length} check${cashed.length>1?'s':''}</button>
+        <div class="m-sub-rows" id="m-sub-cashed">
+          ${cashed.map(j => `<div class="m-sub-row"><span class="m-sub-row-main">${itCheckLabel(j)}</span><span class="m-sub-row-amt">$${eventAmount(j).toFixed(2)}</span></div>`).join('')}
+        </div>` : `<div class="m-card-sub">No cashed checks yet</div>`}
+    </div>`;
+  }
+
+  // Any custom job types this account has unlocked — read-only summary
+  // (full add/edit for these happens on desktop, same as lawn_mowing/ca_it
+  // above get no add/edit controls here either).
+  getEnabledJobs().filter(j => j.id !== 'lawn_mowing' && j.id !== 'ca_it').forEach(job => {
+    html += `<div class="m-section-label">${job.icon} ${job.label} <button class="m-job-remove" onclick="openRemoveJobModal('${job.id}')">remove</button></div>`;
+    const isPeriodic = job.kind === 'periodic_income';
+    const items = lawnEvents.filter(j => j.job === job.id);
+    const open = items.filter(j => isPeriodic ? j.status === 'uncashed' : j.status !== 'paid');
+    const openTotal = open.reduce((s,j) => s + eventAmount(j), 0);
+    html += `<div class="m-card">
+      <div class="m-card-row"><div class="m-card-title">${isPeriodic ? 'Uncashed' : 'Open'}</div><div class="m-card-value">$${openTotal.toFixed(2)}</div></div>
+      <div class="m-card-sub">${open.length ? open.length + ' entr' + (open.length>1?'ies':'y') : (isPeriodic ? 'All clear' : 'All settled')} — full detail on desktop</div>
+    </div>`;
+  });
+
+  html += `<button class="m-job-add-btn" onclick="openAddJobModal()">+ New Job — have a code?</button>`;
 
   wrap.innerHTML = html;
 }
