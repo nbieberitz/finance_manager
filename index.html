@@ -2468,12 +2468,15 @@ auth.onAuthStateChanged(user => {
     currentUser = user;
     // Keep a copy of basic profile info on the user doc — this is the
     // only way the admin "manage users" panel has to tell accounts apart,
-    // since uids alone aren't readable at a glance.
+    // since uids alone aren't readable at a glance. Failures here shouldn't
+    // block sign-in, but are logged (not silently swallowed) so a Firestore
+    // rules gap is visible in devtools instead of just showing up later as
+    // an account stuck displaying a bare uid.
     db.collection('users').doc(user.uid).set({
       displayName: user.displayName || null,
       email: user.email || null,
       photoURL: user.photoURL || null
-    }, { merge: true }).catch(() => {});
+    }, { merge: true }).catch(err => console.warn('Could not save profile info to user doc:', err));
     area.innerHTML = `
       <div class="auth-user">
         <span class="sync-dot"></span>
@@ -4728,6 +4731,19 @@ async function adminRegenerateCode(jobId) {
 // enabledJobs field on other accounts' docs (see setup notes) — without
 // that rule change this will load with a permission error.
 
+// Friendly stand-in for displayName when Google didn't provide one (or
+// this account's doc hasn't picked one up yet): turns the part of the
+// email before the @ into a readable name, e.g. "travis.smith+lawn@…"
+// → "Travis Smith". Returns null (falling through to the raw uid) only
+// if there's no email on the doc at all.
+function usernameFromEmail(email) {
+  if (!email) return null;
+  const local = email.split('@')[0].split('+')[0];
+  const words = local.split(/[._-]+/).filter(Boolean);
+  if (!words.length) return null;
+  return words.map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
 function openAdminUsersModal() {
   document.getElementById('admin-users-modal').style.display = 'flex';
   renderAdminUsersList();
@@ -4735,7 +4751,7 @@ function openAdminUsersModal() {
   adminUsersUnsub = db.collection('users').onSnapshot(snap => {
     adminUsersList = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
     adminUsersList.sort((a, b) =>
-      (a.displayName || a.email || a.uid).localeCompare(b.displayName || b.email || b.uid));
+      (a.displayName || usernameFromEmail(a.email) || a.uid).localeCompare(b.displayName || usernameFromEmail(b.email) || b.uid));
     renderAdminUsersList();
   }, () => {
     document.getElementById('admin-users-list').innerHTML =
@@ -4764,7 +4780,7 @@ function renderAdminUsersList() {
         <div class="admin-user-head">
           <img src="${u.photoURL || ''}" onerror="this.style.display='none'" />
           <div class="admin-user-id">
-            <div class="admin-user-name">${u.displayName || u.email || u.uid}${u.isAdmin ? ' <span class=\"admin-badge-tag\">admin</span>' : ''}</div>
+            <div class="admin-user-name">${u.displayName || usernameFromEmail(u.email) || u.uid}${u.isAdmin ? ' <span class=\"admin-badge-tag\">admin</span>' : ''}</div>
             <div class="admin-user-email">${u.email || u.uid}</div>
           </div>
         </div>
