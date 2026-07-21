@@ -2295,8 +2295,19 @@ function loadFromFirestore() {
     if (snap.exists) {
       const d = snap.data();
       balances = d.balances || { bank: 0, cash: 0 };
-      delete balances.tithe_bank;
-      delete balances.tithe_cash;
+      if (balances.tithe_bank !== undefined || balances.tithe_cash !== undefined) {
+        // Legacy fields from back when tithe-owed was a stored running
+        // balance instead of computed live by computeTithe(). Strip them
+        // locally, and actually clear them in Firestore too (dot-notation +
+        // FieldValue.delete() — a plain merge set() on `balances` would just
+        // leave them untouched) so this stops re-firing on every load.
+        delete balances.tithe_bank;
+        delete balances.tithe_cash;
+        userDoc().update({
+          'balances.tithe_bank': firebase.firestore.FieldValue.delete(),
+          'balances.tithe_cash': firebase.firestore.FieldValue.delete()
+        });
+      }
       isAdmin = d.isAdmin === true;
       if (Array.isArray(d.enabledJobs)) {
         enabledJobs = d.enabledJobs;
