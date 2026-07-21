@@ -1945,9 +1945,11 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
     <div class="backup-modal-title">🔒 Set this backup's passphrase</div>
     <div class="backup-modal-desc" id="bp-purpose">Every backup gets its own passphrase — nothing is saved on this device, so type it twice to make sure it's right, and keep it somewhere safe. Without it, this specific backup file can't be restored.</div>
     <form onsubmit="return false">
+      <input type="text" autocomplete="username" style="display:none" tabindex="-1" aria-hidden="true" />
       <input id="backup-passphrase-input" class="backup-input" type="password" placeholder="At least 6 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('backup-passphrase-confirm-input').focus();}" />
     </form>
     <form onsubmit="return false">
+      <input type="text" autocomplete="username" style="display:none" tabindex="-1" aria-hidden="true" />
       <input id="backup-passphrase-confirm-input" class="backup-input" type="password" placeholder="Type it again to confirm" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitBackupPassphrase()" />
     </form>
     <div class="backup-error-text" id="bp-error"></div>
@@ -1968,7 +1970,8 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
     <div class="backup-modal-desc">Paste an encrypted backup below. You'll get a full preview — every tab, just like the live app — before anything on your real account changes.</div>
     <textarea id="restore-blob-input" class="backup-input" placeholder="Paste FMBK1:... backup text here"></textarea>
     <form onsubmit="return false">
-      <input id="restore-passphrase-input" class="backup-input" type="password" placeholder="Backup passphrase" onkeydown="if(event.key==='Enter')decryptAndPreviewBackup()" />
+      <input type="text" autocomplete="username" style="display:none" tabindex="-1" aria-hidden="true" />
+      <input id="restore-passphrase-input" class="backup-input" type="password" placeholder="Backup passphrase" autocomplete="current-password" onkeydown="if(event.key==='Enter')decryptAndPreviewBackup()" />
     </form>
     <div class="backup-error-text" id="restore-error"></div>
     <div class="backup-modal-actions">
