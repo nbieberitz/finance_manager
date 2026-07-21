@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0B0D0B" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2032%2032%27%3E%3Crect%20width%3D%2732%27%20height%3D%2732%27%20rx%3D%277%27%20fill%3D%27%23141714%27/%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%273%27%20y1%3D%2710%27%20x2%3D%2729%27%20y2%3D%2722%27%3E%3Cstop%20offset%3D%270%25%27%20stop-color%3D%27%2386EFAC%27/%3E%3Cstop%20offset%3D%2735%25%27%20stop-color%3D%27%234ADE80%27/%3E%3Cstop%20offset%3D%27100%25%27%20stop-color%3D%27%23F59E0B%27/%3E%3C/linearGradient%3E%3C/defs%3E%3Ctext%20x%3D%2716%27%20y%3D%2723%27%20font-family%3D%27Arial%2Csans-serif%27%20font-size%3D%2719%27%20font-weight%3D%27700%27%20text-anchor%3D%27middle%27%20fill%3D%27url%28%23g%29%27%3EF%3C/text%3E%3C/svg%3E" />
 <script>
 // ── Device detection ──────────────────────────────────────
 // Runs synchronously before anything else loads so there's no
@@ -1331,6 +1333,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
   <div style="display:flex;align-items:center;gap:14px">
     <div class="logo">
       <h1>Finance Manager</h1>
+      <span>Personal Ledger</span>
     </div>
     <button id="test-mode-btn" class="test-mode-btn" onclick="enterTestMode()" style="display:none" title="Sandbox mode — changes won't be saved to your account">⚗ test mode</button>
     <div style="position:relative">
@@ -1614,7 +1617,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
       </div>
     </div>
     <div id="paid-events-body" style="display:none">
-      <div id="paid-events-wrap"><div class="empty-state">No paid events yet.</div></div>
+      <div id="paid-events-wrap"><div class="empty-state">No paid events yet — mark one paid and it moves here.</div></div>
     </div>
   </section>
 
@@ -1654,7 +1657,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
         <span id="it-uncashed-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
       </div>
     </div>
-    <div id="it-uncashed-wrap"><div class="empty-state">No uncashed checks.</div></div>
+    <div id="it-uncashed-wrap"><div class="empty-state">No uncashed checks — logged checks land here until you mark them cashed.</div></div>
   </section>
 
   <!-- Paychecks / Add -->
@@ -1715,7 +1718,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
       </div>
     </div>
     <div id="it-cashed-body" style="display:none">
-      <div id="it-cashed-wrap"><div class="empty-state">No cashed checks yet.</div></div>
+      <div id="it-cashed-wrap"><div class="empty-state">No cashed checks yet — mark one cashed and it moves here.</div></div>
     </div>
   </section>
 
@@ -1820,7 +1823,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
         <button class="btn btn-ghost" onclick="toggleForm('pocket-form')">Cancel</button>
       </div>
     </div>
-    <div id="pockets-wrap"><div class="empty-state">No pockets yet.</div></div>
+    <div id="pockets-wrap"><div class="empty-state">No pockets yet. Add one above — link it to a wishlist item, or leave it unlinked for a general fund like an emergency fund.</div></div>
   </section>
 
   <!-- Pockets History -->
@@ -1899,7 +1902,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
         <button class="btn btn-ghost" onclick="toggleForm('recurring-form')">Cancel</button>
       </div>
     </div>
-    <div id="recurring-wrap"><div class="empty-state">No recurring rules yet.</div></div>
+    <div id="recurring-wrap"><div class="empty-state">No recurring rules yet — add one above to have it repeat automatically.</div></div>
   </section>
 
 </div>
@@ -1942,7 +1945,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 <!-- ── Local Backup: passphrase modal ─────────────────────── -->
 <div id="backup-passphrase-modal">
   <div class="backup-modal-box">
-    <div class="backup-modal-title">🔒 Set this backup's passphrase</div>
+    <div class="backup-modal-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px;flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Set this backup's passphrase</div>
     <div class="backup-modal-desc" id="bp-purpose">Every backup gets its own passphrase — nothing is saved on this device, so type it twice to make sure it's right, and keep it somewhere safe. Without it, this specific backup file can't be restored.</div>
     <form onsubmit="return false">
       <input type="text" autocomplete="username" style="display:none" tabindex="-1" aria-hidden="true" />
@@ -2084,7 +2087,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
       <div class="admin-section-label">All accounts</div>
       <div class="modal-desc">See every account and flip any job on or off for them directly — no invite or removal code needed.</div>
       <div class="form-actions" style="margin-top:8px">
-        <button class="btn btn-primary" onclick="openAdminUsersModal()">👥 Manage users' jobs</button>
+        <button class="btn btn-primary" onclick="openAdminUsersModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Manage users' jobs</button>
       </div>
     </div>
 
@@ -2145,7 +2148,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 
 <div class="modal-overlay" id="admin-users-modal">
   <div class="modal-box modal-wide">
-    <div class="modal-title">👥 Manage Users' Jobs <button class="modal-close-x" onclick="closeAdminUsersModal()">✕</button></div>
+    <div class="modal-title"><span style="display:flex;align-items:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Manage Users' Jobs</span><button class="modal-close-x" onclick="closeAdminUsersModal()">✕</button></div>
     <div class="modal-desc">Tap a job to grant or remove it for that account. Changes apply immediately — this bypasses invite/removal codes entirely.</div>
     <div class="admin-users-list" id="admin-users-list"><div class="empty-state">Loading accounts…</div></div>
   </div>
@@ -2763,7 +2766,7 @@ function deleteRecurringRule(id) {
 function renderRecurringList() {
   const wrap = document.getElementById('recurring-wrap');
   if (!wrap) return;
-  if (!recurringRules.length) { wrap.innerHTML = '<div class="empty-state">No recurring rules yet.</div>'; return; }
+  if (!recurringRules.length) { wrap.innerHTML = '<div class="empty-state">No recurring rules yet — add one above to have it repeat automatically.</div>'; return; }
   const sorted = [...recurringRules].sort((a, b) => a.nextDate.localeCompare(b.nextDate) || a.id.localeCompare(b.id));
   wrap.innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>What</th><th>Amount</th><th>Every</th><th>Next</th><th>Status</th><th></th></tr></thead>
@@ -3527,7 +3530,7 @@ function renderPaidEvents() {
   if (summary) summary.textContent = paid.length ? `${paid.length} event${paid.length>1?'s':''} · $${total.toFixed(2)}` : '';
   const wrap = document.getElementById('paid-events-wrap');
   if (!wrap) return;
-  if (!paid.length) { wrap.innerHTML = '<div class="empty-state">No paid events yet.</div>'; return; }
+  if (!paid.length) { wrap.innerHTML = '<div class="empty-state">No paid events yet — mark one paid and it moves here.</div>'; return; }
   wrap.innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>Date</th><th>Client</th><th>Amount</th><th></th></tr></thead>
     <tbody>${paid.map(j => `
@@ -4008,7 +4011,7 @@ function renderItUncashedChecks() {
   if (summary) summary.textContent = uncashed.length ? `${uncashed.length} check${uncashed.length > 1 ? 's' : ''} · $${total.toFixed(2)}` : '';
   const wrap = document.getElementById('it-uncashed-wrap');
   if (!wrap) return;
-  if (!uncashed.length) { wrap.innerHTML = '<div class="empty-state">No uncashed checks.</div>'; return; }
+  if (!uncashed.length) { wrap.innerHTML = '<div class="empty-state">No uncashed checks — logged checks land here until you mark them cashed.</div>'; return; }
   wrap.innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>Pay Period</th><th>Amount</th><th>Tithe</th><th></th></tr></thead>
     <tbody>${uncashed.map(j => `
@@ -4034,7 +4037,7 @@ function renderItCashedChecks() {
   if (summary) summary.textContent = cashed.length ? `${cashed.length} check${cashed.length > 1 ? 's' : ''} · $${total.toFixed(2)}` : '';
   const wrap = document.getElementById('it-cashed-wrap');
   if (!wrap) return;
-  if (!cashed.length) { wrap.innerHTML = '<div class="empty-state">No cashed checks yet.</div>'; return; }
+  if (!cashed.length) { wrap.innerHTML = '<div class="empty-state">No cashed checks yet — mark one cashed and it moves here.</div>'; return; }
   wrap.innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>Pay Period</th><th>Amount</th><th>Tithe</th><th></th></tr></thead>
     <tbody>${cashed.map(j => `
@@ -6766,7 +6769,7 @@ function renderRpJobs() {
           <div class="section-title"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Paid Events</div>
           <div class="header-actions"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)">${paid.length ? `${paid.length} event${paid.length>1?'s':''} · $${paidTotal.toFixed(2)}` : ''}</span></div>
         </div>
-        ${!paid.length ? '<div class="empty-state">No paid events yet.</div>' : `<div class="table-wrap"><table>
+        ${!paid.length ? '<div class="empty-state">This backup has no paid events.</div>' : `<div class="table-wrap"><table>
           <thead><tr><th>Date</th><th>Client</th><th>Amount</th></tr></thead>
           <tbody>${paid.map(j => `<tr><td class="mono">${fmt(j.date)}</td><td>${j.client}</td><td class="mono amount-pos">$${rpEventAmount(j).toFixed(2)}</td></tr>`).join('')}</tbody>
         </table></div>`}
@@ -6790,7 +6793,7 @@ function renderRpPockets() {
   const free = rpFreeAmount();
   const panel = document.getElementById('rp-panel-pockets');
 
-  const pocketsHtml = !pockets.length ? '<div class="empty-state">No pockets yet.</div>' : pockets.map(p => {
+  const pocketsHtml = !pockets.length ? '<div class="empty-state">This backup has no pockets.</div>' : pockets.map(p => {
     const item = wishlist.find(w => w.id === p.wishlistItemId);
     const price = item ? parseFloat(item.price) : null;
     const rawPct = price ? Math.round((p.balance||0)/price*100) : null;
@@ -6862,7 +6865,7 @@ function renderRpRecurring() {
       <div class="section-header static">
         <div class="section-title"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>Recurring Rules</div>
       </div>
-      ${!sorted.length ? '<div class="empty-state">No recurring rules yet.</div>' : `<div class="table-wrap"><table>
+      ${!sorted.length ? '<div class="empty-state">This backup has no recurring rules.</div>' : `<div class="table-wrap"><table>
         <thead><tr><th>What</th><th>Amount</th><th>Every</th><th>Next</th><th>Status</th></tr></thead>
         <tbody>${sorted.map(r => `
           <tr>
@@ -6901,7 +6904,7 @@ function renderRpChecks() {
         <div class="section-title"><svg viewBox="0 0 24 24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>Uncashed Checks</div>
         <div class="header-actions"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)">${uncashed.length ? `${uncashed.length} check${uncashed.length>1?'s':''} · $${uncashedTotal.toFixed(2)}` : ''}</span></div>
       </div>
-      ${!uncashed.length ? '<div class="empty-state">No uncashed checks.</div>' : `<div class="table-wrap"><table>
+      ${!uncashed.length ? '<div class="empty-state">This backup has no uncashed checks.</div>' : `<div class="table-wrap"><table>
         <thead><tr><th>Pay Period</th><th>Amount</th><th>Tithe</th></tr></thead>
         <tbody>${rowsHtml(uncashed)}</tbody></table></div>`}
     </section>
@@ -6910,7 +6913,7 @@ function renderRpChecks() {
         <div class="section-title"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>Cashed Checks</div>
         <div class="header-actions"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)">${cashed.length ? `${cashed.length} check${cashed.length>1?'s':''} · $${cashedTotal.toFixed(2)}` : ''}</span></div>
       </div>
-      ${!cashed.length ? '<div class="empty-state">No cashed checks yet.</div>' : `<div class="table-wrap"><table>
+      ${!cashed.length ? '<div class="empty-state">This backup has no cashed checks.</div>' : `<div class="table-wrap"><table>
         <thead><tr><th>Pay Period</th><th>Amount</th><th>Tithe</th></tr></thead>
         <tbody>${rowsHtml(cashed)}</tbody></table></div>`}
     </section>
@@ -7202,7 +7205,7 @@ function renderMobilePockets() {
 
   let pocketsHtml;
   if (!pockets.length) {
-    pocketsHtml = `<div class="empty-state">No pockets yet.</div>`;
+    pocketsHtml = `<div class="empty-state">No pockets yet. Add one above — link it to a wishlist item, or leave it unlinked for a general fund like an emergency fund.</div>`;
   } else {
     pocketsHtml = pockets.map(p => {
       const item = getWishlistItem(p.wishlistItemId);
