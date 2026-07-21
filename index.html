@@ -2,20 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="color-scheme" content="light">
+  <!-- Standard opt-out: tells compliant browsers this page is light-only,
+       and "only" additionally asks the UA not to substitute a forced scheme -->
+  <meta name="color-scheme" content="only light">
+  <!-- Legacy WebKit equivalent (older Safari versions) -->
+  <meta name="supported-color-schemes" content="light">
+  <!-- Matches browser chrome (address bar/status bar) to the page -->
+  <meta name="theme-color" content="#808080">
   <title>Gray Background</title>
   <style>
     html {
-      color-scheme: light;
+      color-scheme: only light;
     }
     html, body {
+      /* Solid color AND a same-color pixel image stacked together.
+         Some heuristic dark-filters skip re-painting image content
+         even when they repaint background-color. */
       background-color: gray;
+      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR42mNoaGgAAAMEAYF1LgG8AAAAAElFTkSuQmCC");
+      background-repeat: repeat;
       height: 100%;
       margin: 0;
+    }
+    /* Explicit author-specified text color, since some heuristics only
+       repaint colors left at browser-default rather than author-set ones */
+    body {
+      color: #1a1a1a;
     }
     @media (prefers-color-scheme: dark) {
       html, body {
         background-color: gray !important;
+        background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR42mNoaGgAAAMEAYF1LgG8AAAAAElFTkSuQmCC") !important;
+        color: #1a1a1a !important;
       }
     }
   </style>
