@@ -476,6 +476,29 @@ select option { background: var(--surface); }
 
 .form-actions { margin-top: 12px; display: flex; gap: 8px; }
 
+.event-form-toolbar { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+.event-options-wrap { position: relative; }
+.kebab-btn {
+  background: none; border: none; color: var(--text-faint); font-size: 16px; line-height: 1;
+  cursor: pointer; padding: 3px 9px; border-radius: var(--radius-sm);
+  transition: color 0.15s var(--ease), background 0.15s var(--ease);
+}
+.kebab-btn:hover { color: var(--text); background: var(--surface3); }
+.event-options-menu {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 50;
+  min-width: 155px; background: var(--surface-grad); border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-pop); padding: 4px;
+  display: none; flex-direction: column; gap: 2px; animation: modalPop 0.18s var(--ease-spring);
+}
+.event-options-menu.open { display: flex; }
+.event-options-menu button {
+  display: block; width: 100%; text-align: left; background: none; border: none; cursor: pointer;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text);
+  padding: 7px 9px; border-radius: 5px; transition: background 0.15s var(--ease);
+}
+.event-options-menu button:hover { background: var(--surface3); }
+.optional-tag { text-transform: none; letter-spacing: normal; font-weight: 400; font-style: italic; color: var(--text-faint); font-size: 9.5px; margin-left: 2px; }
+
 .btn {
   font-family: 'Inter', sans-serif;
   font-size: 13px;
@@ -1629,6 +1652,14 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
       </div>
     </div>
     <div class="add-form" id="event-form">
+      <div class="event-form-toolbar">
+        <div class="event-options-wrap" id="event-options-wrap">
+          <button type="button" class="kebab-btn" onclick="toggleEventOptionsMenu(event)" aria-label="More event options" title="More options">⋮</button>
+          <div class="event-options-menu" id="event-options-menu">
+            <button type="button" id="le-title-menu-item" onclick="toggleEventTitleField()">+ Add title</button>
+          </div>
+        </div>
+      </div>
       <div class="form-grid">
         <div><label>Client</label><select id="le-client" onchange="prefillEventAmount()"></select></div>
         <div><label>Date</label>
@@ -1645,6 +1676,10 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
             <option value="check">Check coming</option>
             <option value="paid">Paid</option>
           </select>
+        </div>
+        <div id="le-title-wrap" style="display:none">
+          <label>Title <span class="optional-tag">(optional)</span></label>
+          <input type="text" id="le-title" placeholder="e.g. Spring cleanup" />
         </div>
       </div>
       <div class="form-actions">
@@ -3378,7 +3413,7 @@ function renderClients() {
       <tr id="erow-${j.id}">
         <td style="width:32px"><input type="checkbox" class="event-cb" data-id="${j.id}" onclick="updateBulkBar()" /></td>
         <td class="mono">${fmt(j.date)}</td>
-        <td style="color:var(--text-muted);font-size:12px">${j.client}</td>
+        <td style="color:var(--text-muted);font-size:12px">${j.client}${j.title ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px">${j.title}</div>` : ''}</td>
         <td class="mono amount-pos">$${eventAmount(j)}</td>
         <td>${statusBadge(j.status)}</td>
         <td><div class="row-actions">
@@ -3675,7 +3710,7 @@ function renderPaidEvents() {
     <tbody>${paid.map(j => `
       <tr>
         <td class="mono">${fmt(j.date)}</td>
-        <td>${j.client}</td>
+        <td>${j.client}${j.title ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px">${j.title}</div>` : ''}</td>
         <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}</td>
         <td><div class="row-actions">
           <button class="act-btn success" onclick="unpayEvent('${j.id}')">undo</button>
@@ -3858,6 +3893,35 @@ async function clearJobHistory(jobId) {
 
 function toggleForm(id) { document.getElementById(id).classList.toggle('open'); }
 function toggleSection(id) { const el=document.getElementById(id); el.style.display=el.style.display==='none'?'':'none'; }
+
+function toggleEventOptionsMenu(e) {
+  e.stopPropagation();
+  document.getElementById('event-options-menu').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  const menu = document.getElementById('event-options-menu');
+  const wrap = document.getElementById('event-options-wrap');
+  if (menu && menu.classList.contains('open') && wrap && !wrap.contains(e.target)) {
+    menu.classList.remove('open');
+  }
+});
+// Lets clients stay untitled by default (matches the "hidden unless asked for" spec) while
+// still allowing one to be added per event via the kebab menu next to the form.
+function toggleEventTitleField() {
+  const wrap = document.getElementById('le-title-wrap');
+  const input = document.getElementById('le-title');
+  const menuItem = document.getElementById('le-title-menu-item');
+  const isHidden = wrap.style.display === 'none';
+  wrap.style.display = isHidden ? '' : 'none';
+  menuItem.textContent = isHidden ? '✕ Remove title' : '+ Add title';
+  document.getElementById('event-options-menu').classList.remove('open');
+  if (isHidden) input.focus(); else input.value = '';
+}
+function resetEventTitleField() {
+  document.getElementById('le-title-wrap').style.display = 'none';
+  document.getElementById('le-title').value = '';
+  document.getElementById('le-title-menu-item').textContent = '+ Add title';
+}
 
 function addClient() {
   const name=document.getElementById('cl-name').value.trim();
@@ -4084,7 +4148,7 @@ function deleteEvent(id) {
   }
   lawnEvents=lawnEvents.filter(j=>j.id!==id);
   pendingEventDeletes.add(id); pendingEventWrites.delete(id);
-  logHistory('delete',`Deleted event — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`, { job: currentJobId });
+  logHistory('delete',`Deleted event — ${j.client} on ${fmt(j.date)}${j.title ? ` "${j.title}"` : ''} ($${eventAmount(j)})`, { job: currentJobId });
   save(); render(); reopenPanel(j.client); toast('Event deleted');
 }
 
@@ -4101,7 +4165,9 @@ async function addEvent() {
   const status = document.getElementById('le-status').value;
   const raw    = document.getElementById('le-amount').value;
   const amount = raw !== '' ? parseFloat(raw) : getRate(client);
+  const title  = document.getElementById('le-title').value.trim();
   const newJob = {id:'l'+Date.now(), client, date, status, amount, job: currentJobId};
+  if (title) newJob.title = title; // optional — omit the field entirely rather than storing ''
 
   // Creating an event already marked Paid needs the same payment-method
   // capture markPaid() does later — without it the amount has nowhere to
@@ -4120,10 +4186,11 @@ async function addEvent() {
 
   lawnEvents.push(newJob);
   pendingEventWrites.add(newJob.id);
-  logHistory('add', `Added event — ${client} on ${fmt(date)}, ${newJob.status}${newJob.paymentMethod ? ' ('+newJob.paymentMethod+')' : ''} ($${amount})`, { job: currentJobId });
+  logHistory('add', `Added event — ${client} on ${fmt(date)}${title ? ` "${title}"` : ''}, ${newJob.status}${newJob.paymentMethod ? ' ('+newJob.paymentMethod+')' : ''} ($${amount})`, { job: currentJobId });
   save(); render();
   document.getElementById('event-form').classList.remove('open');
   document.getElementById('le-date').value = '';
+  resetEventTitleField();
   prefillEventAmount();
   toast('Event added ✓');
   if (newJob.pocketAllocations && newJob.pocketAllocations.length) {
@@ -5105,7 +5172,7 @@ function editEvent(id) {
       <button type="button" class="date-pick-btn" onclick="openDatePicker('ee-date-${id}')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
       <input type="date" id="ee-date-${id}-picker" class="date-picker-hidden" onchange="applyDatePicker('ee-date-${id}')" tabindex="-1" />
     </div></td>
-    <td><select id="ee-client-${id}">${clientOpts}</select></td>
+    <td><select id="ee-client-${id}">${clientOpts}</select><input type="text" id="ee-title-${id}" value="${j.title || ''}" placeholder="Title (optional)" style="margin-top:4px;font-size:11px;padding:5px 8px" /></td>
     <td><input id="ee-amount-${id}" type="number" value="${eventAmount(j)}" min="0" step="0.01" /></td>
     <td><select id="ee-status-${id}">
       <option value="unpaid"${j.status==='unpaid'?' selected':''}>Unpaid</option>
@@ -5123,11 +5190,17 @@ function saveEvent(id) {
   const client = document.getElementById('ee-client-'+id).value;
   const status = document.getElementById('ee-status-'+id).value;
   const amount = parseFloat(document.getElementById('ee-amount-'+id).value);
+  const title  = document.getElementById('ee-title-'+id).value.trim();
   if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
   const old = lawnEvents.find(j=>j.id===id);
-  lawnEvents = lawnEvents.map(j => j.id===id ? {...j, date, client, status, amount} : j);
+  lawnEvents = lawnEvents.map(j => {
+    if (j.id !== id) return j;
+    const updated = {...j, date, client, status, amount};
+    if (title) updated.title = title; else delete updated.title; // cleared title = remove the field, not store ''
+    return updated;
+  });
   pendingEventWrites.add(id);
-  logHistory('add', `Edited event — ${old.client} ${fmt(old.date)} → ${client} ${fmt(date)}, $${amount}, ${status}`, { job: currentJobId });
+  logHistory('add', `Edited event — ${old.client} ${fmt(old.date)} → ${client} ${fmt(date)}${title ? ` "${title}"` : ''}, $${amount}, ${status}`, { job: currentJobId });
   save();
   render();
   const c = clients.find(c => c.name === client) || clients.find(c => c.name === old.client);
