@@ -476,14 +476,15 @@ select option { background: var(--surface); }
 
 .form-actions { margin-top: 12px; display: flex; gap: 8px; }
 
-.event-form-toolbar { display: flex; justify-content: flex-end; margin-bottom: 6px; }
 .event-options-wrap { position: relative; }
 .kebab-btn {
-  background: none; border: none; color: var(--text-faint); font-size: 16px; line-height: 1;
-  cursor: pointer; padding: 3px 9px; border-radius: var(--radius-sm);
-  transition: color 0.15s var(--ease), background 0.15s var(--ease);
+  width: 36px; min-width: 36px; height: 100%; padding: 0;
+  background: var(--surface); border: 1px solid var(--border-mid); color: var(--text-faint);
+  font-size: 16px; line-height: 1; cursor: pointer; border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  transition: color 0.15s var(--ease), background 0.15s var(--ease), border-color 0.15s var(--ease);
 }
-.kebab-btn:hover { color: var(--text); background: var(--surface3); }
+.kebab-btn:hover { color: var(--text); background: var(--surface3); border-color: var(--text-faint); }
 .event-options-menu {
   position: absolute; top: calc(100% + 4px); right: 0; z-index: 50;
   min-width: 155px; background: var(--surface-grad); border: 1px solid var(--border-mid);
@@ -1652,14 +1653,6 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
       </div>
     </div>
     <div class="add-form" id="event-form">
-      <div class="event-form-toolbar">
-        <div class="event-options-wrap" id="event-options-wrap">
-          <button type="button" class="kebab-btn" onclick="toggleEventOptionsMenu(event)" aria-label="More event options" title="More options">⋮</button>
-          <div class="event-options-menu" id="event-options-menu">
-            <button type="button" id="le-title-menu-item" onclick="toggleEventTitleField()">+ Add title</button>
-          </div>
-        </div>
-      </div>
       <div class="form-grid">
         <div><label>Client</label><select id="le-client" onchange="prefillEventAmount()"></select></div>
         <div><label>Date</label>
@@ -1671,11 +1664,19 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
         </div>
         <div><label>Amount ($)</label><input type="number" id="le-amount" min="0" step="0.01" placeholder="auto" /></div>
         <div><label>Status</label>
-          <select id="le-status">
-            <option value="unpaid">Unpaid</option>
-            <option value="check">Check coming</option>
-            <option value="paid">Paid</option>
-          </select>
+          <div style="display:flex;gap:6px">
+            <select id="le-status" style="flex:1">
+              <option value="unpaid">Unpaid</option>
+              <option value="check">Check coming</option>
+              <option value="paid">Paid</option>
+            </select>
+            <div class="event-options-wrap" id="event-options-wrap">
+              <button type="button" class="kebab-btn" onclick="toggleEventOptionsMenu(event)" aria-label="More event options" title="More options">⋮</button>
+              <div class="event-options-menu" id="event-options-menu">
+                <button type="button" id="le-title-menu-item" onclick="toggleEventTitleField()">+ Add title</button>
+              </div>
+            </div>
+          </div>
         </div>
         <div id="le-title-wrap" style="display:none">
           <label>Title <span class="optional-tag">(optional)</span></label>
