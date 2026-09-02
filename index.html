@@ -2379,6 +2379,17 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
+
+// Resolves a pending signInWithRedirect() (mobileSignIn() below uses redirect,
+// not popup, since popups are unreliable on mobile browsers). onAuthStateChanged
+// usually picks up a *successful* redirect on its own, but without this call any
+// failure — blocked storage, an unsupported browser context, a network hiccup —
+// was silently swallowed: the user just landed back on the sign-in screen with
+// no indication why.
+auth.getRedirectResult().catch(err => {
+  console.error('Redirect sign-in failed:', err);
+  toast('Sign-in failed — ' + (err.message || err.code || 'please try again'));
+});
 let currentUser = null;
 let testMode = false;
 let testModeSnapshot = null;
@@ -2632,7 +2643,11 @@ auth.onAuthStateChanged(user => {
 
 function signIn() {
   const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider);
+  provider.setCustomParameters({ prompt: 'select_account' });
+  auth.signInWithPopup(provider).catch(err => {
+    console.error('Sign-in failed:', err);
+    toast('Sign-in failed — ' + (err.message || err.code || 'please try again'));
+  });
 }
 function signOut() {
   if (confirm('Sign out?')) { detachListeners(); auth.signOut(); }
@@ -7365,7 +7380,11 @@ function mToggleSub(id) {
 // listener still owns signing currentUser in and loading data.
 function mobileSignIn() {
   const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithRedirect(provider); // redirect, not popup — far more reliable on mobile browsers
+  provider.setCustomParameters({ prompt: 'select_account' });
+  auth.signInWithRedirect(provider).catch(err => { // redirect, not popup — far more reliable on mobile browsers
+    console.error('Redirect sign-in failed to start:', err);
+    toast('Sign-in failed — ' + (err.message || err.code || 'please try again'));
+  });
 }
 
 auth.onAuthStateChanged(user => {
