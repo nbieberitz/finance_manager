@@ -2386,9 +2386,19 @@ const db   = firebase.firestore();
 // failure — blocked storage, an unsupported browser context, a network hiccup —
 // was silently swallowed: the user just landed back on the sign-in screen with
 // no indication why.
-auth.getRedirectResult().catch(err => {
+// TEMP DIAGNOSTIC — account picker now works, but nothing comes back on some
+// phones afterward, with no error toast either. That pattern usually means
+// the browser's storage/tracking protections (e.g. Safari's "Prevent
+// Cross-Site Tracking") blocked Firebase from reading back what it stored
+// before leaving for Google — but alert() beats guessing further. Swap this
+// back to a quiet toast once we know what's actually happening.
+auth.getRedirectResult().then(result => {
+  if (!result.user) {
+    alert('Sign-in debug: redirect completed with no user.\nBrowser: ' + navigator.userAgent);
+  }
+}).catch(err => {
   console.error('Redirect sign-in failed:', err);
-  toast('Sign-in failed — ' + (err.message || err.code || 'please try again'));
+  alert('Sign-in debug: redirect failed.\nCode: ' + (err.code || 'none') + '\nMessage: ' + (err.message || err));
 });
 let currentUser = null;
 let testMode = false;
