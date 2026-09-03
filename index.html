@@ -2381,24 +2381,25 @@ const auth = firebase.auth();
 const db   = firebase.firestore();
 
 // Resolves a pending signInWithRedirect() (mobileSignIn() below uses redirect,
-// not popup, since popups are unreliable on mobile browsers). onAuthStateChanged
-// usually picks up a *successful* redirect on its own, but without this call any
-// failure — blocked storage, an unsupported browser context, a network hiccup —
-// was silently swallowed: the user just landed back on the sign-in screen with
-// no indication why.
-// TEMP DIAGNOSTIC — account picker now works, but nothing comes back on some
-// phones afterward, with no error toast either. That pattern usually means
-// the browser's storage/tracking protections (e.g. Safari's "Prevent
-// Cross-Site Tracking") blocked Firebase from reading back what it stored
-// before leaving for Google — but alert() beats guessing further. Swap this
-// back to a quiet toast once we know what's actually happening.
+// not popup — popups are unreliable on mobile browsers). getRedirectResult()
+// resolves with no user on basically every ordinary page load, since that's
+// just "no redirect was pending" — so the diagnostic below only fires when
+// mobileSignIn() set the pendingMobileSignIn flag right before navigating
+// away, i.e. only right after an actual sign-in attempt. Remove once solved.
 auth.getRedirectResult().then(result => {
+  const justAttempted = sessionStorage.getItem('pendingMobileSignIn');
+  if (!justAttempted) return; // ordinary load, not a returning redirect — nothing to report
+  sessionStorage.removeItem('pendingMobileSignIn');
   if (!result.user) {
     alert('Sign-in debug: redirect completed with no user.\nBrowser: ' + navigator.userAgent);
   }
 }).catch(err => {
+  const justAttempted = sessionStorage.getItem('pendingMobileSignIn');
+  sessionStorage.removeItem('pendingMobileSignIn');
   console.error('Redirect sign-in failed:', err);
-  alert('Sign-in debug: redirect failed.\nCode: ' + (err.code || 'none') + '\nMessage: ' + (err.message || err));
+  if (justAttempted) {
+    alert('Sign-in debug: redirect failed.\nCode: ' + (err.code || 'none') + '\nMessage: ' + (err.message || err));
+  }
 });
 let currentUser = null;
 let testMode = false;
@@ -7391,7 +7392,9 @@ function mToggleSub(id) {
 function mobileSignIn() {
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
+  sessionStorage.setItem('pendingMobileSignIn', '1');
   auth.signInWithRedirect(provider).catch(err => { // redirect, not popup — far more reliable on mobile browsers
+    sessionStorage.removeItem('pendingMobileSignIn');
     console.error('Redirect sign-in failed to start:', err);
     toast('Sign-in failed — ' + (err.message || err.code || 'please try again'));
   });
