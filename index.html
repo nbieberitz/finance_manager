@@ -7392,11 +7392,25 @@ function mToggleSub(id) {
 function mobileSignIn() {
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
-  sessionStorage.setItem('pendingMobileSignIn', '1');
-  auth.signInWithRedirect(provider).catch(err => { // redirect, not popup — far more reliable on mobile browsers
-    sessionStorage.removeItem('pendingMobileSignIn');
-    console.error('Redirect sign-in failed to start:', err);
-    toast('Sign-in failed — ' + (err.message || err.code || 'please try again'));
+  // Popup first — it's what already works on desktop, and a popup opened
+  // directly from a real tap (not delayed/programmatic) is normally allowed
+  // by mobile browsers. Redirect kept only as a fallback for the rare case
+  // where the environment genuinely can't open a popup at all — it was tried
+  // as primary and consistently failed to return a user across every mobile
+  // browser we tested (see pendingMobileSignIn/getRedirectResult above).
+  auth.signInWithPopup(provider).catch(err => {
+    if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
+      sessionStorage.setItem('pendingMobileSignIn', '1');
+      auth.signInWithRedirect(provider).catch(err2 => {
+        sessionStorage.removeItem('pendingMobileSignIn');
+        console.error('Redirect fallback failed to start:', err2);
+        toast('Sign-in failed — ' + (err2.message || err2.code || 'please try again'));
+      });
+    } else if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+      console.error('Popup sign-in failed:', err);
+      toast('Sign-in failed — ' + (err.message || err.code || 'please try again'));
+    }
+    // popup-closed-by-user / cancelled-popup-request just means they backed out — no error needed.
   });
 }
 
