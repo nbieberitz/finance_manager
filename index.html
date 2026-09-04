@@ -2380,25 +2380,25 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.firestore();
 
-// Resolves a pending signInWithRedirect() (mobileSignIn() below uses redirect,
-// not popup — popups are unreliable on mobile browsers). getRedirectResult()
-// resolves with no user on basically every ordinary page load, since that's
-// just "no redirect was pending" — so the diagnostic below only fires when
-// mobileSignIn() set the pendingMobileSignIn flag right before navigating
-// away, i.e. only right after an actual sign-in attempt. Remove once solved.
+// Resolves a pending signInWithRedirect(). mobileSignIn() below uses popup as
+// its primary sign-in method now, falling back to redirect only when a popup
+// genuinely can't be opened — so this rarely fires. Gated on the
+// pendingMobileSignIn flag mobileSignIn() sets right before that fallback
+// redirect, since getRedirectResult() otherwise resolves with no user (and
+// no error) on every ordinary page load, which isn't worth reporting.
 auth.getRedirectResult().then(result => {
   const justAttempted = sessionStorage.getItem('pendingMobileSignIn');
   if (!justAttempted) return; // ordinary load, not a returning redirect — nothing to report
   sessionStorage.removeItem('pendingMobileSignIn');
   if (!result.user) {
-    alert('Sign-in debug: redirect completed with no user.\nBrowser: ' + navigator.userAgent);
+    toast('Sign-in didn\'t complete — please try again');
   }
 }).catch(err => {
   const justAttempted = sessionStorage.getItem('pendingMobileSignIn');
   sessionStorage.removeItem('pendingMobileSignIn');
   console.error('Redirect sign-in failed:', err);
   if (justAttempted) {
-    alert('Sign-in debug: redirect failed.\nCode: ' + (err.code || 'none') + '\nMessage: ' + (err.message || err));
+    toast('Sign-in failed — ' + (err.message || err.code || 'please try again'));
   }
 });
 let currentUser = null;
@@ -7392,12 +7392,10 @@ function mToggleSub(id) {
 function mobileSignIn() {
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
-  // Popup first — it's what already works on desktop, and a popup opened
+  // Popup first — same mechanism desktop's signIn() uses. A popup opened
   // directly from a real tap (not delayed/programmatic) is normally allowed
-  // by mobile browsers. Redirect kept only as a fallback for the rare case
-  // where the environment genuinely can't open a popup at all — it was tried
-  // as primary and consistently failed to return a user across every mobile
-  // browser we tested (see pendingMobileSignIn/getRedirectResult above).
+  // by mobile browsers. Redirect is a fallback for environments that
+  // genuinely can't open a popup at all.
   auth.signInWithPopup(provider).catch(err => {
     if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
       sessionStorage.setItem('pendingMobileSignIn', '1');
