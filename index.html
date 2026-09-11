@@ -3134,7 +3134,7 @@ function closeRecurring() {
 function jobOpenBalance(job) {
   const isPeriodic = job.kind === 'periodic_income';
   return isPeriodic
-    ? lawnEvents.filter(j => jobOf(j) === job.id && j.status === 'uncashed').reduce((s,j) => s + eventAmount(j), 0)
+    ? lawnEvents.filter(j => jobOf(j) === job.id && j.status === 'uncashed').reduce((s,j) => s + effectiveEarnings(j), 0)
     : lawnEvents.filter(j => jobOf(j) === job.id && j.status !== 'paid').reduce((s,j) => s + eventAmount(j), 0);
 }
 
@@ -6433,7 +6433,7 @@ async function buildBackupPayload() {
     version: 1,
     createdAt: new Date().toISOString(),
     uid: currentUser ? currentUser.uid : null,
-    data: { balances, clients, lawnEvents, otherMoney, wishlist, pockets, pocketRules, recurringRules, historyLog: fullHistory }
+    data: { balances, clients, lawnEvents, otherMoney, wishlist, pockets, pocketRules, recurringRules, jobEarnPercent, historyLog: fullHistory }
   };
 }
 async function encryptBackupPayload(payloadObj, key, salt) {
@@ -6653,11 +6653,22 @@ function rpGetRate(name) {
 function rpEventAmount(j) {
   return j.amount !== undefined ? j.amount : rpGetRate(j.client);
 }
+function rpJobOf(item) { return item.job || 'lawn_mowing'; }
+function rpEarnPercentFor(jobId) {
+  const p = (rpData.jobEarnPercent || {})[jobId];
+  return (typeof p === 'number' && p > 0) ? p : 100;
+}
+// Mirrors the live effectiveEarnings(), reading percent from the backup's
+// own jobEarnPercent instead of the live global. Backups taken before this
+// field existed have no jobEarnPercent, so every job falls back to 100%.
+function rpEffectiveEarnings(j) {
+  return Math.round(rpEventAmount(j) * rpEarnPercentFor(rpJobOf(j)) / 100 * 100) / 100;
+}
 function rpComputeBalances() {
   let bank = 0, cash = 0;
   (rpData.lawnEvents || []).forEach(j => {
-    if (j.job === 'ca_it') {
-      if (j.status === 'cashed') bank += rpEventAmount(j);
+    if (j.status === 'cashed' || j.status === 'uncashed') {
+      if (j.status === 'cashed') bank += rpEffectiveEarnings(j);
       return;
     }
     if (j.status !== 'paid' || !j.paymentMethod) return;
@@ -6681,15 +6692,15 @@ function rpComputeBalances() {
 }
 function rpComputeTithe() {
   const bank = Math.round((
-    (rpData.lawnEvents||[]).filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && !j.tithePaid)
+    (rpData.lawnEvents||[]).filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && j.titheDeductible !== false && !j.tithePaid)
       .reduce((s,j)=>s+rpEventAmount(j),0) +
-    (rpData.lawnEvents||[]).filter(j => j.job === 'ca_it' && j.status === 'cashed' && j.titheDeductible && !j.tithePaid)
-      .reduce((s,j)=>s+rpEventAmount(j),0) +
+    (rpData.lawnEvents||[]).filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid)
+      .reduce((s,j)=>s+rpEffectiveEarnings(j),0) +
     (rpData.otherMoney||[]).filter(e => e.type === 'income' && e.titheDeductible !== false && e.method !== 'cash' && !e.tithePaid)
       .reduce((s,e)=>s+parseFloat(e.amount),0)
   ) * 0.1 * 100) / 100;
   const cash = Math.round((
-    (rpData.lawnEvents||[]).filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && !j.tithePaid)
+    (rpData.lawnEvents||[]).filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && j.titheDeductible !== false && !j.tithePaid)
       .reduce((s,j)=>s+rpEventAmount(j),0) +
     (rpData.otherMoney||[]).filter(e => e.type === 'income' && e.titheDeductible !== false && e.method === 'cash' && !e.tithePaid)
       .reduce((s,e)=>s+parseFloat(e.amount),0)
@@ -6700,7 +6711,7 @@ function rpComputeNetCash() {
   const lawnEvents = rpData.lawnEvents || [];
   const otherMoney = rpData.otherMoney || [];
   const paidJobs = lawnEvents.filter(j=>j.status==='paid').reduce((s,j)=>s+rpEventAmount(j),0);
-  const itCashed = lawnEvents.filter(j=>j.status==='cashed').reduce((s,j)=>s+rpEventAmount(j),0);
+  const itCashed = lawnEvents.filter(j=>j.status==='cashed').reduce((s,j)=>s+rpEffectiveEarnings(j),0);
   const income   = otherMoney.filter(e=>e.type!=='expense' && e.type!=='transfer').reduce((s,e)=>s+parseFloat(e.amount),0);
   const expenses = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
   const titheOwed = rpComputeTithe().total;
@@ -6726,7 +6737,7 @@ function rpGetCashFlowEvents() {
   const flows = [];
   (rpData.lawnEvents || []).forEach(j => {
     if (j.job === 'ca_it') {
-      if (j.status === 'cashed') flows.push({ date: j.date, amount: rpEventAmount(j), kind: 'income' });
+      if (j.status === 'cashed') flows.push({ date: j.dateEnd, amount: rpEffectiveEarnings(j), kind: 'income' });
     } else if (j.status === 'paid') {
       flows.push({ date: j.date, amount: rpEventAmount(j), kind: 'income' });
     }
@@ -7006,8 +7017,8 @@ function renderRpDashboard() {
   const unpaid     = lawnEvents.filter(j=>j.status==='unpaid').reduce((s,j)=>s+rpEventAmount(j),0);
   const check      = lawnEvents.filter(j=>j.status==='check').reduce((s,j)=>s+rpEventAmount(j),0);
   const paidJobs   = lawnEvents.filter(j=>j.status==='paid').reduce((s,j)=>s+rpEventAmount(j),0);
-  const itUncashed = lawnEvents.filter(j=>j.status==='uncashed').reduce((s,j)=>s+rpEventAmount(j),0);
-  const itCashed   = lawnEvents.filter(j=>j.status==='cashed').reduce((s,j)=>s+rpEventAmount(j),0);
+  const itUncashed = lawnEvents.filter(j=>j.status==='uncashed').reduce((s,j)=>s+rpEffectiveEarnings(j),0);
+  const itCashed   = lawnEvents.filter(j=>j.status==='cashed').reduce((s,j)=>s+rpEffectiveEarnings(j),0);
   const income     = otherMoney.filter(e=>e.type!=='expense' && e.type!=='transfer').reduce((s,e)=>s+parseFloat(e.amount),0);
   const expenses   = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
   const tithe      = rpComputeTithe();
@@ -7396,7 +7407,7 @@ async function restoreFullState(data) {
   await wipeAndWriteCollection('history', data.historyLog || []);
   // merge: true — a backup captures financial data, not which job types
   // are currently unlocked on this account or its admin status.
-  await userDoc().set({ balances: data.balances || { bank: 0, cash: 0 } }, { merge: true });
+  await userDoc().set({ balances: data.balances || { bank: 0, cash: 0 }, jobEarnPercent: data.jobEarnPercent || {} }, { merge: true });
 }
 async function archiveCurrentStateBeforeRestore() {
   try {
