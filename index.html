@@ -4365,12 +4365,13 @@ function renderItCashedChecks() {
   wrap.innerHTML = `<div class="table-wrap"><table>
     <thead><tr><th>Pay Period</th><th>Amount</th><th>Tithe</th><th></th></tr></thead>
     <tbody>${cashed.map(j => `
-      <tr>
+      <tr id="it-row-${j.id}">
         <td class="mono">${itCheckLabel(j)}</td>
         <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}${earnPercentFor(jobOf(j)) !== 100 ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px">→ $${effectiveEarnings(j).toFixed(2)} earned (${earnPercentFor(jobOf(j))}%)</div>` : ''}</td>
         <td class="mono" style="font-size:11px;color:var(--text-faint)">${j.titheDeductible ? '✓ tithe' : '—'}</td>
         <td><div class="row-actions">
           <button class="act-btn repeat" onclick="quickRepeatItCheck('${j.id}')" title="Add another paycheck starting today, same amount &amp; period length">↻ repeat</button>
+          <button class="act-btn edit" onclick="editItCheck('${j.id}')">edit</button>
           <button class="act-btn success" onclick="uncashCheck('${j.id}')">undo</button>
           <button class="act-btn danger" onclick="deleteItCheck('${j.id}')">delete</button>
         </div></td>
