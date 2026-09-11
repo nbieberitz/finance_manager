@@ -3418,7 +3418,7 @@ function computeBalances() {
     // job (ca_it, or a custom job type of that same kind) — cashed always
     // deposits to bank, matching a paycheck rather than a cash-in-hand job.
     if (j.status === 'cashed' || j.status === 'uncashed') {
-      if (j.status === 'cashed') bank += eventAmount(j);
+      if (j.status === 'cashed') bank += effectiveEarnings(j);
       return;
     }
     if (j.status !== 'paid' || !j.paymentMethod) return;
@@ -4404,7 +4404,7 @@ function addItCheck() {
   const titheDeductible = document.getElementById('it-tithe').checked;
   if (!dateStart || !dateEnd) { alert('Enter a valid pay period.'); return; }
   if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
-  const allocations = status === 'cashed' ? applyPocketRules('ca_it', amount) : [];
+  const allocations = status === 'cashed' ? applyPocketRules('ca_it', effectiveEarnings({ amount, job: 'ca_it' })) : [];
   const newCheck = { id: 'it' + Date.now(), job: 'ca_it', dateStart, dateEnd, amount, status, titheDeductible, ...(allocations.length ? { pocketAllocations: allocations } : {}) };
   lawnEvents.push(newCheck);
   pendingEventWrites.add(newCheck.id);
@@ -4441,7 +4441,7 @@ function markCheckCashed(id) {
   if (!j) return;
   const prev = j.status;
   const amount = eventAmount(j);
-  const allocations = applyPocketRules('ca_it', amount);
+  const allocations = applyPocketRules('ca_it', effectiveEarnings(j));
   lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
   pendingEventWrites.add(id);
   logHistory('paid', `Marked paycheck cashed — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { jobId: id, prevStatus: prev, job: 'ca_it' });
@@ -4527,7 +4527,7 @@ function saveItCheck(id) {
   const old = lawnEvents.find(j => j.id === id);
   let pocketAllocations = old.pocketAllocations || [];
   if (old.status !== 'cashed' && status === 'cashed') {
-    pocketAllocations = applyPocketRules('ca_it', amount);
+    pocketAllocations = applyPocketRules('ca_it', effectiveEarnings({ amount, job: 'ca_it' }));
   } else if (old.status === 'cashed' && status !== 'cashed') {
     reversePocketAllocations(old, 'paycheck edited back to not cashed');
     pocketAllocations = [];
@@ -4766,7 +4766,7 @@ function markGenericCashed(jobId, id) {
   if (!j) return;
   const prev = j.status;
   const amount = eventAmount(j);
-  const allocations = applyPocketRules(jobId, amount);
+  const allocations = applyPocketRules(jobId, effectiveEarnings(j));
   lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
   pendingEventWrites.add(id);
   logHistory('paid', `Marked ${getJob(jobId).label} cashed — ${genericEntryLabel(j, getJob(jobId).config || {})} ($${amount.toFixed(2)})`, { jobId: id, prevStatus: prev, job: jobId });
@@ -5406,7 +5406,7 @@ function getCashFlowEvents() {
   const flows = [];
   lawnEvents.forEach(j => {
     if (j.job === 'ca_it') {
-      if (j.status === 'cashed') flows.push({ date: j.dateEnd, amount: eventAmount(j), kind: 'income' });
+      if (j.status === 'cashed') flows.push({ date: j.dateEnd, amount: effectiveEarnings(j), kind: 'income' });
     } else if (j.status === 'paid') {
       flows.push({ date: j.date, amount: eventAmount(j), kind: 'income' });
     }
