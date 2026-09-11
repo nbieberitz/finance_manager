@@ -213,6 +213,28 @@ header::after {
   margin-bottom: 2rem;
 }
 
+.bank-compare-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  margin-bottom: 12px;
+  background: var(--surface-grad);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+}
+.bank-compare-bar label {
+  display: inline;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+.bank-compare-bar input[type="date"] { width: auto; padding: 4px 8px; font-size: 12px; }
+
 .metric {
   background: var(--surface-grad);
   border: 1px solid var(--border);
@@ -1378,6 +1400,12 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 
 <div class="container" id="main-view">
 
+  <div class="bank-compare-bar">
+    <label for="last-bank-compare">Last compared with bank:</label>
+    <input type="date" id="last-bank-compare" onchange="setLastBankCompare(this.value)" />
+    <button type="button" class="pill-btn" onclick="setLastBankCompareToday()">Set to Today</button>
+  </div>
+
   <div class="summary-grid" id="summary"></div>
 
   <!-- Trends -->
@@ -2448,6 +2476,7 @@ function loadFromFirestore() {
         });
       }
       isAdmin = d.isAdmin === true;
+      lastBankCompare = d.lastBankCompare || '';
       if (Array.isArray(d.enabledJobs)) {
         enabledJobs = d.enabledJobs;
       } else {
@@ -2560,7 +2589,7 @@ async function saveToFirestore() {
 
   // Merge (not overwrite) — this doc also carries enabledJobs/isAdmin now,
   // and a bare .set() here would otherwise wipe those every debounced save.
-  await userDoc().set({ balances }, { merge: true });
+  await userDoc().set({ balances, lastBankCompare }, { merge: true });
 
   // Upsert only changed records into their subcollection
   const upsertItems = async (colName, ids, dataArr) => {
@@ -2681,6 +2710,7 @@ let recurringOpen = false;
 let lastNetCash  = 0;
 let historyLog = [];          // in-memory loaded entries
 let balances   = { bank: 0, cash: 0 };
+let lastBankCompare = ''; // YYYY-MM-DD, or '' if never set — shown/edited above the summary grid
 
 // ── Jobs ──────────────────────────────────────────────────
 // Add more jobs here later — each gets its own square button on the main
@@ -3615,6 +3645,8 @@ function render() {
   lastNetCash = Math.round(netCash * 100) / 100;
 
   const owedParts = [unpaid>0?'$'+unpaid.toFixed(2)+' unpaid':'', check>0?'$'+check.toFixed(2)+' by check':'', itUncashed>0?'$'+itUncashed.toFixed(2)+' uncashed':''].filter(Boolean);
+  const lbcInput = document.getElementById('last-bank-compare');
+  if (lbcInput) lbcInput.value = lastBankCompare;
   document.getElementById('summary').innerHTML = `
     <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${netCash.toFixed(2)}</div><div class="metric-sub">paid + payroll + income − expenses − tithe</div></div>
     <div class="metric amber"><div class="metric-label">Owed to you</div><div class="metric-value">$${(unpaid+check+itUncashed).toFixed(2)}</div><div class="metric-sub">${owedParts.join(' · ') || '&nbsp;'}</div></div>
@@ -5125,6 +5157,17 @@ function quickTransfer(direction) {
   document.getElementById('om-method').value = direction;
   form.scrollIntoView({ behavior: 'smooth', block: 'center' });
   document.getElementById('om-amount').focus();
+}
+
+function setLastBankCompare(dateStr) {
+  lastBankCompare = dateStr;
+  save();
+  render();
+}
+function setLastBankCompareToday() {
+  lastBankCompare = todayISO();
+  save();
+  render();
 }
 
 function addOtherMoney() {
@@ -7443,6 +7486,11 @@ function renderMobileOverview(d) {
         <span class="trend-legend-mini"><span class="trend-legend-dot" style="background:var(--green)"></span>In <span class="trend-legend-dot" style="background:var(--red)"></span>Out</span>
       </div>
       <div id="m-trend-bar-wrap" class="trend-bar-wrap"></div>
+    </div>
+    <div class="bank-compare-bar">
+      <label for="m-last-bank-compare">Last compared with bank:</label>
+      <input type="date" id="m-last-bank-compare" value="${lastBankCompare || ''}" onchange="setLastBankCompare(this.value)" />
+      <button type="button" class="pill-btn" onclick="setLastBankCompareToday()">Set to Today</button>
     </div>
     <div class="metric green"><div class="metric-label">Net cash</div><div class="metric-value">$${d.netCash.toFixed(2)}</div><div class="metric-sub">paid + payroll + income − expenses − tithe</div></div>
     <div class="metric amber"><div class="metric-label">Owed to you</div><div class="metric-value">$${(d.unpaid+d.check+d.itUncashed).toFixed(2)}</div><div class="metric-sub">${owedParts.join(' · ') || '&nbsp;'}</div></div>
