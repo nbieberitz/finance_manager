@@ -743,6 +743,12 @@ tr:hover td { background: var(--surface2); }
 /* Job detail view */
 .job-view-header { display:flex; align-items:center; gap:14px; margin-bottom:1.25rem; }
 .job-view-title { font-family:'Syne',sans-serif; font-size:1.3rem; font-weight:600; color:var(--text); letter-spacing:-0.01em; }
+.earn-percent-wrap { display:flex; align-items:center; gap:6px; margin-left:auto; }
+.earn-percent-wrap label {
+  display: inline; text-transform: none; letter-spacing: normal; font-weight: 400;
+  font-size: 12px; color: var(--text-muted); margin-bottom: 0; white-space: nowrap;
+}
+.earn-percent-wrap input[type="number"] { width: 58px; padding: 4px 6px; font-size: 12px; text-align: right; }
 
 /* Distribution of funds */
 .funds-section-body { padding:1.1rem 1.25rem; cursor:pointer; transition:background 0.18s var(--ease); }
@@ -1758,6 +1764,10 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
   <div class="job-view-header">
     <button class="pill-btn" onclick="closeCaIt()">← All jobs</button>
     <div class="job-view-title">Collegedale Academy – IT</div>
+    <div class="earn-percent-wrap">
+      <label for="it-earn-percent">Earn %</label>
+      <input type="number" id="it-earn-percent" min="1" max="100" step="1" onchange="setJobEarnPercent('ca_it', this.value)" />
+    </div>
   </div>
 
   <!-- Uncashed Checks (replaces Clients) -->
@@ -2477,6 +2487,7 @@ function loadFromFirestore() {
       }
       isAdmin = d.isAdmin === true;
       lastBankCompare = d.lastBankCompare || '';
+      jobEarnPercent = d.jobEarnPercent || {};
       if (Array.isArray(d.enabledJobs)) {
         enabledJobs = d.enabledJobs;
       } else {
@@ -2589,7 +2600,7 @@ async function saveToFirestore() {
 
   // Merge (not overwrite) — this doc also carries enabledJobs/isAdmin now,
   // and a bare .set() here would otherwise wipe those every debounced save.
-  await userDoc().set({ balances, lastBankCompare }, { merge: true });
+  await userDoc().set({ balances, lastBankCompare, jobEarnPercent }, { merge: true });
 
   // Upsert only changed records into their subcollection
   const upsertItems = async (colName, ids, dataArr) => {
@@ -2711,6 +2722,7 @@ let lastNetCash  = 0;
 let historyLog = [];          // in-memory loaded entries
 let balances   = { bank: 0, cash: 0 };
 let lastBankCompare = ''; // YYYY-MM-DD, or '' if never set — shown/edited above the summary grid
+let jobEarnPercent = {}; // { jobId: percent } — what % of a job's raw check amount actually counts as earned; missing/unset = 100 (unchanged)
 
 // ── Jobs ──────────────────────────────────────────────────
 // Add more jobs here later — each gets its own square button on the main
@@ -3295,6 +3307,17 @@ window.addEventListener('beforeunload', e => {
 
 function getRate(name) { const c = clients.find(c => c.name===name); return c ? c.rate : 0; }
 function eventAmount(j) { return j.amount !== undefined ? j.amount : getRate(j.client); }
+function earnPercentFor(jobId) {
+  const p = jobEarnPercent[jobId];
+  return (typeof p === 'number' && p > 0) ? p : 100;
+}
+// What actually counts as earned from a check — e.g. a $1000 CA-IT paycheck
+// at 20% earn-rate means $200 is the real income, and tithe (10%) is figured
+// on that $200, not the raw $1000. Jobs with no override behave exactly as
+// before (100% — effectiveEarnings === eventAmount).
+function effectiveEarnings(j) {
+  return Math.round(eventAmount(j) * earnPercentFor(jobOf(j)) / 100 * 100) / 100;
+}
 
 function fmt(d) { const [y,m,dy] = d.split('-'); return `${parseInt(m)}/${parseInt(dy)}/${y.slice(2)}`; }
 function itCheckLabel(j) { return `${fmt(j.dateStart)} – ${fmt(j.dateEnd)}`; }
@@ -3429,7 +3452,7 @@ function computeTithe() {
     lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && j.titheDeductible !== false && !j.tithePaid)
             .reduce((s, j) => s + eventAmount(j), 0) +
     lawnEvents.filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid)
-            .reduce((s, j) => s + eventAmount(j), 0) +
+            .reduce((s, j) => s + effectiveEarnings(j), 0) +
     otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method !== 'cash' && !e.tithePaid)
               .reduce((s, e) => s + parseFloat(e.amount), 0)
   ) * 0.1 * 100) / 100;
@@ -3634,8 +3657,8 @@ function render() {
   const unpaid   = lawnEvents.filter(j=>j.status==='unpaid').reduce((s,j)=>s+eventAmount(j),0);
   const check    = lawnEvents.filter(j=>j.status==='check').reduce((s,j)=>s+eventAmount(j),0);
   const paidJobs = lawnEvents.filter(j=>j.status==='paid').reduce((s,j)=>s+eventAmount(j),0);
-  const itUncashed = lawnEvents.filter(j=>j.status==='uncashed').reduce((s,j)=>s+eventAmount(j),0);
-  const itCashed   = lawnEvents.filter(j=>j.status==='cashed').reduce((s,j)=>s+eventAmount(j),0);
+  const itUncashed = lawnEvents.filter(j=>j.status==='uncashed').reduce((s,j)=>s+effectiveEarnings(j),0);
+  const itCashed   = lawnEvents.filter(j=>j.status==='cashed').reduce((s,j)=>s+effectiveEarnings(j),0);
   const income   = otherMoney.filter(e=>e.type!=='expense' && e.type!=='transfer').reduce((s,e)=>s+parseFloat(e.amount),0);
   const expenses = otherMoney.filter(e=>e.type==='expense').reduce((s,e)=>s+parseFloat(e.amount),0);
   const tithe     = computeTithe();
@@ -4297,6 +4320,8 @@ function itStatusBadge(s) {
 }
 
 function renderItChecks() {
+  const pctInput = document.getElementById('it-earn-percent');
+  if (pctInput) pctInput.value = earnPercentFor('ca_it');
   renderItUncashedChecks();
   renderItCashedChecks();
   renderItHistory();
@@ -4316,7 +4341,7 @@ function renderItUncashedChecks() {
     <tbody>${uncashed.map(j => `
       <tr id="it-row-${j.id}">
         <td class="mono">${itCheckLabel(j)}</td>
-        <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}</td>
+        <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}${earnPercentFor(jobOf(j)) !== 100 ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px">→ $${effectiveEarnings(j).toFixed(2)} earned (${earnPercentFor(jobOf(j))}%)</div>` : ''}</td>
         <td class="mono" style="font-size:11px;color:var(--text-faint)">${j.titheDeductible ? '✓ tithe' : '—'}</td>
         <td><div class="row-actions">
           <button class="act-btn repeat" onclick="quickRepeatItCheck('${j.id}')" title="Add another paycheck starting today, same amount &amp; period length">↻ repeat</button>
@@ -4342,7 +4367,7 @@ function renderItCashedChecks() {
     <tbody>${cashed.map(j => `
       <tr>
         <td class="mono">${itCheckLabel(j)}</td>
-        <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}</td>
+        <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}${earnPercentFor(jobOf(j)) !== 100 ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px">→ $${effectiveEarnings(j).toFixed(2)} earned (${earnPercentFor(jobOf(j))}%)</div>` : ''}</td>
         <td class="mono" style="font-size:11px;color:var(--text-faint)">${j.titheDeductible ? '✓ tithe' : '—'}</td>
         <td><div class="row-actions">
           <button class="act-btn repeat" onclick="quickRepeatItCheck('${j.id}')" title="Add another paycheck starting today, same amount &amp; period length">↻ repeat</button>
@@ -5166,6 +5191,15 @@ function setLastBankCompare(dateStr) {
 }
 function setLastBankCompareToday() {
   lastBankCompare = todayISO();
+  save();
+  render();
+}
+
+function setJobEarnPercent(jobId, value) {
+  let pct = parseFloat(value);
+  if (isNaN(pct) || pct <= 0) pct = 100;
+  if (pct > 100) pct = 100;
+  jobEarnPercent = { ...jobEarnPercent, [jobId]: pct };
   save();
   render();
 }
