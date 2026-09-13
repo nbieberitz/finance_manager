@@ -2611,7 +2611,7 @@ const JOBS = [
   // shown (defaulted checked), "Unpaid/Paid" wording instead of the default
   // "Uncashed/Cashed". Not in any default enabledJobs seed above, so every
   // account starts without it — grant it per-account from Manage users' jobs.
-  { id: 'work_for_moores', kind: 'periodic_income', label: 'Work for Moores', icon: '<svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>', config: { dateMode: 'single', titheMode: 'toggle', titheDefault: true, statusWords: { open: 'Unpaid', closed: 'Paid' } } }
+  { id: 'work_for_moores', kind: 'periodic_income', label: 'Work for Moores', icon: '<svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>', config: { dateMode: 'single', titheMode: 'toggle', titheDefault: true, statusWords: { open: 'Unpaid', closed: 'Paid' }, statusDefault: 'cashed' } }
 ];
 
 // ── Per-account job enablement + Firestore-defined custom job types ──
@@ -4512,6 +4512,19 @@ function buildGenericJobShell(jobId) {
        </label>`
     : '';
 
+  // Status picker on the add form — lets an entry be created already
+  // "closed" (e.g. Work for Moores jobs are usually paid on the spot)
+  // instead of always starting in the open bucket. cfg.statusDefault picks
+  // which option is preselected; defaults to open ('uncashed') to match
+  // the old always-open behavior for any job that doesn't set it.
+  const statusDefault = cfg.statusDefault === 'cashed' ? 'cashed' : 'uncashed';
+  const statusFieldHtml = `<div><label>Status</label>
+        <select id="gj-status">
+          <option value="uncashed"${statusDefault === 'uncashed' ? ' selected' : ''}>${openLabel}</option>
+          <option value="cashed"${statusDefault === 'cashed' ? ' selected' : ''}>${closedLabel}</option>
+        </select>
+      </div>`;
+
   wrap.innerHTML = `
     <section>
       <div class="section-header static">
@@ -4530,6 +4543,7 @@ function buildGenericJobShell(jobId) {
         <div class="form-grid">
           ${dateFieldsHtml}
           <div><label>Amount ($)</label><input type="number" id="gj-amount" min="0" step="0.01" placeholder="0.00" /></div>
+          ${statusFieldHtml}
         </div>
         <div class="form-actions">
           ${titheFieldHtml}
@@ -4639,18 +4653,34 @@ async function addGenericEntry(jobId) {
     dateFields = { dateStart, dateEnd };
   }
   const titheDeductible = titheMode === 'toggle' ? document.getElementById('gj-tithe').checked : (titheMode === 'always');
+  const statusEl = document.getElementById('gj-status');
+  const status = statusEl ? statusEl.value : 'uncashed';
 
   const newEntry = { id: 'g' + Date.now() + Math.floor(Math.random() * 1000), job: jobId, ...dateFields, amount, status: 'uncashed', titheDeductible };
+
+  // Entry created already "closed" (e.g. paid on the spot) needs the same
+  // pocket-allocation step markGenericCashed() runs later — otherwise the
+  // amount never gets set aside even though it's sitting in the closed list.
+  let allocations = [];
+  if (status === 'cashed') {
+    newEntry.status = 'cashed';
+    allocations = applyPocketRules(jobId, effectiveEarnings(newEntry));
+    if (allocations.length) newEntry.pocketAllocations = allocations;
+  }
+
   lawnEvents.push(newEntry);
   pendingEventWrites.add(newEntry.id);
-  logHistory('add', `Added ${(cfg.entryNoun || 'entry').toLowerCase()} — ${genericEntryLabel(newEntry, cfg)} ($${amount.toFixed(2)})`, { job: jobId });
+  const closedWord = (cfg.statusWords ? cfg.statusWords.closed : 'Cashed').toLowerCase();
+  logHistory('add', `Added ${(cfg.entryNoun || 'entry').toLowerCase()} — ${genericEntryLabel(newEntry, cfg)} ($${amount.toFixed(2)})${status === 'cashed' ? ` (${closedWord})` : ''}`, { job: jobId });
 
   document.getElementById('gj-amount').value = '';
   if (dateMode === 'single') { document.getElementById('gj-date').value = ''; }
   else { document.getElementById('gj-start').value = ''; document.getElementById('gj-end').value = ''; }
   document.getElementById('gj-add-form').classList.remove('open');
 
-  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); toast(`${cfg.entryNoun || 'Entry'} added ✓`);
+  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId);
+  toast(`${cfg.entryNoun || 'Entry'} added ✓`);
+  if (allocations.length) checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
 }
 
 function markGenericCashed(jobId, id) {
