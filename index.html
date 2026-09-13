@@ -2382,18 +2382,41 @@ function loadFromFirestore() {
         // falls back to the safe default *locally* without writing to
         // Firestore, so a transient/unexpected read can never overwrite
         // real data (e.g. an admin-granted job) on reload.
+        //
+        // FIX: on page load, the very first onSnapshot delivery can be an
+        // unconfirmed local placeholder (metadata.fromCache === true)
+        // that fires before the real, already-synced document arrives —
+        // it can show enabledJobs as undefined even though the account
+        // genuinely has jobs granted server-side. Writing the seed default
+        // in that moment clobbers real data. Only write once Firestore has
+        // actually confirmed (fromCache === false) that the field is
+        // really missing; otherwise just use the safe default locally for
+        // this one render and let the next (server-confirmed) snapshot
+        // correct it.
         enabledJobs = ['lawn_mowing', 'ca_it'];
-        console.warn(`[mainDocListener] SEED WRITE (enabledJobs was undefined) uid=${currentUser && currentUser.uid} — writing default`, enabledJobs);
-        userDoc().set({ enabledJobs }, { merge: true });
+        if (snap.metadata.fromCache) {
+          console.warn(`[mainDocListener] enabledJobs undefined but snapshot is UNCONFIRMED (fromCache) — skipping seed write, waiting for server confirmation. uid=${currentUser && currentUser.uid}`);
+        } else {
+          console.warn(`[mainDocListener] SEED WRITE (server-confirmed enabledJobs missing) uid=${currentUser && currentUser.uid} — writing default`, enabledJobs);
+          userDoc().set({ enabledJobs }, { merge: true });
+        }
       } else {
         console.warn('enabledJobs on this account is present but not an array — leaving Firestore untouched:', d.enabledJobs);
         enabledJobs = ['lawn_mowing', 'ca_it'];
       }
     } else {
+      // Same fromCache hazard as above: an unconfirmed placeholder can
+      // report "document doesn't exist" even though the real doc (with
+      // real balances) exists server-side. Only treat it as truly missing
+      // — and create it — once the server has confirmed that.
       balances = { bank: 0, cash: 0 };
       enabledJobs = ['lawn_mowing', 'ca_it'];
-      console.warn(`[mainDocListener] NO DOC EXISTS for uid=${currentUser && currentUser.uid} — creating with default enabledJobs`, enabledJobs);
-      userDoc().set({ balances, enabledJobs }, { merge: true });
+      if (snap.metadata.fromCache) {
+        console.warn(`[mainDocListener] doc appears missing but snapshot is UNCONFIRMED (fromCache) — skipping create, waiting for server confirmation. uid=${currentUser && currentUser.uid}`);
+      } else {
+        console.warn(`[mainDocListener] NO DOC EXISTS (server-confirmed) for uid=${currentUser && currentUser.uid} — creating with default enabledJobs`, enabledJobs);
+        userDoc().set({ balances, enabledJobs }, { merge: true });
+      }
     }
     if (!ready.main) { ready.main = true; checkReady(); }
     else if (initialRenderDone) render();
