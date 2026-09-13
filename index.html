@@ -2628,7 +2628,7 @@ const JOBS = [
 // The admin panel no longer creates job types or invite codes — a new type
 // gets defined directly in the `jobTypes` collection in Firestore, and any
 // account is granted it via Manage users' jobs.
-let enabledJobs    = ['lawn_mowing', 'ca_it', 'work_for_moores']; // this account's unlocked job ids (pre-load default)
+let enabledJobs    = ['lawn_mowing', 'ca_it']; // this account's unlocked job ids (pre-load default)
 let customJobTypes = [];                        // job docs from Firestore, kind: client_service | periodic_income
 let isAdmin         = false;
 
