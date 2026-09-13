@@ -1341,13 +1341,6 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 }
 .admin-badge:hover { border-color: var(--purple); }
 .admin-section-label { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 600; color: var(--text); margin: 4px 0 2px; }
-.admin-job-row {
-  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
-  background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm);
-}
-.admin-job-row .aj-icon { font-size: 18px; width: 24px; text-align: center; }
-.admin-job-row .aj-label { flex: 1; font-size: 13px; }
-.admin-job-row .aj-kind { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint); }
 
 /* Admin — per-user job management (toggle any job for any account) */
 .admin-users-list { display: flex; flex-direction: column; gap: 8px; max-height: 54vh; overflow-y: auto; }
@@ -2233,59 +2226,6 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
         <button class="btn btn-primary" onclick="openAdminUsersModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Manage users' jobs</button>
       </div>
     </div>
-
-    <div>
-      <div class="admin-section-label">Job removal code</div>
-      <div class="modal-desc">Generate a code and read it out to whoever's removing a job — it stops working after 5 minutes, or the moment you generate a new one.</div>
-      <div id="admin-removal-code-display"><div class="modal-desc">No active code — generate one when someone needs it.</div></div>
-      <div class="form-actions" style="margin-top:8px">
-        <button class="btn btn-primary" onclick="adminGenerateRemovalCode()">Generate removal code</button>
-      </div>
-    </div>
-
-    <div>
-      <div class="admin-section-label">Job types</div>
-      <div class="modal-desc">Anything listed here can be granted to an account via its invite code. Adding a job type here never changes anyone's dashboard by itself — an account only sees it once that code is entered.</div>
-      <div id="admin-job-type-list"></div>
-    </div>
-
-    <div>
-      <div class="admin-section-label">Create a new job type</div>
-      <div class="add-form open" style="padding:0;border:none;background:none">
-        <div class="form-grid">
-          <div><label>Label</label><input type="text" id="aj-label" placeholder="e.g. Dog Walking" /></div>
-          <div><label>Icon (emoji)</label><input type="text" id="aj-icon" placeholder="🐕" maxlength="4" /></div>
-          <div>
-            <label>Shape</label>
-            <select id="aj-kind" onchange="adminUpdateJobKindFields()">
-              <option value="client_service">Client-based service (clients + rate + events)</option>
-              <option value="periodic_income">Periodic pay (recurring pay periods)</option>
-            </select>
-          </div>
-          <div>
-            <label>Tithe</label>
-            <select id="aj-tithe-mode">
-              <option value="always">Always tithe-deductible</option>
-              <option value="toggle">Ask each time (checkbox)</option>
-              <option value="never">Never tithe-deductible</option>
-            </select>
-          </div>
-          <div id="aj-noun-wrap" style="display:none"><label>Entry name</label><input type="text" id="aj-noun" placeholder="e.g. Paycheck" value="Paycheck" /></div>
-          <div id="aj-datemode-wrap" style="display:none">
-            <label>Pay period</label>
-            <select id="aj-datemode">
-              <option value="range">Start + end date</option>
-              <option value="single">Single date</option>
-            </select>
-          </div>
-        </div>
-        <div class="form-actions">
-          <button class="btn btn-primary" onclick="adminCreateJobType()">Create job type</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="admin-new-code-result"></div>
   </div>
 </div>
 
@@ -2514,7 +2454,7 @@ function loadFromFirestore() {
   unsubscribers.push(db.collection('jobTypes').onSnapshot(snap => {
     customJobTypes = snap.docs.map(d => d.data());
     if (!ready.jobTypes) { ready.jobTypes = true; checkReady(); }
-    else if (initialRenderDone) { render(); if (document.getElementById('admin-modal').style.display === 'flex') renderAdminJobTypeList(); }
+    else if (initialRenderDone) render();
   }));
 
   // Clients — sorted alphabetically so the list order is stable regardless
@@ -2737,16 +2677,15 @@ const JOBS = [
 // Beyond that, `customJobTypes` holds job *definitions* fetched from the
 // `jobTypes` Firestore collection (shared across all accounts); an account
 // only sees one once its id is in that account's own `enabledJobs` list.
-// This is how new job types get added without growing this file: define
-// once in Firestore (via the admin panel), then any account can unlock it
-// with the 6-digit code tied to that job type.
+// The admin panel no longer creates job types or invite codes — a new type
+// gets defined directly in the `jobTypes` collection in Firestore, and any
+// account is granted it via Manage users' jobs.
 let enabledJobs    = ['lawn_mowing', 'ca_it']; // this account's unlocked job ids (pre-load default)
 let customJobTypes = [];                        // job docs from Firestore, kind: client_service | periodic_income
 let isAdmin         = false;
 
 // Admin "manage users" panel — live list of every account plus a listener
-// that's only attached while that modal is open (mirrors removalCodeTimer's
-// pattern of only running while its modal is visible).
+// that's only attached while that modal is open.
 let adminUsersList  = [];
 let adminUsersUnsub = null;
 
@@ -4957,119 +4896,8 @@ function updateAdminUI() {
   if (mBtn) mBtn.style.display = isAdmin ? 'flex' : 'none';
 }
 
-let removalCodeTimer = null;
-
-function openAdminModal() {
-  renderAdminJobTypeList();
-  document.getElementById('admin-new-code-result').innerHTML = '';
-  adminUpdateJobKindFields();
-  document.getElementById('admin-modal').style.display = 'flex';
-}
-function closeAdminModal() { document.getElementById('admin-modal').style.display = 'none'; clearInterval(removalCodeTimer); }
-
-function adminUpdateJobKindFields() {
-  const kind = document.getElementById('aj-kind').value;
-  document.getElementById('aj-noun-wrap').style.display = kind === 'periodic_income' ? '' : 'none';
-  document.getElementById('aj-datemode-wrap').style.display = kind === 'periodic_income' ? '' : 'none';
-}
-
-async function adminGenerateRemovalCode() {
-  const code = generateSixDigitCode();
-  const validUntilMs = Date.now() + 5 * 60 * 1000;
-  try {
-    await db.collection('systemCodes').doc(code).set({
-      purpose: 'removeJob',
-      validUntil: firebase.firestore.Timestamp.fromMillis(validUntilMs),
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-  } catch (e) {
-    document.getElementById('admin-removal-code-display').innerHTML = '<div class="modal-error" style="display:block">Could not generate a code — check the Firestore rules are deployed (see setup notes).</div>';
-    return;
-  }
-  const display = document.getElementById('admin-removal-code-display');
-  clearInterval(removalCodeTimer);
-  const renderCountdown = () => {
-    const msLeft = validUntilMs - Date.now();
-    if (msLeft <= 0) {
-      display.innerHTML = '<div class="modal-desc">That code expired — generate a new one.</div>';
-      clearInterval(removalCodeTimer);
-      return;
-    }
-    const m = Math.floor(msLeft / 60000), s = Math.floor((msLeft % 60000) / 1000);
-    display.innerHTML = `<div class="code-display">${code}</div><div class="code-meta">valid for ${m}:${String(s).padStart(2, '0')} more</div>`;
-  };
-  renderCountdown();
-  removalCodeTimer = setInterval(renderCountdown, 1000);
-}
-
-function slugify(s) {
-  return (s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')) || 'job';
-}
-
-async function adminCreateJobType() {
-  const label = document.getElementById('aj-label').value.trim();
-  const icon = document.getElementById('aj-icon').value.trim() || '⭐';
-  const kind = document.getElementById('aj-kind').value;
-  const titheMode = document.getElementById('aj-tithe-mode').value;
-  if (!label) { alert('Enter a label.'); return; }
-
-  let jobId = slugify(label);
-  const existingIds = getAllJobs().map(j => j.id);
-  if (existingIds.includes(jobId)) jobId = jobId + '_' + Date.now().toString(36).slice(-4);
-
-  const config = { titheMode };
-  if (kind === 'periodic_income') {
-    config.entryNoun = document.getElementById('aj-noun').value.trim() || 'Paycheck';
-    config.dateMode = document.getElementById('aj-datemode').value;
-  }
-
-  try {
-    await db.collection('jobTypes').doc(jobId).set({
-      id: jobId, label, icon, kind, config, createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    const code = generateSixDigitCode();
-    await db.collection('jobInviteCodes').doc(code).set({ jobId, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-
-    document.getElementById('admin-new-code-result').innerHTML = `
-      <div class="admin-section-label">${label} is ready</div>
-      <div class="modal-desc">Give this code to whoever should get it — it keeps working until you regenerate it.</div>
-      <div class="code-display">${code}</div>`;
-
-    document.getElementById('aj-label').value = '';
-    document.getElementById('aj-icon').value = '';
-  } catch (e) {
-    document.getElementById('admin-new-code-result').innerHTML = '<div class="modal-error" style="display:block">Could not save that job type — check the Firestore rules are deployed (see setup notes).</div>';
-  }
-}
-
-function renderAdminJobTypeList() {
-  const wrap = document.getElementById('admin-job-type-list');
-  if (!wrap) return;
-  if (!customJobTypes.length) { wrap.innerHTML = '<div class="empty-state">No custom job types yet — create one below.</div>'; return; }
-  wrap.innerHTML = customJobTypes.map(j => `
-    <div class="admin-job-row">
-      <div class="aj-icon">${j.icon}</div>
-      <div class="aj-label">${j.label}<div class="aj-kind">${j.kind === 'periodic_income' ? 'Periodic pay' : 'Client-based service'}</div></div>
-      <button class="act-btn" onclick="adminRegenerateCode('${j.id}')">new code</button>
-    </div>`).join('');
-}
-
-async function adminRegenerateCode(jobId) {
-  try {
-    const old = await db.collection('jobInviteCodes').where('jobId', '==', jobId).get();
-    const batch = db.batch();
-    old.docs.forEach(d => batch.delete(d.ref));
-    const code = generateSixDigitCode();
-    batch.set(db.collection('jobInviteCodes').doc(code), { jobId, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-    await batch.commit();
-    document.getElementById('admin-new-code-result').innerHTML = `
-      <div class="admin-section-label">${getJob(jobId).label} — new code</div>
-      <div class="modal-desc">The old code for this job no longer works.</div>
-      <div class="code-display">${code}</div>`;
-  } catch (e) {
-    document.getElementById('admin-new-code-result').innerHTML = '<div class="modal-error" style="display:block">Could not regenerate that code.</div>';
-  }
-}
+function openAdminModal() { document.getElementById('admin-modal').style.display = 'flex'; }
+function closeAdminModal() { document.getElementById('admin-modal').style.display = 'none'; }
 
 // ── Admin: manage users' jobs directly ─────────────────────
 // Lists every account (from the `users` collection) and lets an admin
