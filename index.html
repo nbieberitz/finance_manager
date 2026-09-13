@@ -926,11 +926,6 @@ html.is-mobile body { padding: 0; }
 .m-sub-row-main { flex: 1; min-width: 0; color: var(--text-muted); overflow-wrap: break-word; }
 .m-sub-row-amt { font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
 .m-section-label { display: flex; align-items: center; justify-content: space-between; }
-.m-job-add-btn {
-  width: 100%; margin-top: 1.5rem; padding: 14px; border-radius: var(--radius-sm);
-  border: 1.5px dashed var(--border-mid); background: transparent; color: var(--text-muted);
-  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer;
-}
 .m-admin-badge-btn {
   position: fixed; top: 14px; right: 14px; z-index: 20; display: none;
   font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 5px 10px;
@@ -1270,15 +1265,11 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 
 /* ── Jobs: emoji icon support (existing rule only sizes <svg>) ── */
 .job-btn-icon { font-size: 25px; line-height: 1; }
-.job-btn.new-job-btn { border-style: dashed; background: transparent; }
-.job-btn.new-job-btn .job-btn-icon { background: transparent; border: 1.5px dashed var(--border-mid); }
-.job-btn.new-job-btn:hover .job-btn-icon { border-color: var(--accent); background: var(--accent-pale); }
-.job-btn.new-job-btn .job-btn-label { color: var(--text-muted); }
 .job-btn { position: relative; }
 
-/* ── Generic modals (Add Job / Admin) — same visual
+/* ── Generic modal (Admin) — same visual
    language as .backup-modal-box, kept under a neutral name since
-   they aren't backup-related. ── */
+   it isn't backup-related. ── */
 #generic-modal-root { position: fixed; inset: 0; z-index: 10003; display: none; }
 .modal-overlay {
   display: none; position: fixed; inset: 0;
@@ -1301,23 +1292,6 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 .modal-close-x { background: none; border: none; color: var(--text-faint); font-size: 18px; cursor: pointer; line-height: 1; padding: 2px 4px; }
 .modal-close-x:hover { color: var(--text); }
 .modal-error { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--red); display: none; }
-
-/* 6-digit code entry — large, spaced, monospace so it reads like a PIN */
-.code-input {
-  width: 100%; background: var(--surface2); border: 1px solid var(--border-mid);
-  border-radius: var(--radius-sm); padding: 14px 12px; color: var(--text);
-  font-family: 'JetBrains Mono', monospace; font-size: 26px; letter-spacing: 0.35em;
-  text-align: center;
-}
-.code-input:focus { outline: none; border-color: var(--accent); }
-
-/* Big display of a freshly-generated code (admin side) */
-.code-display {
-  font-family: 'JetBrains Mono', monospace; font-size: 32px; letter-spacing: 0.28em;
-  text-align: center; color: var(--accent-bright); background: var(--accent-pale);
-  border: 1px solid var(--gold-border); border-radius: var(--radius-sm); padding: 14px 8px;
-}
-.code-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); text-align: center; }
 
 /* Admin panel */
 .admin-badge {
@@ -2171,23 +2145,10 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 </div><!-- /#pc-app -->
 
 <!-- ══════════════════════════════════════════════════════════
-     Job admin/unlock modals — deliberately OUTSIDE both #pc-app
+     Job admin/unlock modal — deliberately OUTSIDE both #pc-app
      and #mobile-app (which hide one another via .is-mobile) so
-     Add Job works the same on phones and desktop.
+     it works the same on phones and desktop.
      ══════════════════════════════════════════════════════════ -->
-
-<div class="modal-overlay" id="add-job-modal">
-  <div class="modal-box">
-    <div class="modal-title">+ New Job <button class="modal-close-x" onclick="closeAddJobModal()">✕</button></div>
-    <div class="modal-desc">Enter the 6-digit code you were given to add a job to your account.</div>
-    <input type="text" class="code-input" id="add-job-code" maxlength="6" inputmode="numeric" autocomplete="off" placeholder="······" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)" />
-    <div class="modal-error" id="add-job-error"></div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeAddJobModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="submitAddJobCode()">Add job</button>
-    </div>
-  </div>
-</div>
 
 <div class="modal-overlay" id="admin-modal">
   <div class="modal-box modal-wide">
@@ -4770,51 +4731,6 @@ function saveGenericEntry(jobId, id) {
   save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); toast('Entry updated ✓');
 }
 
-// ── Add Job ────────────────────────────
-// Security model (enforced by Firestore rules, not by this code):
-//  - jobInviteCodes/{code}: get-only for signed-in users (no list) — you
-//    can check a code you were TOLD, but can't browse the collection to
-//    find codes you weren't given.
-// This modal relies entirely on the write itself succeeding or being
-// rejected — see firestore.rules for the actual enforcement.
-
-function generateSixDigitCode() {
-  const arr = new Uint32Array(1);
-  crypto.getRandomValues(arr);
-  return String(100000 + (arr[0] % 900000));
-}
-
-function openAddJobModal() {
-  document.getElementById('add-job-code').value = '';
-  document.getElementById('add-job-error').style.display = 'none';
-  document.getElementById('add-job-modal').style.display = 'flex';
-}
-function closeAddJobModal() { document.getElementById('add-job-modal').style.display = 'none'; }
-
-async function submitAddJobCode() {
-  const code = document.getElementById('add-job-code').value.trim();
-  const errEl = document.getElementById('add-job-error');
-  errEl.style.display = 'none';
-  if (!/^\d{6}$/.test(code)) { errEl.textContent = 'Enter the 6-digit code.'; errEl.style.display = 'block'; return; }
-  try {
-    const codeDoc = await db.collection('jobInviteCodes').doc(code).get();
-    if (!codeDoc.exists) { errEl.textContent = "That code doesn't match any job."; errEl.style.display = 'block'; return; }
-    const jobId = codeDoc.data().jobId;
-    if (enabledJobs.includes(jobId)) { errEl.textContent = 'You already have this job.'; errEl.style.display = 'block'; return; }
-    await userDoc().update({
-      enabledJobs: firebase.firestore.FieldValue.arrayUnion(jobId),
-      _lastJobCode: code
-    });
-    enabledJobs = enabledJobs.concat([jobId]);
-    closeAddJobModal();
-    renderJobsGrid();
-    toast(`${getJob(jobId).label} added ✓`);
-  } catch (e) {
-    errEl.textContent = 'Something went wrong verifying that code — try again.';
-    errEl.style.display = 'block';
-  }
-}
-
 // ── Admin panel ──────────────────────────────────────────────
 // Visible only when this account's own user doc has isAdmin: true (set by
 // hand, once, in the Firebase console — see the setup notes). Everything
@@ -7391,7 +7307,6 @@ function renderMobileJobs() {
     </div>`;
   });
 
-  html += `<button class="m-job-add-btn" onclick="openAddJobModal()">+ New Job — have a code?</button>`;
 
   wrap.innerHTML = html;
 }
