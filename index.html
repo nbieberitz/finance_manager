@@ -3079,12 +3079,7 @@ function renderJobsGrid() {
         <div class="job-btn-label">${job.label}</div>
         <div class="job-btn-sub">${subLabel}</div>
       </button>`;
-  }).join('') + `
-      <button class="job-btn new-job-btn" onclick="openAddJobModal()">
-        <div class="job-btn-icon">+</div>
-        <div class="job-btn-label">New Job</div>
-        <div class="job-btn-sub">Have a code?</div>
-      </button>`;
+  }).join('');
 }
 
 // Figures out which job a history entry belongs to. New entries carry an
