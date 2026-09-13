@@ -4887,7 +4887,12 @@ async function adminToggleUserJob(uid, jobId, enable, btnEl) {
     // so no manual DOM update is needed here.
   } catch (e) {
     if (btnEl) btnEl.disabled = false;
-    toast('Could not update that account — check Firestore rules.');
+    // Surface the real Firestore error (e.g. "permission-denied") instead of
+    // a generic message — this is almost always a security-rules mismatch
+    // (see comment above), and the code name pinpoints it immediately
+    // instead of requiring a trip to devtools.
+    console.error('adminToggleUserJob failed:', e);
+    toast(`Could not update that account — ${e.code || e.message || 'check Firestore rules'}.`);
   }
 }
 
