@@ -2604,7 +2604,14 @@ let jobEarnPercent = {}; // { jobId: percent } — what % of a job's raw check a
 // page and its own scoped Clients / Events / Paid Events / History.
 const JOBS = [
   { id: 'lawn_mowing', kind: 'client_service', label: 'Lawn Mowing', icon: '<svg viewBox="0 0 24 24"><path d="M9 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M19 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M3 17V8l6-4 6 4h3a3 3 0 013 3v6"/><path d="M9 4v9"/></svg>' },
-  { id: 'ca_it', kind: 'periodic_income', label: 'CA – IT', icon: '<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8M12 17v4"/></svg>' }
+  { id: 'ca_it', kind: 'periodic_income', label: 'CA – IT', icon: '<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8M12 17v4"/></svg>' },
+  // Hardcoded here (not a Firestore jobTypes doc) same as the 2 above, but
+  // built on the generic periodic_income engine below instead of its own
+  // dedicated view — no clients, one date per entry, tithe checkbox always
+  // shown (defaulted checked), "Unpaid/Paid" wording instead of the default
+  // "Uncashed/Cashed". Not in any default enabledJobs seed above, so every
+  // account starts without it — grant it per-account from Manage users' jobs.
+  { id: 'work_for_moores', kind: 'periodic_income', label: 'Work for Moores', icon: '<svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>', config: { dateMode: 'single', titheMode: 'toggle', titheDefault: true, statusWords: { open: 'Unpaid', closed: 'Paid' } } }
 ];
 
 // ── Per-account job enablement + Firestore-defined custom job types ──
@@ -3026,14 +3033,20 @@ function renderJobsGrid() {
   if (jobSort === 'balance_desc') jobs = [...jobs].sort((a,b) => jobOpenBalance(b) - jobOpenBalance(a));
   grid.innerHTML = jobs.map(job => {
     const isPeriodic = job.kind === 'periodic_income';
+    // Jobs that set config.statusWords (e.g. Work for Moores) get their own
+    // "N unpaid entries" wording here instead of the default "N uncashed
+    // checks" — ca_it and any job without statusWords keep the original text.
+    const sw = (job.config && job.config.statusWords) || null;
     const openCount = isPeriodic
       ? lawnEvents.filter(j => jobOf(j) === job.id && j.status === 'uncashed').length
       : lawnEvents.filter(j => jobOf(j) === job.id && j.status !== 'paid').length;
     const subLabel = openCount > 0
       ? (isPeriodic
-          ? openCount + ' uncashed check' + (openCount > 1 ? 's' : '') + ' · $' + jobOpenBalance(job).toFixed(2)
+          ? (sw
+              ? `${openCount} ${sw.open.toLowerCase()} entr${openCount > 1 ? 'ies' : 'y'} · $${jobOpenBalance(job).toFixed(2)}`
+              : openCount + ' uncashed check' + (openCount > 1 ? 's' : '') + ' · $' + jobOpenBalance(job).toFixed(2))
           : openCount + ' open event' + (openCount > 1 ? 's' : '') + ' · $' + jobOpenBalance(job).toFixed(2))
-      : (isPeriodic ? 'All clear' : 'All settled');
+      : (isPeriodic ? (sw ? 'All settled' : 'All clear') : 'All settled');
     return `
       <button class="job-btn" onclick="openJob('${job.id}')">
         <div class="job-btn-icon">${job.icon}</div>
@@ -4457,8 +4470,16 @@ function closeGenericJob() {
 function buildGenericJobShell(jobId) {
   const job = getJob(jobId), cfg = job.config || {};
   const noun = cfg.entryNoun || 'Entry';
+  const nounPlural = noun.endsWith('y') ? noun.slice(0, -1) + 'ies' : noun + 's';
   const dateMode = cfg.dateMode || 'range';
   const titheMode = cfg.titheMode || 'always';
+  // Optional per-job override of the default "Uncashed/Cashed" wording
+  // (e.g. Work for Moores shows "Unpaid/Paid" instead) — purely cosmetic,
+  // the underlying status values stay 'uncashed'/'cashed' either way so
+  // balances/tithe/pockets above keep working unchanged.
+  const sw = cfg.statusWords || null;
+  const openLabel = sw ? sw.open : 'Uncashed';
+  const closedLabel = sw ? sw.closed : 'Cashed';
   const wrap = document.getElementById('generic-job-body');
   if (!wrap) return;
 
@@ -4487,22 +4508,22 @@ function buildGenericJobShell(jobId) {
 
   const titheFieldHtml = titheMode === 'toggle'
     ? `<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);cursor:pointer;margin-right:auto">
-         <input type="checkbox" id="gj-tithe" style="accent-color:var(--accent)"> Tithe deductible
+         <input type="checkbox" id="gj-tithe"${cfg.titheDefault ? ' checked' : ''} style="accent-color:var(--accent)"> Tithe deductible
        </label>`
     : '';
 
   wrap.innerHTML = `
     <section>
       <div class="section-header static">
-        <div class="section-title">${job.icon} Uncashed</div>
+        <div class="section-title">${job.icon} ${openLabel}</div>
         <div class="header-actions"><span id="gj-open-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span></div>
       </div>
-      <div id="gj-open-wrap"><div class="empty-state">Nothing uncashed.</div></div>
+      <div id="gj-open-wrap"><div class="empty-state">Nothing ${openLabel.toLowerCase()}.</div></div>
     </section>
 
     <section>
       <div class="section-header static">
-        <div class="section-title">${noun}s</div>
+        <div class="section-title">${nounPlural}</div>
         <div class="header-actions"><button class="pill-btn success" onclick="toggleForm('gj-add-form')">+ Add ${noun.toLowerCase()}</button></div>
       </div>
       <div class="add-form" id="gj-add-form">
@@ -4520,13 +4541,13 @@ function buildGenericJobShell(jobId) {
 
     <section>
       <div class="section-header" onclick="toggleSection('gj-closed-body')">
-        <div class="section-title">Cashed</div>
+        <div class="section-title">${closedLabel}</div>
         <div class="header-actions">
           <span id="gj-closed-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
           <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearGenericCashed('${jobId}')">Clear all</button>
         </div>
       </div>
-      <div id="gj-closed-body" style="display:none"><div id="gj-closed-wrap"><div class="empty-state">Nothing cashed yet.</div></div></div>
+      <div id="gj-closed-body" style="display:none"><div id="gj-closed-wrap"><div class="empty-state">Nothing ${closedLabel.toLowerCase()} yet.</div></div></div>
     </section>
 
     <section>
@@ -4540,6 +4561,7 @@ function buildGenericJobShell(jobId) {
 
 function genericTableHtml(list, jobId, cfg, isOpen) {
   const titheMode = cfg.titheMode || 'always';
+  const closedLabel = (cfg.statusWords ? cfg.statusWords.closed : 'Cashed').toLowerCase();
   return `<div class="table-wrap"><table>
     <thead><tr><th>${(cfg.dateMode||'range')==='single'?'Date':'Pay Period'}</th><th>Amount</th>${titheMode!=='never'?'<th>Tithe</th>':''}<th></th></tr></thead>
     <tbody>${list.map(j => `
@@ -4550,7 +4572,7 @@ function genericTableHtml(list, jobId, cfg, isOpen) {
         <td><div class="row-actions">
           ${isOpen
             ? `<button class="act-btn edit" onclick="editGenericEntry('${jobId}','${j.id}')">edit</button>
-               <button class="act-btn success" onclick="markGenericCashed('${jobId}','${j.id}')">mark cashed</button>`
+               <button class="act-btn success" onclick="markGenericCashed('${jobId}','${j.id}')">mark ${closedLabel}</button>`
             : `<button class="act-btn success" onclick="uncashGenericEntry('${jobId}','${j.id}')">undo</button>`}
           <button class="act-btn danger" onclick="deleteGenericEntry('${jobId}','${j.id}')">delete</button>
         </div></td>
@@ -4560,6 +4582,7 @@ function genericTableHtml(list, jobId, cfg, isOpen) {
 
 function renderGenericJobOpen(jobId) {
   const cfg = (getJob(jobId).config) || {};
+  const openLabel = cfg.statusWords ? cfg.statusWords.open : 'Uncashed';
   const open = lawnEvents.filter(j => j.job === jobId && j.status === 'uncashed')
     .sort((a,b) => (b.dateEnd||b.date||'').localeCompare(a.dateEnd||a.date||'') || b.id.localeCompare(a.id));
   const total = open.reduce((s,j) => s + eventAmount(j), 0);
@@ -4567,11 +4590,12 @@ function renderGenericJobOpen(jobId) {
   if (summary) summary.textContent = open.length ? `${open.length} · $${total.toFixed(2)}` : '';
   const wrap = document.getElementById('gj-open-wrap');
   if (!wrap) return;
-  wrap.innerHTML = open.length ? genericTableHtml(open, jobId, cfg, true) : '<div class="empty-state">Nothing uncashed.</div>';
+  wrap.innerHTML = open.length ? genericTableHtml(open, jobId, cfg, true) : `<div class="empty-state">Nothing ${openLabel.toLowerCase()}.</div>`;
 }
 
 function renderGenericJobClosed(jobId) {
   const cfg = (getJob(jobId).config) || {};
+  const closedLabel = cfg.statusWords ? cfg.statusWords.closed : 'Cashed';
   const closed = lawnEvents.filter(j => j.job === jobId && j.status === 'cashed')
     .sort((a,b) => (b.dateEnd||b.date||'').localeCompare(a.dateEnd||a.date||'') || b.id.localeCompare(a.id));
   const total = closed.reduce((s,j) => s + eventAmount(j), 0);
@@ -4579,7 +4603,7 @@ function renderGenericJobClosed(jobId) {
   if (summary) summary.textContent = closed.length ? `${closed.length} · $${total.toFixed(2)}` : '';
   const wrap = document.getElementById('gj-closed-wrap');
   if (!wrap) return;
-  wrap.innerHTML = closed.length ? genericTableHtml(closed, jobId, cfg, false) : '<div class="empty-state">Nothing cashed yet.</div>';
+  wrap.innerHTML = closed.length ? genericTableHtml(closed, jobId, cfg, false) : `<div class="empty-state">Nothing ${closedLabel.toLowerCase()} yet.</div>`;
 }
 
 function renderGenericJobHistory(jobId) {
@@ -4632,24 +4656,29 @@ async function addGenericEntry(jobId) {
 function markGenericCashed(jobId, id) {
   const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
+  const cfg = getJob(jobId).config || {};
+  const closedWord = (cfg.statusWords ? cfg.statusWords.closed : 'Cashed').toLowerCase();
   const prev = j.status;
   const amount = eventAmount(j);
   const allocations = applyPocketRules(jobId, effectiveEarnings(j));
   lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
   pendingEventWrites.add(id);
-  logHistory('paid', `Marked ${getJob(jobId).label} cashed — ${genericEntryLabel(j, getJob(jobId).config || {})} ($${amount.toFixed(2)})`, { jobId: id, prevStatus: prev, job: jobId });
-  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast('Marked as cashed ✓');
+  logHistory('paid', `Marked ${getJob(jobId).label} ${closedWord} — ${genericEntryLabel(j, cfg)} ($${amount.toFixed(2)})`, { jobId: id, prevStatus: prev, job: jobId });
+  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast(`Marked as ${closedWord} ✓`);
   if (allocations.length) checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
 }
 
 function uncashGenericEntry(jobId, id) {
   const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
-  reversePocketAllocations(j, 'moved back to uncashed');
+  const cfg = getJob(jobId).config || {};
+  const openWord = (cfg.statusWords ? cfg.statusWords.open : 'Uncashed').toLowerCase();
+  const closedWord = (cfg.statusWords ? cfg.statusWords.closed : 'Cashed').toLowerCase();
+  reversePocketAllocations(j, `moved back to ${openWord}`);
   lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', tithePaid: false, pocketAllocations: [] } : jb);
   pendingEventWrites.add(id);
-  logHistory('add', `Reversed cashed — ${genericEntryLabel(j, getJob(jobId).config || {})} ($${eventAmount(j).toFixed(2)})`, { job: jobId });
-  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast('Moved back to uncashed');
+  logHistory('add', `Reversed ${closedWord} — ${genericEntryLabel(j, cfg)} ($${eventAmount(j).toFixed(2)})`, { job: jobId });
+  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast(`Moved back to ${openWord}`);
 }
 
 function deleteGenericEntry(jobId, id) {
@@ -4665,12 +4694,14 @@ function deleteGenericEntry(jobId, id) {
 function clearGenericCashed(jobId) {
   const toDelete = lawnEvents.filter(j => j.job === jobId && j.status === 'cashed');
   if (!toDelete.length) return;
-  if (!confirm(`Delete all ${toDelete.length} cashed entr${toDelete.length > 1 ? 'ies' : 'y'}? This cannot be undone.`)) return;
-  toDelete.forEach(j => reversePocketAllocations(j, 'cashed entries cleared'));
+  const cfg = getJob(jobId).config || {};
+  const closedWord = (cfg.statusWords ? cfg.statusWords.closed : 'Cashed').toLowerCase();
+  if (!confirm(`Delete all ${toDelete.length} ${closedWord} entr${toDelete.length > 1 ? 'ies' : 'y'}? This cannot be undone.`)) return;
+  toDelete.forEach(j => reversePocketAllocations(j, `${closedWord} entries cleared`));
   const ids = toDelete.map(j => j.id);
   lawnEvents = lawnEvents.filter(j => !ids.includes(j.id));
   ids.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
-  logHistory('delete', `Cleared ${ids.length} cashed entr${ids.length > 1 ? 'ies' : 'y'}`, { job: jobId });
+  logHistory('delete', `Cleared ${ids.length} ${closedWord} entr${ids.length > 1 ? 'ies' : 'y'}`, { job: jobId });
   save(); render(); renderJobsGrid(); renderGenericJobClosed(jobId); toast('Cleared');
 }
 
@@ -6767,12 +6798,16 @@ function renderRpDashboard() {
         <div class="section-title"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Jobs</div>
       </div>
       <div class="jobs-grid">${JOBS.map(job => {
-        const openCount = job.id === 'ca_it'
+        const isPeriodic = job.kind === 'periodic_income';
+        const sw = (job.config && job.config.statusWords) || null;
+        const openCount = isPeriodic
           ? lawnEvents.filter(j => jobOf(j) === job.id && j.status === 'uncashed').length
           : lawnEvents.filter(j => jobOf(j) === job.id && j.status !== 'paid').length;
         const subLabel = openCount > 0
-          ? (job.id === 'ca_it' ? openCount+' uncashed check'+(openCount>1?'s':'') : openCount+' open event'+(openCount>1?'s':''))
-          : (job.id === 'ca_it' ? 'All clear' : 'All settled');
+          ? (isPeriodic
+              ? (sw ? `${openCount} ${sw.open.toLowerCase()} entr${openCount>1?'ies':'y'}` : openCount+' uncashed check'+(openCount>1?'s':''))
+              : openCount+' open event'+(openCount>1?'s':''))
+          : (isPeriodic ? (sw ? 'All settled' : 'All clear') : 'All settled');
         return `<button class="job-btn" onclick="switchRestoreTab('${job.id === 'ca_it' ? 'checks' : 'jobs'}')">
           <div class="job-btn-icon">${job.icon}</div>
           <div class="job-btn-label">${job.label}</div>
@@ -6811,13 +6846,19 @@ function renderRpDashboard() {
 }
 
 function renderRpJobs() {
-  const regularJobs = JOBS.filter(j => j.id !== 'ca_it');
+  // "Jobs" tab shows every client_service job (lawn_mowing-shaped) the old
+  // way below. ca_it keeps its own dedicated "Checks" tab. Any other
+  // periodic_income job (e.g. Work for Moores) has no clients to list, so
+  // it gets its own simpler read-only Uncashed/Cashed-style section further
+  // down instead of being forced through the per-client rendering above.
+  const regularJobs = JOBS.filter(j => j.kind === 'client_service');
+  const periodicJobs = JOBS.filter(j => j.kind === 'periodic_income' && j.id !== 'ca_it');
   const lawnEvents = rpData.lawnEvents || [];
   const clientsAll = rpData.clients || [];
   const historyLog = rpData.historyLog || [];
   const panel = document.getElementById('rp-panel-jobs');
 
-  panel.innerHTML = regularJobs.map(job => {
+  const clientServiceHtml = regularJobs.map(job => {
     const clients = clientsAll.filter(c => jobOf(c) === job.id).sort((a,b) => a.name.localeCompare(b.name));
     const clientsHtml = !clients.length ? '<div class="empty-state">No clients yet.</div>' : clients.map(c => {
       const clientJobs = lawnEvents.filter(j => j.client === c.name && jobOf(j) === job.id && j.status !== 'paid')
@@ -6875,6 +6916,50 @@ function renderRpJobs() {
         ${jobHistory.length > 40 ? `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center"><button class="pill-btn" onclick="rpGoToHistory('${job.id}')">View all ${jobHistory.length} in History tab →</button></div>` : ''}
       </section>`;
   }).join('');
+
+  const periodicHtml = periodicJobs.map(job => {
+    const cfg = job.config || {};
+    const sw = cfg.statusWords || null;
+    const openLabel = sw ? sw.open : 'Uncashed';
+    const closedLabel = sw ? sw.closed : 'Cashed';
+    const items = lawnEvents.filter(j => jobOf(j) === job.id);
+    const open = items.filter(j => j.status === 'uncashed')
+      .sort((a,b) => (b.dateEnd||b.date||'').localeCompare(a.dateEnd||a.date||'') || (b.id||'').localeCompare(a.id||''));
+    const closed = items.filter(j => j.status === 'cashed')
+      .sort((a,b) => (b.dateEnd||b.date||'').localeCompare(a.dateEnd||a.date||'') || (b.id||'').localeCompare(a.id||''));
+    const openTotal = open.reduce((s,j)=>s+rpEventAmount(j),0);
+    const closedTotal = closed.reduce((s,j)=>s+rpEventAmount(j),0);
+    const jobHistory = historyLog.filter(h => getEntryJob(h) === job.id);
+    const rows = (list, emptyText) => !list.length ? `<div class="empty-state">${emptyText}</div>` : `<div class="table-wrap"><table>
+        <thead><tr><th>${(cfg.dateMode||'range')==='single'?'Date':'Pay Period'}</th><th>Amount</th><th>Tithe</th></tr></thead>
+        <tbody>${list.map(j => `<tr><td class="mono">${genericEntryLabel(j, cfg)}</td><td class="mono amount-pos">$${rpEventAmount(j).toFixed(2)}</td><td class="mono" style="font-size:11px;color:var(--text-faint)">${j.titheDeductible ? '✓ tithe' : '—'}</td></tr>`).join('')}</tbody>
+      </table></div>`;
+
+    return `
+      <section>
+        <div class="section-header static">
+          <div class="section-title">${job.icon} ${job.label} — ${openLabel}</div>
+          <div class="header-actions"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)">${open.length ? `${open.length} · $${openTotal.toFixed(2)}` : ''}</span></div>
+        </div>
+        ${rows(open, `Nothing ${openLabel.toLowerCase()}.`)}
+      </section>
+      <section>
+        <div class="section-header static">
+          <div class="section-title">${closedLabel}</div>
+          <div class="header-actions"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)">${closed.length ? `${closed.length} · $${closedTotal.toFixed(2)}` : ''}</span></div>
+        </div>
+        ${rows(closed, `Nothing ${closedLabel.toLowerCase()} yet.`)}
+      </section>
+      <section>
+        <div class="section-header static">
+          <div class="section-title"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>History</div>
+        </div>
+        <div style="max-height:340px;overflow-y:auto">${!jobHistory.length ? '<div class="empty-state">No history yet.</div>' : jobHistory.slice(0,40).map(rpHistoryEntryHTML).join('')}</div>
+        ${jobHistory.length > 40 ? `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center"><button class="pill-btn" onclick="rpGoToHistory('${job.id}')">View all ${jobHistory.length} in History tab →</button></div>` : ''}
+      </section>`;
+  }).join('');
+
+  panel.innerHTML = clientServiceHtml + periodicHtml;
 }
 
 function renderRpPockets() {
@@ -7298,12 +7383,15 @@ function renderMobileJobs() {
   getEnabledJobs().filter(j => j.id !== 'lawn_mowing' && j.id !== 'ca_it').forEach(job => {
     html += `<div class="m-section-label">${job.icon} ${job.label}</div>`;
     const isPeriodic = job.kind === 'periodic_income';
+    const sw = (job.config && job.config.statusWords) || null;
     const items = lawnEvents.filter(j => j.job === job.id);
     const open = items.filter(j => isPeriodic ? j.status === 'uncashed' : j.status !== 'paid');
     const openTotal = open.reduce((s,j) => s + eventAmount(j), 0);
+    const openTitle = isPeriodic ? (sw ? sw.open : 'Uncashed') : 'Open';
+    const clearText = isPeriodic ? (sw ? 'All settled' : 'All clear') : 'All settled';
     html += `<div class="m-card">
-      <div class="m-card-row"><div class="m-card-title">${isPeriodic ? 'Uncashed' : 'Open'}</div><div class="m-card-value">$${openTotal.toFixed(2)}</div></div>
-      <div class="m-card-sub">${open.length ? open.length + ' entr' + (open.length>1?'ies':'y') : (isPeriodic ? 'All clear' : 'All settled')} — full detail on desktop</div>
+      <div class="m-card-row"><div class="m-card-title">${openTitle}</div><div class="m-card-value">$${openTotal.toFixed(2)}</div></div>
+      <div class="m-card-sub">${open.length ? open.length + ' entr' + (open.length>1?'ies':'y') : clearText} — full detail on desktop</div>
     </div>`;
   });
 
