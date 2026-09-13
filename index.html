@@ -2344,6 +2344,16 @@ function loadFromFirestore() {
 
   // Main doc (balances, enabledJobs, isAdmin)
   unsubscribers.push(userDoc().onSnapshot(snap => {
+    // ── DEBUG (temporary) ──────────────────────────────────────
+    // Logs every fire of this listener for the CURRENTLY SIGNED-IN
+    // account's own doc, with cache/pending-write metadata, so we can see
+    // in the console exactly when enabledJobs changes (or reverts) and
+    // whether that snapshot came from the local cache or the server.
+    console.log(
+      `[mainDocListener] fired ${new Date().toISOString()} uid=${currentUser && currentUser.uid} ` +
+      `fromCache=${snap.metadata.fromCache} hasPendingWrites=${snap.metadata.hasPendingWrites} ` +
+      `enabledJobs=${JSON.stringify(snap.exists ? snap.data().enabledJobs : null)}`
+    );
     if (snap.exists) {
       const d = snap.data();
       balances = d.balances || { bank: 0, cash: 0 };
@@ -2373,6 +2383,7 @@ function loadFromFirestore() {
         // Firestore, so a transient/unexpected read can never overwrite
         // real data (e.g. an admin-granted job) on reload.
         enabledJobs = ['lawn_mowing', 'ca_it'];
+        console.warn(`[mainDocListener] SEED WRITE (enabledJobs was undefined) uid=${currentUser && currentUser.uid} — writing default`, enabledJobs);
         userDoc().set({ enabledJobs }, { merge: true });
       } else {
         console.warn('enabledJobs on this account is present but not an array — leaving Firestore untouched:', d.enabledJobs);
@@ -2381,6 +2392,7 @@ function loadFromFirestore() {
     } else {
       balances = { bank: 0, cash: 0 };
       enabledJobs = ['lawn_mowing', 'ca_it'];
+      console.warn(`[mainDocListener] NO DOC EXISTS for uid=${currentUser && currentUser.uid} — creating with default enabledJobs`, enabledJobs);
       userDoc().set({ balances, enabledJobs }, { merge: true });
     }
     if (!ready.main) { ready.main = true; checkReady(); }
@@ -2478,6 +2490,12 @@ async function loadMoreHistory() {
 
 async function saveToFirestore() {
   if (!currentUser || testMode) return;
+
+  // ── DEBUG (temporary) ────────────────────────────────────────
+  // Confirms this debounced autosave only ever merges these 3 fields and
+  // never touches enabledJobs — logged so we can rule it in or out as the
+  // cause of a job grant reverting.
+  console.log(`[saveToFirestore] merging {balances, lastBankCompare, jobEarnPercent} only, uid=${currentUser.uid} at ${new Date().toISOString()}`);
 
   // Merge (not overwrite) — this doc also carries enabledJobs/isAdmin now,
   // and a bare .set() here would otherwise wipe those every debounced save.
@@ -4841,6 +4859,12 @@ function openAdminUsersModal() {
   if (adminUsersUnsub) adminUsersUnsub();
   adminUsersUnsub = db.collection('users').onSnapshot(snap => {
     adminUsersList = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    // ── DEBUG (temporary) ──────────────────────────────────────
+    const mine = currentUser && adminUsersList.find(u => u.uid === currentUser.uid);
+    console.log(
+      `[adminUsersList] fired ${new Date().toISOString()} fromCache=${snap.metadata.fromCache} ` +
+      `hasPendingWrites=${snap.metadata.hasPendingWrites} myEnabledJobs=${JSON.stringify(mine && mine.enabledJobs)}`
+    );
     adminUsersList.sort((a, b) =>
       (a.displayName || usernameFromEmail(a.email) || a.uid).localeCompare(b.displayName || usernameFromEmail(b.email) || b.uid));
     renderAdminUsersList();
@@ -4882,12 +4906,27 @@ function renderAdminUsersList() {
 
 async function adminToggleUserJob(uid, jobId, enable, btnEl) {
   if (btnEl) btnEl.disabled = true;
+  // ── DEBUG (temporary) ────────────────────────────────────────
+  const isSelf = !!(currentUser && uid === currentUser.uid);
+  const startedAt = new Date().toISOString();
+  console.log(`[adminToggleUserJob] START uid=${uid} job=${jobId} enable=${enable} isSelf=${isSelf} at ${startedAt}`);
   try {
     await db.collection('users').doc(uid).update({
       enabledJobs: enable
         ? firebase.firestore.FieldValue.arrayUnion(jobId)
         : firebase.firestore.FieldValue.arrayRemove(jobId)
     });
+    console.log(`[adminToggleUserJob] update() promise RESOLVED uid=${uid} isSelf=${isSelf}`);
+    // Force a read straight from the SERVER (source:'server' skips any local
+    // cache) right after the write resolves. This tells us immediately —
+    // without waiting for a page refresh — whether the change actually
+    // persisted server-side or only appears to have worked locally.
+    try {
+      const serverSnap = await db.collection('users').doc(uid).get({ source: 'server' });
+      console.log(`[adminToggleUserJob] SERVER re-read uid=${uid} isSelf=${isSelf} enabledJobs=`, serverSnap.data() && serverSnap.data().enabledJobs);
+    } catch (readErr) {
+      console.error(`[adminToggleUserJob] server re-read FAILED uid=${uid} isSelf=${isSelf}:`, readErr);
+    }
     toast(`${getJob(jobId).label} ${enable ? 'added to' : 'removed from'} that account`);
     // The live listener above re-renders once Firestore confirms the write,
     // so no manual DOM update is needed here.
@@ -4897,7 +4936,7 @@ async function adminToggleUserJob(uid, jobId, enable, btnEl) {
     // a generic message — this is almost always a security-rules mismatch
     // (see comment above), and the code name pinpoints it immediately
     // instead of requiring a trip to devtools.
-    console.error('adminToggleUserJob failed:', e);
+    console.error(`[adminToggleUserJob] update() promise REJECTED uid=${uid} isSelf=${isSelf}:`, e);
     toast(`Could not update that account — ${e.code || e.message || 'check Firestore rules'}.`);
   }
 }
