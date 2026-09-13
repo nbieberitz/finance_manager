@@ -2365,12 +2365,18 @@ function loadFromFirestore() {
       jobEarnPercent = d.jobEarnPercent || {};
       if (Array.isArray(d.enabledJobs)) {
         enabledJobs = d.enabledJobs;
-      } else {
-        // Predates this feature — grandfather this account into the same
-        // 2 jobs it already had, and persist that so it's a real field
-        // going forward instead of re-checking this every load.
+      } else if (d.enabledJobs === undefined) {
+        // Only seed the 2-job default the very first time this field has
+        // never existed at all — a genuinely pre-feature account. Any other
+        // shape (null, an object, whatever) is left untouched and just
+        // falls back to the safe default *locally* without writing to
+        // Firestore, so a transient/unexpected read can never overwrite
+        // real data (e.g. an admin-granted job) on reload.
         enabledJobs = ['lawn_mowing', 'ca_it'];
         userDoc().set({ enabledJobs }, { merge: true });
+      } else {
+        console.warn('enabledJobs on this account is present but not an array — leaving Firestore untouched:', d.enabledJobs);
+        enabledJobs = ['lawn_mowing', 'ca_it'];
       }
     } else {
       balances = { bank: 0, cash: 0 };
