@@ -2658,7 +2658,7 @@ const JOBS = [
   // shown (defaulted checked), "Unpaid/Paid" wording instead of the default
   // "Uncashed/Cashed". Not in any default enabledJobs seed above, so every
   // account starts without it — grant it per-account from Manage users' jobs.
-  { id: 'work_for_moores', kind: 'periodic_income', label: 'Work for Moores', icon: '<svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>', config: { dateMode: 'single', titheMode: 'toggle', titheDefault: true, statusWords: { open: 'Unpaid', closed: 'Paid' }, statusDefault: 'cashed' } }
+  { id: 'work_for_moores', kind: 'periodic_income', label: 'Work for Moores', icon: '<svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>', config: { dateMode: 'single', titheMode: 'toggle', titheDefault: true, statusWords: { open: 'Unpaid', closed: 'Paid' }, statusDefault: 'cashed', askPaymentMethod: true } }
 ];
 
 // ── Per-account job enablement + Firestore-defined custom job types ──
@@ -3343,10 +3343,15 @@ function computeBalances() {
   let bank = 0, cash = 0;
   lawnEvents.forEach(j => {
     // 'uncashed'/'cashed' is the status vocabulary for any periodic-income
-    // job (ca_it, or a custom job type of that same kind) — cashed always
-    // deposits to bank, matching a paycheck rather than a cash-in-hand job.
+    // job (ca_it, or a custom job type of that same kind) — cashed deposits
+    // to bank by default, matching a paycheck rather than a cash-in-hand
+    // job, unless the entry has its own recorded paymentMethod (jobs like
+    // Work for Moores that ask cash/bank on close), in which case that wins.
     if (j.status === 'cashed' || j.status === 'uncashed') {
-      if (j.status === 'cashed') bank += effectiveEarnings(j);
+      if (j.status === 'cashed') {
+        if (j.paymentMethod === 'cash') cash += effectiveEarnings(j);
+        else bank += effectiveEarnings(j);
+      }
       return;
     }
     if (j.status !== 'paid' || !j.paymentMethod) return;
@@ -3379,7 +3384,7 @@ function computeTithe() {
   const bank = Math.round((
     lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && j.titheDeductible !== false && !j.tithePaid)
             .reduce((s, j) => s + eventAmount(j), 0) +
-    lawnEvents.filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid)
+    lawnEvents.filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid && j.paymentMethod !== 'cash')
             .reduce((s, j) => s + effectiveEarnings(j), 0) +
     otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method !== 'cash' && !e.tithePaid)
               .reduce((s, e) => s + parseFloat(e.amount), 0)
@@ -3387,6 +3392,8 @@ function computeTithe() {
   const cash = Math.round((
     lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && j.titheDeductible !== false && !j.tithePaid)
             .reduce((s, j) => s + eventAmount(j), 0) +
+    lawnEvents.filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid && j.paymentMethod === 'cash')
+            .reduce((s, j) => s + effectiveEarnings(j), 0) +
     otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method === 'cash' && !e.tithePaid)
               .reduce((s, e) => s + parseFloat(e.amount), 0)
   ) * 0.1 * 100) / 100;
@@ -4708,17 +4715,29 @@ async function addGenericEntry(jobId) {
   // Entry created already "closed" (e.g. paid on the spot) needs the same
   // pocket-allocation step markGenericCashed() runs later — otherwise the
   // amount never gets set aside even though it's sitting in the closed list.
+  // Jobs that opt in via config.askPaymentMethod (e.g. Work for Moores) also
+  // get the cash/bank prompt here, same as markGenericCashed().
   let allocations = [];
   if (status === 'cashed') {
     newEntry.status = 'cashed';
-    allocations = applyPocketRules(jobId, effectiveEarnings(newEntry));
-    if (allocations.length) newEntry.pocketAllocations = allocations;
+    if (cfg.askPaymentMethod) {
+      const method = await promptPaymentMethod();
+      if (method) {
+        newEntry.paymentMethod = method;
+      } else {
+        newEntry.status = 'uncashed'; // cancelled the method prompt — don't leave it closed with nowhere to post
+      }
+    }
+    if (newEntry.status === 'cashed') {
+      allocations = applyPocketRules(jobId, effectiveEarnings(newEntry));
+      if (allocations.length) newEntry.pocketAllocations = allocations;
+    }
   }
 
   lawnEvents.push(newEntry);
   pendingEventWrites.add(newEntry.id);
   const closedWord = (cfg.statusWords ? cfg.statusWords.closed : 'Cashed').toLowerCase();
-  logHistory('add', `Added ${(cfg.entryNoun || 'entry').toLowerCase()} — ${genericEntryLabel(newEntry, cfg)} ($${amount.toFixed(2)})${status === 'cashed' ? ` (${closedWord})` : ''}`, { job: jobId });
+  logHistory('add', `Added ${(cfg.entryNoun || 'entry').toLowerCase()} — ${genericEntryLabel(newEntry, cfg)} ($${amount.toFixed(2)})${newEntry.status === 'cashed' ? ` (${closedWord}${newEntry.paymentMethod ? ', ' + newEntry.paymentMethod : ''})` : ''}`, { job: jobId });
 
   document.getElementById('gj-amount').value = '';
   if (dateMode === 'single') { document.getElementById('gj-date').value = ''; }
@@ -4730,17 +4749,26 @@ async function addGenericEntry(jobId) {
   if (allocations.length) checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
 }
 
-function markGenericCashed(jobId, id) {
+async function markGenericCashed(jobId, id) {
   const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
   const cfg = getJob(jobId).config || {};
+  // Jobs that opt in via config.askPaymentMethod (e.g. Work for Moores) get
+  // the same cash/bank prompt markPaid() uses for lawn-mowing events — CA-IT
+  // and any other periodic-income job without this flag keeps its old
+  // behavior of always landing in bank, no prompt.
+  let method = null;
+  if (cfg.askPaymentMethod) {
+    method = await promptPaymentMethod();
+    if (!method) return;
+  }
   const closedWord = (cfg.statusWords ? cfg.statusWords.closed : 'Cashed').toLowerCase();
   const prev = j.status;
   const amount = eventAmount(j);
   const allocations = applyPocketRules(jobId, effectiveEarnings(j));
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', ...(method ? { paymentMethod: method } : {}), ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
   pendingEventWrites.add(id);
-  logHistory('paid', `Marked ${getJob(jobId).label} ${closedWord} — ${genericEntryLabel(j, cfg)} ($${amount.toFixed(2)})`, { jobId: id, prevStatus: prev, job: jobId });
+  logHistory('paid', `Marked ${getJob(jobId).label} ${closedWord} — ${genericEntryLabel(j, cfg)} ($${amount.toFixed(2)})${method ? ` (${method})` : ''}`, { jobId: id, prevStatus: prev, ...(method ? { paymentMethod: method } : {}), job: jobId });
   save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast(`Marked as ${closedWord} ✓`);
   if (allocations.length) checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
 }
@@ -4752,7 +4780,7 @@ function uncashGenericEntry(jobId, id) {
   const openWord = (cfg.statusWords ? cfg.statusWords.open : 'Uncashed').toLowerCase();
   const closedWord = (cfg.statusWords ? cfg.statusWords.closed : 'Cashed').toLowerCase();
   reversePocketAllocations(j, `moved back to ${openWord}`);
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', tithePaid: false, pocketAllocations: [] } : jb);
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', paymentMethod: null, tithePaid: false, pocketAllocations: [] } : jb);
   pendingEventWrites.add(id);
   logHistory('add', `Reversed ${closedWord} — ${genericEntryLabel(j, cfg)} ($${eventAmount(j).toFixed(2)})`, { job: jobId });
   save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast(`Moved back to ${openWord}`);
@@ -6478,7 +6506,10 @@ function rpComputeBalances() {
   let bank = 0, cash = 0;
   (rpData.lawnEvents || []).forEach(j => {
     if (j.status === 'cashed' || j.status === 'uncashed') {
-      if (j.status === 'cashed') bank += rpEffectiveEarnings(j);
+      if (j.status === 'cashed') {
+        if (j.paymentMethod === 'cash') cash += rpEffectiveEarnings(j);
+        else bank += rpEffectiveEarnings(j);
+      }
       return;
     }
     if (j.status !== 'paid' || !j.paymentMethod) return;
@@ -6504,7 +6535,7 @@ function rpComputeTithe() {
   const bank = Math.round((
     (rpData.lawnEvents||[]).filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && j.titheDeductible !== false && !j.tithePaid)
       .reduce((s,j)=>s+rpEventAmount(j),0) +
-    (rpData.lawnEvents||[]).filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid)
+    (rpData.lawnEvents||[]).filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid && j.paymentMethod !== 'cash')
       .reduce((s,j)=>s+rpEffectiveEarnings(j),0) +
     (rpData.otherMoney||[]).filter(e => e.type === 'income' && e.titheDeductible !== false && e.method !== 'cash' && !e.tithePaid)
       .reduce((s,e)=>s+parseFloat(e.amount),0)
@@ -6512,6 +6543,8 @@ function rpComputeTithe() {
   const cash = Math.round((
     (rpData.lawnEvents||[]).filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && j.titheDeductible !== false && !j.tithePaid)
       .reduce((s,j)=>s+rpEventAmount(j),0) +
+    (rpData.lawnEvents||[]).filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid && j.paymentMethod === 'cash')
+      .reduce((s,j)=>s+rpEffectiveEarnings(j),0) +
     (rpData.otherMoney||[]).filter(e => e.type === 'income' && e.titheDeductible !== false && e.method === 'cash' && !e.tithePaid)
       .reduce((s,e)=>s+parseFloat(e.amount),0)
   ) * 0.1 * 100) / 100;
