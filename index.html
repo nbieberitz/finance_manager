@@ -926,11 +926,6 @@ html.is-mobile body { padding: 0; }
 .m-sub-row-main { flex: 1; min-width: 0; color: var(--text-muted); overflow-wrap: break-word; }
 .m-sub-row-amt { font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
 .m-section-label { display: flex; align-items: center; justify-content: space-between; }
-.m-job-remove {
-  font-family: 'JetBrains Mono', monospace; font-size: 10px; text-transform: none; letter-spacing: 0;
-  background: none; border: none; color: var(--text-faint); cursor: pointer; padding: 2px 4px;
-}
-.m-job-remove:hover { color: var(--red); }
 .m-job-add-btn {
   width: 100%; margin-top: 1.5rem; padding: 14px; border-radius: var(--radius-sm);
   border: 1.5px dashed var(--border-mid); background: transparent; color: var(--text-muted);
@@ -1279,17 +1274,9 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 .job-btn.new-job-btn .job-btn-icon { background: transparent; border: 1.5px dashed var(--border-mid); }
 .job-btn.new-job-btn:hover .job-btn-icon { border-color: var(--accent); background: var(--accent-pale); }
 .job-btn.new-job-btn .job-btn-label { color: var(--text-muted); }
-.job-remove-x {
-  position: absolute; top: 8px; right: 8px; width: 20px; height: 20px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--surface3); border: 1px solid var(--border-mid); color: var(--text-faint);
-  font-size: 13px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity 0.15s var(--ease), color 0.15s var(--ease), border-color 0.15s var(--ease);
-}
 .job-btn { position: relative; }
-.job-btn:hover .job-remove-x { opacity: 1; }
-.job-remove-x:hover { color: var(--red); border-color: var(--red-border); }
 
-/* ── Generic modals (Add Job / Remove Job / Admin) — same visual
+/* ── Generic modals (Add Job / Admin) — same visual
    language as .backup-modal-box, kept under a neutral name since
    they aren't backup-related. ── */
 #generic-modal-root { position: fixed; inset: 0; z-index: 10003; display: none; }
@@ -2186,7 +2173,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 <!-- ══════════════════════════════════════════════════════════
      Job admin/unlock modals — deliberately OUTSIDE both #pc-app
      and #mobile-app (which hide one another via .is-mobile) so
-     Add/Remove Job work the same on phones and desktop.
+     Add Job works the same on phones and desktop.
      ══════════════════════════════════════════════════════════ -->
 
 <div class="modal-overlay" id="add-job-modal">
@@ -2198,19 +2185,6 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeAddJobModal()">Cancel</button>
       <button class="btn btn-primary" onclick="submitAddJobCode()">Add job</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="remove-job-modal">
-  <div class="modal-box">
-    <div class="modal-title">Remove job <button class="modal-close-x" onclick="closeRemoveJobModal()">✕</button></div>
-    <div class="modal-desc">Removing "<span id="remove-job-label"></span>" hides it from your dashboard — nothing in its history is deleted, and you can add it back later with a new code. Ask for today's removal code (it only works for 5 minutes) and enter it below.</div>
-    <input type="text" class="code-input" id="remove-job-code" maxlength="6" inputmode="numeric" autocomplete="off" placeholder="······" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)" />
-    <div class="modal-error" id="remove-job-error"></div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeRemoveJobModal()">Cancel</button>
-      <button class="btn" style="background:var(--red-dim);color:#fff" onclick="submitRemoveJobCode()">Remove job</button>
     </div>
   </div>
 </div>
@@ -3101,7 +3075,6 @@ function renderJobsGrid() {
       : (isPeriodic ? 'All clear' : 'All settled');
     return `
       <button class="job-btn" onclick="openJob('${job.id}')">
-        <span class="job-remove-x" onclick="event.stopPropagation(); openRemoveJobModal('${job.id}')" title="Remove this job">✕</span>
         <div class="job-btn-icon">${job.icon}</div>
         <div class="job-btn-label">${job.label}</div>
         <div class="job-btn-sub">${subLabel}</div>
@@ -4802,16 +4775,12 @@ function saveGenericEntry(jobId, id) {
   save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); toast('Entry updated ✓');
 }
 
-// ── Add Job / Remove Job / Admin ────────────────────────────
+// ── Add Job ────────────────────────────
 // Security model (enforced by Firestore rules, not by this code):
 //  - jobInviteCodes/{code}: get-only for signed-in users (no list) — you
 //    can check a code you were TOLD, but can't browse the collection to
 //    find codes you weren't given.
-//  - systemCodes/{code} (removal codes): no client read at all, ever. The
-//    remove-job write just includes the code the user typed; Firestore's
-//    rule looks it up server-side and allows/denies the write. This client
-//    never learns whether a *wrong* guess was close — only pass/fail.
-// Both modals below rely entirely on the write itself succeeding or being
+// This modal relies entirely on the write itself succeeding or being
 // rejected — see firestore.rules for the actual enforcement.
 
 function generateSixDigitCode() {
@@ -4847,38 +4816,6 @@ async function submitAddJobCode() {
     toast(`${getJob(jobId).label} added ✓`);
   } catch (e) {
     errEl.textContent = 'Something went wrong verifying that code — try again.';
-    errEl.style.display = 'block';
-  }
-}
-
-function openRemoveJobModal(jobId) {
-  document.getElementById('remove-job-label').textContent = getJob(jobId).label;
-  document.getElementById('remove-job-code').value = '';
-  document.getElementById('remove-job-error').style.display = 'none';
-  document.getElementById('remove-job-modal').dataset.jobId = jobId;
-  document.getElementById('remove-job-modal').style.display = 'flex';
-}
-function closeRemoveJobModal() { document.getElementById('remove-job-modal').style.display = 'none'; }
-
-async function submitRemoveJobCode() {
-  const jobId = document.getElementById('remove-job-modal').dataset.jobId;
-  const code = document.getElementById('remove-job-code').value.trim();
-  const errEl = document.getElementById('remove-job-error');
-  errEl.style.display = 'none';
-  if (!/^\d{6}$/.test(code)) { errEl.textContent = 'Enter the 6-digit code.'; errEl.style.display = 'block'; return; }
-  try {
-    await userDoc().update({
-      enabledJobs: firebase.firestore.FieldValue.arrayRemove(jobId),
-      _lastRemovalCode: code
-    });
-    enabledJobs = enabledJobs.filter(id => id !== jobId);
-    if (currentJobId === jobId) { closeJob(); closeGenericJob(); }
-    if (jobId === 'ca_it' && currentJobId === 'ca_it') closeCaIt();
-    closeRemoveJobModal();
-    renderJobsGrid();
-    toast(`${getJob(jobId).label} removed`);
-  } catch (e) {
-    errEl.textContent = "That code is wrong or has expired — ask for a fresh one.";
     errEl.style.display = 'block';
   }
 }
@@ -7394,7 +7331,7 @@ function renderMobileJobs() {
   let html = '';
 
   if (enabledJobs.includes('lawn_mowing')) {
-    html += `<div class="m-section-label">${getJob('lawn_mowing').label} <button class="m-job-remove" onclick="openRemoveJobModal('lawn_mowing')">remove</button></div>`;
+    html += `<div class="m-section-label">${getJob('lawn_mowing').label}</div>`;
     const lawnClients = clients.filter(c => jobOf(c) === 'lawn_mowing');
     if (!lawnClients.length) {
       html += `<div class="empty-state">No clients yet.</div>`;
@@ -7421,7 +7358,7 @@ function renderMobileJobs() {
   }
 
   if (enabledJobs.includes('ca_it')) {
-    html += `<div class="m-section-label">${getJob('ca_it').label} <button class="m-job-remove" onclick="openRemoveJobModal('ca_it')">remove</button></div>`;
+    html += `<div class="m-section-label">${getJob('ca_it').label}</div>`;
     const uncashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'uncashed').sort((a,b) => b.dateEnd.localeCompare(a.dateEnd));
     const cashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'cashed').sort((a,b) => b.dateEnd.localeCompare(a.dateEnd));
     const uncashedTotal = uncashed.reduce((s,j) => s + eventAmount(j), 0);
@@ -7448,7 +7385,7 @@ function renderMobileJobs() {
   // (full add/edit for these happens on desktop, same as lawn_mowing/ca_it
   // above get no add/edit controls here either).
   getEnabledJobs().filter(j => j.id !== 'lawn_mowing' && j.id !== 'ca_it').forEach(job => {
-    html += `<div class="m-section-label">${job.icon} ${job.label} <button class="m-job-remove" onclick="openRemoveJobModal('${job.id}')">remove</button></div>`;
+    html += `<div class="m-section-label">${job.icon} ${job.label}</div>`;
     const isPeriodic = job.kind === 'periodic_income';
     const items = lawnEvents.filter(j => j.job === job.id);
     const open = items.filter(j => isPeriodic ? j.status === 'uncashed' : j.status !== 'paid');
