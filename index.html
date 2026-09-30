@@ -926,6 +926,11 @@ html.is-mobile body { padding: 0; }
 .m-sub-row-main { flex: 1; min-width: 0; color: var(--text-muted); overflow-wrap: break-word; }
 .m-sub-row-amt { font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
 .m-section-label { display: flex; align-items: center; justify-content: space-between; }
+.m-job-add-btn {
+  width: 100%; margin-top: 1.5rem; padding: 14px; border-radius: var(--radius-sm);
+  border: 1.5px dashed var(--border-mid); background: transparent; color: var(--text-muted);
+  font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer;
+}
 .m-admin-badge-btn {
   position: fixed; top: 14px; right: 14px; z-index: 20; display: none;
   font-family: 'JetBrains Mono', monospace; font-size: 10px; padding: 5px 10px;
@@ -961,6 +966,24 @@ html.is-mobile body { padding: 0; }
 .trend-bar { width:9px; border-radius:4px 4px 2px 2px; cursor:pointer; transition:height 0.5s var(--ease), filter 0.15s var(--ease), transform 0.15s var(--ease); transform-origin:bottom; box-shadow: inset 0 1px 1px rgba(255,255,255,0.14), inset 0 -3px 5px rgba(0,0,0,0.25); }
 .trend-bar:hover { filter:brightness(1.18); transform:scaleX(1.25); }
 .trend-bar-label { font-family:'JetBrains Mono',monospace; font-size:9px; color:var(--text-faint); white-space:nowrap; }
+
+.trend-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:0 1.25rem 0.75rem; }
+.trend-controls .date-field { width:128px; }
+.trend-controls-to { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-faint); }
+.trend-controls input[type="number"] { padding:8px 10px; font-family:'JetBrains Mono',monospace; font-size:12px; }
+
+.combo-chart-wrap { width:100%; padding:0 1.25rem 1.1rem; }
+.combo-chart-svg { width:100%; height:260px; display:block; overflow:visible; }
+.combo-axis-label { font-family:'JetBrains Mono',monospace; font-size:8.5px; fill:var(--text-faint); }
+.combo-zero-line { stroke:var(--border-mid); stroke-width:1; stroke-dasharray:3 3; }
+polyline.combo-line-cum { fill:none; stroke:var(--blue-bright); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
+polyline.combo-line-net { fill:none; stroke:var(--purple); stroke-width:1.6; stroke-dasharray:4 3; stroke-linejoin:round; stroke-linecap:round; }
+.combo-legend { display:flex; flex-wrap:wrap; gap:14px; margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-faint); }
+.combo-legend span { display:flex; align-items:center; gap:5px; }
+.combo-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+.combo-line-swatch { width:14px; height:0; border-top:2px solid; display:inline-block; }
+.combo-line-swatch.combo-line-cum { border-top-color:var(--blue-bright); border-top-style:solid; }
+.combo-line-swatch.combo-line-net { border-top-color:var(--purple); border-top-style:dashed; }
 
 .trend-tooltip {
   position:fixed; z-index:10003; pointer-events:none; opacity:0;
@@ -1265,11 +1288,14 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 
 /* ── Jobs: emoji icon support (existing rule only sizes <svg>) ── */
 .job-btn-icon { font-size: 25px; line-height: 1; }
-.job-btn { position: relative; }
+.job-btn.new-job-btn { border-style: dashed; background: transparent; }
+.job-btn.new-job-btn .job-btn-icon { background: transparent; border: 1.5px dashed var(--border-mid); }
+.job-btn.new-job-btn:hover .job-btn-icon { border-color: var(--accent); background: var(--accent-pale); }
+.job-btn.new-job-btn .job-btn-label { color: var(--text-muted); }
 
-/* ── Generic modal (Admin) — same visual
+/* ── Generic modals (Add Job / Admin) — same visual
    language as .backup-modal-box, kept under a neutral name since
-   it isn't backup-related. ── */
+   they aren't backup-related. ── */
 #generic-modal-root { position: fixed; inset: 0; z-index: 10003; display: none; }
 .modal-overlay {
   display: none; position: fixed; inset: 0;
@@ -1292,6 +1318,23 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 .modal-close-x { background: none; border: none; color: var(--text-faint); font-size: 18px; cursor: pointer; line-height: 1; padding: 2px 4px; }
 .modal-close-x:hover { color: var(--text); }
 .modal-error { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--red); display: none; }
+
+/* 6-digit code entry — large, spaced, monospace so it reads like a PIN */
+.code-input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm); padding: 14px 12px; color: var(--text);
+  font-family: 'JetBrains Mono', monospace; font-size: 26px; letter-spacing: 0.35em;
+  text-align: center;
+}
+.code-input:focus { outline: none; border-color: var(--accent); }
+
+/* Big display of a freshly-generated code (admin side) */
+.code-display {
+  font-family: 'JetBrains Mono', monospace; font-size: 32px; letter-spacing: 0.28em;
+  text-align: center; color: var(--accent-bright); background: var(--accent-pale);
+  border: 1px solid var(--gold-border); border-radius: var(--radius-sm); padding: 14px 8px;
+}
+.code-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-faint); text-align: center; }
 
 /* Admin panel */
 .admin-badge {
@@ -1375,28 +1418,24 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
         <svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-8M21 8h-6v6"/></svg>
         Trends
       </div>
-      <div class="header-actions" onclick="event.stopPropagation()">
-        <div class="trend-range-toggle" id="trend-range-toggle"></div>
-      </div>
     </div>
     <div id="trends-body">
       <div class="trend-section-body">
-        <div class="trend-charts-grid">
-          <div class="trend-card">
-            <div class="trend-card-head">
-              <span class="trend-card-title">Cash over time</span>
-              <span id="trend-delta-badge"></span>
-            </div>
-            <div id="trend-line-wrap" class="trend-line-wrap"></div>
+        <div class="trend-controls" onclick="event.stopPropagation()">
+          <div class="date-field">
+            <input type="text" id="main-chart-start" placeholder="MM/DD/YYYY" onchange="setMainChartRange()" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('main-chart-start')" aria-label="Pick start date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="main-chart-start-picker" class="date-picker-hidden" onchange="applyDatePicker('main-chart-start'); setMainChartRange()" tabindex="-1" />
           </div>
-          <div class="trend-card">
-            <div class="trend-card-head">
-              <span class="trend-card-title">Income vs. expenses</span>
-              <span class="trend-legend-mini"><span class="trend-legend-dot" style="background:var(--green)"></span>In <span class="trend-legend-dot" style="background:var(--red)"></span>Out</span>
-            </div>
-            <div id="trend-bar-wrap" class="trend-bar-wrap"></div>
+          <span class="trend-controls-to">to</span>
+          <div class="date-field">
+            <input type="text" id="main-chart-end" placeholder="MM/DD/YYYY" onchange="setMainChartRange()" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('main-chart-end')" aria-label="Pick end date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="main-chart-end-picker" class="date-picker-hidden" onchange="applyDatePicker('main-chart-end'); setMainChartRange()" tabindex="-1" />
           </div>
+          <input type="number" id="main-chart-bars" min="2" max="60" step="1" style="width:64px" onchange="setMainChartRange()" title="Number of bars" />
         </div>
+        <div id="trend-bar-wrap" class="combo-chart-wrap"></div>
       </div>
     </div>
   </section>
@@ -1818,6 +1857,140 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 
 </div>
 
+<div class="container" id="car-view" style="display:none">
+
+  <div class="job-view-header">
+    <button class="pill-btn" onclick="closeCarJob()">← All jobs</button>
+    <div class="job-view-title">Car</div>
+  </div>
+
+  <!-- Miles-left breakeven figure -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Miles Left
+      </div>
+      <div class="header-actions">
+        <div class="date-field" style="width:150px">
+          <input type="text" id="car-target-date" placeholder="MM/DD/YYYY" onchange="setCarTargetDate()" />
+          <button type="button" class="date-pick-btn" onclick="openDatePicker('car-target-date')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+          <input type="date" id="car-target-date-picker" class="date-picker-hidden" onchange="applyDatePicker('car-target-date'); setCarTargetDate()" tabindex="-1" />
+        </div>
+      </div>
+    </div>
+    <div id="car-breakeven-wrap"><div class="empty-state">Loading…</div></div>
+  </section>
+
+  <!-- Category summary (totals for the chart range below) -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Spend by Category
+      </div>
+    </div>
+    <div id="car-category-summary" class="summary-grid"></div>
+  </section>
+
+  <!-- Chart: income vs car expenses + net lines -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Income vs. Car Costs
+      </div>
+    </div>
+    <div class="trend-controls">
+      <div class="date-field">
+        <input type="text" id="car-chart-start" placeholder="MM/DD/YYYY" onchange="setCarChartRange()" />
+        <button type="button" class="date-pick-btn" onclick="openDatePicker('car-chart-start')" aria-label="Pick start date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+        <input type="date" id="car-chart-start-picker" class="date-picker-hidden" onchange="applyDatePicker('car-chart-start'); setCarChartRange()" tabindex="-1" />
+      </div>
+      <span class="trend-controls-to">to</span>
+      <div class="date-field">
+        <input type="text" id="car-chart-end" placeholder="MM/DD/YYYY" onchange="setCarChartRange()" />
+        <button type="button" class="date-pick-btn" onclick="openDatePicker('car-chart-end')" aria-label="Pick end date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+        <input type="date" id="car-chart-end-picker" class="date-picker-hidden" onchange="applyDatePicker('car-chart-end'); setCarChartRange()" tabindex="-1" />
+      </div>
+      <input type="number" id="car-chart-bars" min="2" max="60" step="1" style="width:64px" onchange="setCarChartRange()" title="Number of bars" />
+    </div>
+    <div id="car-chart-wrap" class="combo-chart-wrap"></div>
+  </section>
+
+  <!-- Add car expense -->
+  <section>
+    <div class="section-header" onclick="toggleForm('car-expense-form', this)">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        Add Car Expense
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn success" tabindex="-1">+ Add expense</button>
+      </div>
+    </div>
+    <div class="add-form" id="car-expense-form">
+      <div class="form-grid">
+        <div>
+          <label>Category</label>
+          <select id="car-exp-category" onchange="document.getElementById('car-exp-gallons-wrap').style.display = this.value === 'gas' ? '' : 'none'">
+            <option value="gas">Gas</option>
+            <option value="insurance">Insurance</option>
+            <option value="maintenance">Maintenance & repairs</option>
+            <option value="registration">Registration & taxes</option>
+          </select>
+        </div>
+        <div><label>Description (optional)</label><input type="text" id="car-exp-desc" placeholder="e.g. Oil change" /></div>
+        <div><label>Date</label>
+          <div class="date-field">
+            <input type="text" id="car-exp-date" placeholder="MM/DD/YYYY" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('car-exp-date')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="car-exp-date-picker" class="date-picker-hidden" onchange="applyDatePicker('car-exp-date')" tabindex="-1" />
+          </div>
+        </div>
+        <div><label>Amount ($)</label><input type="number" id="car-exp-amount" min="0" step="0.01" placeholder="0.00" /></div>
+        <div id="car-exp-gallons-wrap"><label>Gallons</label><input type="number" id="car-exp-gallons" min="0" step="0.001" placeholder="e.g. 11.2" /></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="addCarExpense()">Add expense</button>
+        <button class="btn btn-ghost" onclick="toggleForm('car-expense-form')">Cancel</button>
+      </div>
+    </div>
+    <div id="car-expense-list"><div class="empty-state">No car expenses in this range.</div></div>
+  </section>
+
+  <!-- Daily odometer log -->
+  <section>
+    <div class="section-header" onclick="toggleForm('car-odometer-form', this)">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>
+        Odometer Log
+      </div>
+      <div class="header-actions">
+        <button class="pill-btn success" tabindex="-1">+ Log reading</button>
+      </div>
+    </div>
+    <div class="add-form" id="car-odometer-form">
+      <div class="form-grid">
+        <div><label>Date</label>
+          <div class="date-field">
+            <input type="text" id="car-odo-date" placeholder="MM/DD/YYYY — blank = today" />
+            <button type="button" class="date-pick-btn" onclick="openDatePicker('car-odo-date')" aria-label="Pick date"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></button>
+            <input type="date" id="car-odo-date-picker" class="date-picker-hidden" onchange="applyDatePicker('car-odo-date')" tabindex="-1" />
+          </div>
+        </div>
+        <div><label>Odometer</label><input type="number" id="car-odo-value" min="0" step="1" placeholder="e.g. 45213" /></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="upsertOdometerReading(parseFlexibleDate(document.getElementById('car-odo-date').value) || todayISO(), parseInt(document.getElementById('car-odo-value').value, 10))">Log reading</button>
+        <button class="btn btn-ghost" onclick="toggleForm('car-odometer-form')">Cancel</button>
+      </div>
+    </div>
+    <div id="car-odometer-list"><div class="empty-state">No odometer readings yet.</div></div>
+  </section>
+
+</div>
+
 <!-- Generic "periodic income" job view — used by any custom job type
      (kind: periodic_income) created via the admin panel. ca_it above is
      untouched and keeps its own dedicated view. -->
@@ -1892,6 +2065,12 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
       <div class="form-grid">
         <div><label>Name</label><input type="text" id="pk-name" placeholder="e.g. New mower fund" /></div>
         <div><label>Linked wishlist item (optional)</label><select id="pk-wishlist"></select></div>
+        <div><label>Linked job (optional)</label>
+          <select id="pk-linked-job">
+            <option value="">None</option>
+            <option value="car">Car — expenses draw down from this pocket</option>
+          </select>
+        </div>
         <div>
           <label style="display:flex;align-items:center;justify-content:space-between;gap:6px">
             <span>Seed from Free / Savings</span>
@@ -1961,6 +2140,14 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
           </select>
         </div>
         <div id="rec-other-desc-wrap" style="display:none"><label>Description</label><input type="text" id="rec-desc" placeholder="e.g. Netflix" /></div>
+        <div id="rec-car-category-wrap" style="display:none">
+          <label>Car category (optional)</label>
+          <select id="rec-car-category">
+            <option value="">Not car-related</option>
+            <option value="insurance">Car — Insurance</option>
+            <option value="registration">Car — Registration</option>
+          </select>
+        </div>
         <div id="rec-amount-wrap"><label id="rec-amount-label">Amount ($) <span style="font-size:10px;color:var(--text-faint);text-transform:none">— blank = client rate</span></label><input type="number" id="rec-amount" min="0" step="0.01" placeholder="0.00" /></div>
         <div id="rec-method-wrap" style="display:none">
           <label>Method</label>
@@ -2145,10 +2332,23 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 </div><!-- /#pc-app -->
 
 <!-- ══════════════════════════════════════════════════════════
-     Job admin/unlock modal — deliberately OUTSIDE both #pc-app
+     Job admin/unlock modals — deliberately OUTSIDE both #pc-app
      and #mobile-app (which hide one another via .is-mobile) so
-     it works the same on phones and desktop.
+     the Add Job and Admin modals work the same on phones and desktop.
      ══════════════════════════════════════════════════════════ -->
+
+<div class="modal-overlay" id="add-job-modal">
+  <div class="modal-box">
+    <div class="modal-title">+ New Job <button class="modal-close-x" onclick="closeAddJobModal()">✕</button></div>
+    <div class="modal-desc">Enter the 6-digit code you were given to add a job to your account.</div>
+    <input type="text" class="code-input" id="add-job-code" maxlength="6" inputmode="numeric" autocomplete="off" placeholder="······" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,6)" />
+    <div class="modal-error" id="add-job-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeAddJobModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAddJobCode()">Add job</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="admin-modal">
   <div class="modal-box modal-wide">
@@ -2156,7 +2356,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 
     <div>
       <div class="admin-section-label">All accounts</div>
-      <div class="modal-desc">See every account and flip any job on or off for them directly — no invite or removal code needed.</div>
+      <div class="modal-desc">See every account and flip any job on or off for them directly — no invite code needed.</div>
       <div class="form-actions" style="margin-top:8px">
         <button class="btn btn-primary" onclick="openAdminUsersModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Manage users' jobs</button>
       </div>
@@ -2167,7 +2367,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 <div class="modal-overlay" id="admin-users-modal">
   <div class="modal-box modal-wide">
     <div class="modal-title"><span style="display:flex;align-items:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Manage Users' Jobs</span><button class="modal-close-x" onclick="closeAdminUsersModal()">✕</button></div>
-    <div class="modal-desc">Tap a job to grant or remove it for that account. Changes apply immediately — this bypasses invite/removal codes entirely.</div>
+    <div class="modal-desc">Tap a job to grant or remove it for that account. Changes apply immediately — this bypasses invite codes entirely.</div>
     <div class="admin-users-list" id="admin-users-list"><div class="empty-state">Loading accounts…</div></div>
   </div>
 </div>
@@ -2330,7 +2530,7 @@ function loadFromFirestore() {
   pendingHistoryEntries = [];
 
   // Track first fire of all listeners before doing initial render
-  const ready = { main: false, clients: false, events: false, other: false, wishlist: false, pockets: false, pocketRules: false, recurring: false, jobTypes: false };
+  const ready = { main: false, clients: false, events: false, other: false, wishlist: false, pockets: false, pocketRules: false, recurring: false, jobTypes: false, odometer: false };
   let initialRenderDone = false;
 
   async function checkReady() {
@@ -2344,16 +2544,6 @@ function loadFromFirestore() {
 
   // Main doc (balances, enabledJobs, isAdmin)
   unsubscribers.push(userDoc().onSnapshot(snap => {
-    // ── DEBUG (temporary) ──────────────────────────────────────
-    // Logs every fire of this listener for the CURRENTLY SIGNED-IN
-    // account's own doc, with cache/pending-write metadata, so we can see
-    // in the console exactly when enabledJobs changes (or reverts) and
-    // whether that snapshot came from the local cache or the server.
-    console.log(
-      `[mainDocListener] fired ${new Date().toISOString()} uid=${currentUser && currentUser.uid} ` +
-      `fromCache=${snap.metadata.fromCache} hasPendingWrites=${snap.metadata.hasPendingWrites} ` +
-      `enabledJobs=${JSON.stringify(snap.exists ? snap.data().enabledJobs : null)}`
-    );
     if (snap.exists) {
       const d = snap.data();
       balances = d.balances || { bank: 0, cash: 0 };
@@ -2375,48 +2565,17 @@ function loadFromFirestore() {
       jobEarnPercent = d.jobEarnPercent || {};
       if (Array.isArray(d.enabledJobs)) {
         enabledJobs = d.enabledJobs;
-      } else if (d.enabledJobs === undefined) {
-        // Only seed the 2-job default the very first time this field has
-        // never existed at all — a genuinely pre-feature account. Any other
-        // shape (null, an object, whatever) is left untouched and just
-        // falls back to the safe default *locally* without writing to
-        // Firestore, so a transient/unexpected read can never overwrite
-        // real data (e.g. an admin-granted job) on reload.
-        //
-        // FIX: on page load, the very first onSnapshot delivery can be an
-        // unconfirmed local placeholder (metadata.fromCache === true)
-        // that fires before the real, already-synced document arrives —
-        // it can show enabledJobs as undefined even though the account
-        // genuinely has jobs granted server-side. Writing the seed default
-        // in that moment clobbers real data. Only write once Firestore has
-        // actually confirmed (fromCache === false) that the field is
-        // really missing; otherwise just use the safe default locally for
-        // this one render and let the next (server-confirmed) snapshot
-        // correct it.
-        enabledJobs = ['lawn_mowing', 'ca_it'];
-        if (snap.metadata.fromCache) {
-          console.warn(`[mainDocListener] enabledJobs undefined but snapshot is UNCONFIRMED (fromCache) — skipping seed write, waiting for server confirmation. uid=${currentUser && currentUser.uid}`);
-        } else {
-          console.warn(`[mainDocListener] SEED WRITE (server-confirmed enabledJobs missing) uid=${currentUser && currentUser.uid} — writing default`, enabledJobs);
-          userDoc().set({ enabledJobs }, { merge: true });
-        }
       } else {
-        console.warn('enabledJobs on this account is present but not an array — leaving Firestore untouched:', d.enabledJobs);
+        // Predates this feature — grandfather this account into the same
+        // 2 jobs it already had, and persist that so it's a real field
+        // going forward instead of re-checking this every load.
         enabledJobs = ['lawn_mowing', 'ca_it'];
+        userDoc().set({ enabledJobs }, { merge: true });
       }
     } else {
-      // Same fromCache hazard as above: an unconfirmed placeholder can
-      // report "document doesn't exist" even though the real doc (with
-      // real balances) exists server-side. Only treat it as truly missing
-      // — and create it — once the server has confirmed that.
       balances = { bank: 0, cash: 0 };
       enabledJobs = ['lawn_mowing', 'ca_it'];
-      if (snap.metadata.fromCache) {
-        console.warn(`[mainDocListener] doc appears missing but snapshot is UNCONFIRMED (fromCache) — skipping create, waiting for server confirmation. uid=${currentUser && currentUser.uid}`);
-      } else {
-        console.warn(`[mainDocListener] NO DOC EXISTS (server-confirmed) for uid=${currentUser && currentUser.uid} — creating with default enabledJobs`, enabledJobs);
-        userDoc().set({ balances, enabledJobs }, { merge: true });
-      }
+      userDoc().set({ balances, enabledJobs }, { merge: true });
     }
     if (!ready.main) { ready.main = true; checkReady(); }
     else if (initialRenderDone) render();
@@ -2489,6 +2648,14 @@ function loadFromFirestore() {
     if (!ready.recurring) { ready.recurring = true; checkReady(); }
     else if (initialRenderDone) render();
   }));
+
+  // Odometer log — one reading per day, doc id === date, so it's naturally
+  // deduped and sorts chronologically the same way its id sorts.
+  unsubscribers.push(userDoc().collection('odometer').onSnapshot(snap => {
+    odometerLog = snap.docs.map(d => d.data()).sort((a,b) => a.date.localeCompare(b.date));
+    if (!ready.odometer) { ready.odometer = true; checkReady(); }
+    else if (initialRenderDone) render();
+  }));
 }
 
 let saveTimer;
@@ -2513,12 +2680,6 @@ async function loadMoreHistory() {
 
 async function saveToFirestore() {
   if (!currentUser || testMode) return;
-
-  // ── DEBUG (temporary) ────────────────────────────────────────
-  // Confirms this debounced autosave only ever merges these 3 fields and
-  // never touches enabledJobs — logged so we can rule it in or out as the
-  // cause of a job grant reverting.
-  console.log(`[saveToFirestore] merging {balances, lastBankCompare, jobEarnPercent} only, uid=${currentUser.uid} at ${new Date().toISOString()}`);
 
   // Merge (not overwrite) — this doc also carries enabledJobs/isAdmin now,
   // and a bare .set() here would otherwise wipe those every debounced save.
@@ -2557,6 +2718,7 @@ async function saveToFirestore() {
   await upsertItems('pockets', pendingPocketWrites, pockets);
   await upsertItems('pocketRules', pendingRuleWrites, pocketRules);
   await upsertItems('recurring', pendingRecurringWrites, recurringRules);
+  await upsertItems('odometer', pendingOdometerWrites, odometerLog);
   await deleteItems('clients', pendingClientDeletes);
   await deleteItems('jobs',    pendingEventDeletes);
   await deleteItems('other',   pendingOtherDeletes);
@@ -2564,6 +2726,7 @@ async function saveToFirestore() {
   await deleteItems('pockets', pendingPocketDeletes);
   await deleteItems('pocketRules', pendingRuleDeletes);
   await deleteItems('recurring', pendingRecurringDeletes);
+  await deleteItems('odometer', pendingOdometerDeletes);
 
   // History entries (unchanged)
   while (pendingHistoryEntries.length > 0) {
@@ -2652,13 +2815,7 @@ let jobEarnPercent = {}; // { jobId: percent } — what % of a job's raw check a
 const JOBS = [
   { id: 'lawn_mowing', kind: 'client_service', label: 'Lawn Mowing', icon: '<svg viewBox="0 0 24 24"><path d="M9 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M19 17a3 3 0 100-6 3 3 0 000 6z"/><path d="M3 17V8l6-4 6 4h3a3 3 0 013 3v6"/><path d="M9 4v9"/></svg>' },
   { id: 'ca_it', kind: 'periodic_income', label: 'CA – IT', icon: '<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><path d="M8 21h8M12 17v4"/></svg>' },
-  // Hardcoded here (not a Firestore jobTypes doc) same as the 2 above, but
-  // built on the generic periodic_income engine below instead of its own
-  // dedicated view — no clients, one date per entry, tithe checkbox always
-  // shown (defaulted checked), "Unpaid/Paid" wording instead of the default
-  // "Uncashed/Cashed". Not in any default enabledJobs seed above, so every
-  // account starts without it — grant it per-account from Manage users' jobs.
-  { id: 'work_for_moores', kind: 'periodic_income', label: 'Work for Moores', icon: '<svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>', config: { dateMode: 'single', titheMode: 'toggle', titheDefault: true, statusWords: { open: 'Unpaid', closed: 'Paid' }, statusDefault: 'cashed', askPaymentMethod: true } }
+  { id: 'car', kind: 'vehicle', label: 'Car', config: { titheMode: 'never' }, icon: '<svg viewBox="0 0 24 24"><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>' }
 ];
 
 // ── Per-account job enablement + Firestore-defined custom job types ──
@@ -2739,10 +2896,11 @@ function generateItCheckFromRule(rule, dateStart) {
 }
 
 function generateOtherFromRule(rule, date) {
-  const newEntry = { id: 'o' + Date.now() + Math.floor(Math.random() * 1000), desc: rule.desc, date, type: rule.type, amount: rule.amount, method: rule.method, recurringId: rule.id, ...(rule.type === 'income' ? { titheDeductible: !!rule.titheDeductible } : {}) };
+  const newEntry = { id: 'o' + Date.now() + Math.floor(Math.random() * 1000), desc: rule.desc, date, type: rule.type, amount: rule.amount, method: rule.method, recurringId: rule.id, ...(rule.job ? { job: rule.job } : {}), ...(rule.category ? { category: rule.category } : {}), ...(rule.type === 'income' ? { titheDeductible: !!rule.titheDeductible } : {}) };
   otherMoney.push(newEntry);
   pendingOtherWrites.add(newEntry.id);
-  logHistory('other', `Auto-added recurring ${rule.type} — "${rule.desc}" $${parseFloat(rule.amount).toFixed(2)} on ${fmt(date)}`, { job: null });
+  logHistory('other', `Auto-added recurring ${rule.type} — "${rule.desc}" $${parseFloat(rule.amount).toFixed(2)} on ${fmt(date)}`, { job: rule.job ?? null });
+  if (rule.job === 'car' && rule.type === 'expense') drawDownCarPocket(parseFloat(rule.amount));
 }
 
 // Runs once per app load (after all collections are in). Catches each active
@@ -2789,6 +2947,7 @@ function updateRecurringFields() {
   document.getElementById('rec-other-type-wrap').style.display = isOther ? '' : 'none';
   document.getElementById('rec-other-desc-wrap').style.display = isOther ? '' : 'none';
   const otherType = document.getElementById('rec-other-type').value;
+  document.getElementById('rec-car-category-wrap').style.display = (isOther && otherType === 'expense') ? '' : 'none';
   document.getElementById('rec-method-wrap').style.display = isOther ? '' : 'none';
   document.getElementById('rec-tithe-wrap').style.display = (isIt || (isOther && otherType === 'income')) ? '' : 'none';
   document.getElementById('rec-amount-label').innerHTML = isLawn
@@ -2827,9 +2986,10 @@ function addRecurringRuleFromForm() {
     const amount = parseFloat(amountRaw);
     const type = document.getElementById('rec-other-type').value;
     const method = document.getElementById('rec-method').value;
+    const carCategory = type === 'expense' ? document.getElementById('rec-car-category').value : '';
     if (!desc) { alert('Enter a description.'); return; }
     if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
-    data = { kind: 'other', job: null, desc, amount, type, method, intervalDays, nextDate, ...(type === 'income' ? { titheDeductible: document.getElementById('rec-tithe').checked } : {}) };
+    data = { kind: 'other', job: carCategory ? 'car' : null, ...(carCategory ? { category: carCategory } : {}), desc, amount, type, method, intervalDays, nextDate, ...(type === 'income' ? { titheDeductible: document.getElementById('rec-tithe').checked } : {}) };
   }
 
   addRecurringRule(data);
@@ -2838,6 +2998,7 @@ function addRecurringRuleFromForm() {
   document.getElementById('rec-next').value = '';
   document.getElementById('rec-amount').value = '';
   document.getElementById('rec-desc').value = '';
+  document.getElementById('rec-car-category').value = '';
   renderRecurringPage();
   toast('Recurring rule added ✓');
 }
@@ -2987,6 +3148,7 @@ let currentJobId = null; // null = on the main page; otherwise the open job's id
 
 function openJob(id) {
   if (id === 'ca_it') { openCaIt(); return; }
+  if (id === 'car') { openCarJob(); return; }
   if (getJob(id).kind === 'periodic_income') { openGenericJob(id); return; }
   currentJobId = id;
   document.getElementById('job-view-title').textContent = getJob(id).label;
@@ -3060,6 +3222,7 @@ function closeRecurring() {
 // sublabel above, just summed instead of counted. Mirrors the pattern
 // already used for per-client "owed" totals (clientJobs.reduce(...)).
 function jobOpenBalance(job) {
+  if (job.kind === 'vehicle') return 0; // no open events concept — sorts with the rest, doesn't error
   const isPeriodic = job.kind === 'periodic_income';
   return isPeriodic
     ? lawnEvents.filter(j => jobOf(j) === job.id && j.status === 'uncashed').reduce((s,j) => s + effectiveEarnings(j), 0)
@@ -3080,27 +3243,32 @@ function renderJobsGrid() {
   if (jobSort === 'balance_desc') jobs = [...jobs].sort((a,b) => jobOpenBalance(b) - jobOpenBalance(a));
   grid.innerHTML = jobs.map(job => {
     const isPeriodic = job.kind === 'periodic_income';
-    // Jobs that set config.statusWords (e.g. Work for Moores) get their own
-    // "N unpaid entries" wording here instead of the default "N uncashed
-    // checks" — ca_it and any job without statusWords keep the original text.
-    const sw = (job.config && job.config.statusWords) || null;
-    const openCount = isPeriodic
-      ? lawnEvents.filter(j => jobOf(j) === job.id && j.status === 'uncashed').length
-      : lawnEvents.filter(j => jobOf(j) === job.id && j.status !== 'paid').length;
-    const subLabel = openCount > 0
-      ? (isPeriodic
-          ? (sw
-              ? `${openCount} ${sw.open.toLowerCase()} entr${openCount > 1 ? 'ies' : 'y'} · $${jobOpenBalance(job).toFixed(2)}`
-              : openCount + ' uncashed check' + (openCount > 1 ? 's' : '') + ' · $' + jobOpenBalance(job).toFixed(2))
-          : openCount + ' open event' + (openCount > 1 ? 's' : '') + ' · $' + jobOpenBalance(job).toFixed(2))
-      : (isPeriodic ? (sw ? 'All settled' : 'All clear') : 'All settled');
+    let subLabel;
+    if (job.kind === 'vehicle') {
+      const pocket = carPocket();
+      subLabel = pocket ? '$' + (pocket.balance || 0).toFixed(2) + ' available' : 'No pocket linked';
+    } else {
+      const openCount = isPeriodic
+        ? lawnEvents.filter(j => jobOf(j) === job.id && j.status === 'uncashed').length
+        : lawnEvents.filter(j => jobOf(j) === job.id && j.status !== 'paid').length;
+      subLabel = openCount > 0
+        ? (isPeriodic
+            ? openCount + ' uncashed check' + (openCount > 1 ? 's' : '') + ' · $' + jobOpenBalance(job).toFixed(2)
+            : openCount + ' open event' + (openCount > 1 ? 's' : '') + ' · $' + jobOpenBalance(job).toFixed(2))
+        : (isPeriodic ? 'All clear' : 'All settled');
+    }
     return `
       <button class="job-btn" onclick="openJob('${job.id}')">
         <div class="job-btn-icon">${job.icon}</div>
         <div class="job-btn-label">${job.label}</div>
         <div class="job-btn-sub">${subLabel}</div>
       </button>`;
-  }).join('');
+  }).join('') + `
+      <button class="job-btn new-job-btn" onclick="openAddJobModal()">
+        <div class="job-btn-icon">+</div>
+        <div class="job-btn-label">New Job</div>
+        <div class="job-btn-sub">Have a code?</div>
+      </button>`;
 }
 
 // Figures out which job a history entry belongs to. New entries carry an
@@ -3343,15 +3511,10 @@ function computeBalances() {
   let bank = 0, cash = 0;
   lawnEvents.forEach(j => {
     // 'uncashed'/'cashed' is the status vocabulary for any periodic-income
-    // job (ca_it, or a custom job type of that same kind) — cashed deposits
-    // to bank by default, matching a paycheck rather than a cash-in-hand
-    // job, unless the entry has its own recorded paymentMethod (jobs like
-    // Work for Moores that ask cash/bank on close), in which case that wins.
+    // job (ca_it, or a custom job type of that same kind) — cashed always
+    // deposits to bank, matching a paycheck rather than a cash-in-hand job.
     if (j.status === 'cashed' || j.status === 'uncashed') {
-      if (j.status === 'cashed') {
-        if (j.paymentMethod === 'cash') cash += effectiveEarnings(j);
-        else bank += effectiveEarnings(j);
-      }
+      if (j.status === 'cashed') bank += effectiveEarnings(j);
       return;
     }
     if (j.status !== 'paid' || !j.paymentMethod) return;
@@ -3384,7 +3547,7 @@ function computeTithe() {
   const bank = Math.round((
     lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && j.titheDeductible !== false && !j.tithePaid)
             .reduce((s, j) => s + eventAmount(j), 0) +
-    lawnEvents.filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid && j.paymentMethod !== 'cash')
+    lawnEvents.filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid)
             .reduce((s, j) => s + effectiveEarnings(j), 0) +
     otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method !== 'cash' && !e.tithePaid)
               .reduce((s, e) => s + parseFloat(e.amount), 0)
@@ -3392,8 +3555,6 @@ function computeTithe() {
   const cash = Math.round((
     lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && j.titheDeductible !== false && !j.tithePaid)
             .reduce((s, j) => s + eventAmount(j), 0) +
-    lawnEvents.filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid && j.paymentMethod === 'cash')
-            .reduce((s, j) => s + effectiveEarnings(j), 0) +
     otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method === 'cash' && !e.tithePaid)
               .reduce((s, e) => s + parseFloat(e.amount), 0)
   ) * 0.1 * 100) / 100;
@@ -3632,10 +3793,11 @@ renderPaidEvents();
 renderWishlist();
 renderFundsDistribution();
 renderRecurringSummary();
-renderTrends();
+renderMainChart();
 if (pocketsOpen) renderPocketsPage();
 if (recurringOpen) renderRecurringList();
 if (currentJobId === 'ca_it') renderItChecks();
+if (currentJobId === 'car') renderCarView();
 renderAllHistory();
 if (window.IS_MOBILE_DEVICE) renderMobileApp({ netCash, unpaid, check, itUncashed, paidJobs, itCashed, income, expenses, tithe, titheOwed, balances });
 }
@@ -4524,16 +4686,8 @@ function closeGenericJob() {
 function buildGenericJobShell(jobId) {
   const job = getJob(jobId), cfg = job.config || {};
   const noun = cfg.entryNoun || 'Entry';
-  const nounPlural = noun.endsWith('y') ? noun.slice(0, -1) + 'ies' : noun + 's';
   const dateMode = cfg.dateMode || 'range';
   const titheMode = cfg.titheMode || 'always';
-  // Optional per-job override of the default "Uncashed/Cashed" wording
-  // (e.g. Work for Moores shows "Unpaid/Paid" instead) — purely cosmetic,
-  // the underlying status values stay 'uncashed'/'cashed' either way so
-  // balances/tithe/pockets above keep working unchanged.
-  const sw = cfg.statusWords || null;
-  const openLabel = sw ? sw.open : 'Uncashed';
-  const closedLabel = sw ? sw.closed : 'Cashed';
   const wrap = document.getElementById('generic-job-body');
   if (!wrap) return;
 
@@ -4562,42 +4716,28 @@ function buildGenericJobShell(jobId) {
 
   const titheFieldHtml = titheMode === 'toggle'
     ? `<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted);cursor:pointer;margin-right:auto">
-         <input type="checkbox" id="gj-tithe"${cfg.titheDefault ? ' checked' : ''} style="accent-color:var(--accent)"> Tithe deductible
+         <input type="checkbox" id="gj-tithe" style="accent-color:var(--accent)"> Tithe deductible
        </label>`
     : '';
-
-  // Status picker on the add form — lets an entry be created already
-  // "closed" (e.g. Work for Moores jobs are usually paid on the spot)
-  // instead of always starting in the open bucket. cfg.statusDefault picks
-  // which option is preselected; defaults to open ('uncashed') to match
-  // the old always-open behavior for any job that doesn't set it.
-  const statusDefault = cfg.statusDefault === 'cashed' ? 'cashed' : 'uncashed';
-  const statusFieldHtml = `<div><label>Status</label>
-        <select id="gj-status">
-          <option value="uncashed"${statusDefault === 'uncashed' ? ' selected' : ''}>${openLabel}</option>
-          <option value="cashed"${statusDefault === 'cashed' ? ' selected' : ''}>${closedLabel}</option>
-        </select>
-      </div>`;
 
   wrap.innerHTML = `
     <section>
       <div class="section-header static">
-        <div class="section-title">${job.icon} ${openLabel}</div>
+        <div class="section-title">${job.icon} Uncashed</div>
         <div class="header-actions"><span id="gj-open-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span></div>
       </div>
-      <div id="gj-open-wrap"><div class="empty-state">Nothing ${openLabel.toLowerCase()}.</div></div>
+      <div id="gj-open-wrap"><div class="empty-state">Nothing uncashed.</div></div>
     </section>
 
     <section>
       <div class="section-header static">
-        <div class="section-title">${nounPlural}</div>
+        <div class="section-title">${noun}s</div>
         <div class="header-actions"><button class="pill-btn success" onclick="toggleForm('gj-add-form')">+ Add ${noun.toLowerCase()}</button></div>
       </div>
       <div class="add-form" id="gj-add-form">
         <div class="form-grid">
           ${dateFieldsHtml}
           <div><label>Amount ($)</label><input type="number" id="gj-amount" min="0" step="0.01" placeholder="0.00" /></div>
-          ${statusFieldHtml}
         </div>
         <div class="form-actions">
           ${titheFieldHtml}
@@ -4609,13 +4749,13 @@ function buildGenericJobShell(jobId) {
 
     <section>
       <div class="section-header" onclick="toggleSection('gj-closed-body')">
-        <div class="section-title">${closedLabel}</div>
+        <div class="section-title">Cashed</div>
         <div class="header-actions">
           <span id="gj-closed-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
           <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearGenericCashed('${jobId}')">Clear all</button>
         </div>
       </div>
-      <div id="gj-closed-body" style="display:none"><div id="gj-closed-wrap"><div class="empty-state">Nothing ${closedLabel.toLowerCase()} yet.</div></div></div>
+      <div id="gj-closed-body" style="display:none"><div id="gj-closed-wrap"><div class="empty-state">Nothing cashed yet.</div></div></div>
     </section>
 
     <section>
@@ -4629,7 +4769,6 @@ function buildGenericJobShell(jobId) {
 
 function genericTableHtml(list, jobId, cfg, isOpen) {
   const titheMode = cfg.titheMode || 'always';
-  const closedLabel = (cfg.statusWords ? cfg.statusWords.closed : 'Cashed').toLowerCase();
   return `<div class="table-wrap"><table>
     <thead><tr><th>${(cfg.dateMode||'range')==='single'?'Date':'Pay Period'}</th><th>Amount</th>${titheMode!=='never'?'<th>Tithe</th>':''}<th></th></tr></thead>
     <tbody>${list.map(j => `
@@ -4640,7 +4779,7 @@ function genericTableHtml(list, jobId, cfg, isOpen) {
         <td><div class="row-actions">
           ${isOpen
             ? `<button class="act-btn edit" onclick="editGenericEntry('${jobId}','${j.id}')">edit</button>
-               <button class="act-btn success" onclick="markGenericCashed('${jobId}','${j.id}')">mark ${closedLabel}</button>`
+               <button class="act-btn success" onclick="markGenericCashed('${jobId}','${j.id}')">mark cashed</button>`
             : `<button class="act-btn success" onclick="uncashGenericEntry('${jobId}','${j.id}')">undo</button>`}
           <button class="act-btn danger" onclick="deleteGenericEntry('${jobId}','${j.id}')">delete</button>
         </div></td>
@@ -4650,7 +4789,6 @@ function genericTableHtml(list, jobId, cfg, isOpen) {
 
 function renderGenericJobOpen(jobId) {
   const cfg = (getJob(jobId).config) || {};
-  const openLabel = cfg.statusWords ? cfg.statusWords.open : 'Uncashed';
   const open = lawnEvents.filter(j => j.job === jobId && j.status === 'uncashed')
     .sort((a,b) => (b.dateEnd||b.date||'').localeCompare(a.dateEnd||a.date||'') || b.id.localeCompare(a.id));
   const total = open.reduce((s,j) => s + eventAmount(j), 0);
@@ -4658,12 +4796,11 @@ function renderGenericJobOpen(jobId) {
   if (summary) summary.textContent = open.length ? `${open.length} · $${total.toFixed(2)}` : '';
   const wrap = document.getElementById('gj-open-wrap');
   if (!wrap) return;
-  wrap.innerHTML = open.length ? genericTableHtml(open, jobId, cfg, true) : `<div class="empty-state">Nothing ${openLabel.toLowerCase()}.</div>`;
+  wrap.innerHTML = open.length ? genericTableHtml(open, jobId, cfg, true) : '<div class="empty-state">Nothing uncashed.</div>';
 }
 
 function renderGenericJobClosed(jobId) {
   const cfg = (getJob(jobId).config) || {};
-  const closedLabel = cfg.statusWords ? cfg.statusWords.closed : 'Cashed';
   const closed = lawnEvents.filter(j => j.job === jobId && j.status === 'cashed')
     .sort((a,b) => (b.dateEnd||b.date||'').localeCompare(a.dateEnd||a.date||'') || b.id.localeCompare(a.id));
   const total = closed.reduce((s,j) => s + eventAmount(j), 0);
@@ -4671,7 +4808,7 @@ function renderGenericJobClosed(jobId) {
   if (summary) summary.textContent = closed.length ? `${closed.length} · $${total.toFixed(2)}` : '';
   const wrap = document.getElementById('gj-closed-wrap');
   if (!wrap) return;
-  wrap.innerHTML = closed.length ? genericTableHtml(closed, jobId, cfg, false) : `<div class="empty-state">Nothing ${closedLabel.toLowerCase()} yet.</div>`;
+  wrap.innerHTML = closed.length ? genericTableHtml(closed, jobId, cfg, false) : '<div class="empty-state">Nothing cashed yet.</div>';
 }
 
 function renderGenericJobHistory(jobId) {
@@ -4707,83 +4844,41 @@ async function addGenericEntry(jobId) {
     dateFields = { dateStart, dateEnd };
   }
   const titheDeductible = titheMode === 'toggle' ? document.getElementById('gj-tithe').checked : (titheMode === 'always');
-  const statusEl = document.getElementById('gj-status');
-  const status = statusEl ? statusEl.value : 'uncashed';
 
   const newEntry = { id: 'g' + Date.now() + Math.floor(Math.random() * 1000), job: jobId, ...dateFields, amount, status: 'uncashed', titheDeductible };
-
-  // Entry created already "closed" (e.g. paid on the spot) needs the same
-  // pocket-allocation step markGenericCashed() runs later — otherwise the
-  // amount never gets set aside even though it's sitting in the closed list.
-  // Jobs that opt in via config.askPaymentMethod (e.g. Work for Moores) also
-  // get the cash/bank prompt here, same as markGenericCashed().
-  let allocations = [];
-  if (status === 'cashed') {
-    newEntry.status = 'cashed';
-    if (cfg.askPaymentMethod) {
-      const method = await promptPaymentMethod();
-      if (method) {
-        newEntry.paymentMethod = method;
-      } else {
-        newEntry.status = 'uncashed'; // cancelled the method prompt — don't leave it closed with nowhere to post
-      }
-    }
-    if (newEntry.status === 'cashed') {
-      allocations = applyPocketRules(jobId, effectiveEarnings(newEntry));
-      if (allocations.length) newEntry.pocketAllocations = allocations;
-    }
-  }
-
   lawnEvents.push(newEntry);
   pendingEventWrites.add(newEntry.id);
-  const closedWord = (cfg.statusWords ? cfg.statusWords.closed : 'Cashed').toLowerCase();
-  logHistory('add', `Added ${(cfg.entryNoun || 'entry').toLowerCase()} — ${genericEntryLabel(newEntry, cfg)} ($${amount.toFixed(2)})${newEntry.status === 'cashed' ? ` (${closedWord}${newEntry.paymentMethod ? ', ' + newEntry.paymentMethod : ''})` : ''}`, { job: jobId });
+  logHistory('add', `Added ${(cfg.entryNoun || 'entry').toLowerCase()} — ${genericEntryLabel(newEntry, cfg)} ($${amount.toFixed(2)})`, { job: jobId });
 
   document.getElementById('gj-amount').value = '';
   if (dateMode === 'single') { document.getElementById('gj-date').value = ''; }
   else { document.getElementById('gj-start').value = ''; document.getElementById('gj-end').value = ''; }
   document.getElementById('gj-add-form').classList.remove('open');
 
-  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId);
-  toast(`${cfg.entryNoun || 'Entry'} added ✓`);
-  if (allocations.length) checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
+  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); toast(`${cfg.entryNoun || 'Entry'} added ✓`);
 }
 
-async function markGenericCashed(jobId, id) {
+function markGenericCashed(jobId, id) {
   const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
-  const cfg = getJob(jobId).config || {};
-  // Jobs that opt in via config.askPaymentMethod (e.g. Work for Moores) get
-  // the same cash/bank prompt markPaid() uses for lawn-mowing events — CA-IT
-  // and any other periodic-income job without this flag keeps its old
-  // behavior of always landing in bank, no prompt.
-  let method = null;
-  if (cfg.askPaymentMethod) {
-    method = await promptPaymentMethod();
-    if (!method) return;
-  }
-  const closedWord = (cfg.statusWords ? cfg.statusWords.closed : 'Cashed').toLowerCase();
   const prev = j.status;
   const amount = eventAmount(j);
   const allocations = applyPocketRules(jobId, effectiveEarnings(j));
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', ...(method ? { paymentMethod: method } : {}), ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
   pendingEventWrites.add(id);
-  logHistory('paid', `Marked ${getJob(jobId).label} ${closedWord} — ${genericEntryLabel(j, cfg)} ($${amount.toFixed(2)})${method ? ` (${method})` : ''}`, { jobId: id, prevStatus: prev, ...(method ? { paymentMethod: method } : {}), job: jobId });
-  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast(`Marked as ${closedWord} ✓`);
+  logHistory('paid', `Marked ${getJob(jobId).label} cashed — ${genericEntryLabel(j, getJob(jobId).config || {})} ($${amount.toFixed(2)})`, { jobId: id, prevStatus: prev, job: jobId });
+  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast('Marked as cashed ✓');
   if (allocations.length) checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
 }
 
 function uncashGenericEntry(jobId, id) {
   const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
-  const cfg = getJob(jobId).config || {};
-  const openWord = (cfg.statusWords ? cfg.statusWords.open : 'Uncashed').toLowerCase();
-  const closedWord = (cfg.statusWords ? cfg.statusWords.closed : 'Cashed').toLowerCase();
-  reversePocketAllocations(j, `moved back to ${openWord}`);
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', paymentMethod: null, tithePaid: false, pocketAllocations: [] } : jb);
+  reversePocketAllocations(j, 'moved back to uncashed');
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', tithePaid: false, pocketAllocations: [] } : jb);
   pendingEventWrites.add(id);
-  logHistory('add', `Reversed ${closedWord} — ${genericEntryLabel(j, cfg)} ($${eventAmount(j).toFixed(2)})`, { job: jobId });
-  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast(`Moved back to ${openWord}`);
+  logHistory('add', `Reversed cashed — ${genericEntryLabel(j, getJob(jobId).config || {})} ($${eventAmount(j).toFixed(2)})`, { job: jobId });
+  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast('Moved back to uncashed');
 }
 
 function deleteGenericEntry(jobId, id) {
@@ -4799,14 +4894,12 @@ function deleteGenericEntry(jobId, id) {
 function clearGenericCashed(jobId) {
   const toDelete = lawnEvents.filter(j => j.job === jobId && j.status === 'cashed');
   if (!toDelete.length) return;
-  const cfg = getJob(jobId).config || {};
-  const closedWord = (cfg.statusWords ? cfg.statusWords.closed : 'Cashed').toLowerCase();
-  if (!confirm(`Delete all ${toDelete.length} ${closedWord} entr${toDelete.length > 1 ? 'ies' : 'y'}? This cannot be undone.`)) return;
-  toDelete.forEach(j => reversePocketAllocations(j, `${closedWord} entries cleared`));
+  if (!confirm(`Delete all ${toDelete.length} cashed entr${toDelete.length > 1 ? 'ies' : 'y'}? This cannot be undone.`)) return;
+  toDelete.forEach(j => reversePocketAllocations(j, 'cashed entries cleared'));
   const ids = toDelete.map(j => j.id);
   lawnEvents = lawnEvents.filter(j => !ids.includes(j.id));
   ids.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
-  logHistory('delete', `Cleared ${ids.length} ${closedWord} entr${ids.length > 1 ? 'ies' : 'y'}`, { job: jobId });
+  logHistory('delete', `Cleared ${ids.length} cashed entr${ids.length > 1 ? 'ies' : 'y'}`, { job: jobId });
   save(); render(); renderJobsGrid(); renderGenericJobClosed(jobId); toast('Cleared');
 }
 
@@ -4867,6 +4960,51 @@ function saveGenericEntry(jobId, id) {
   save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); toast('Entry updated ✓');
 }
 
+// ── Add Job / Admin ─────────────────────────────────────────
+// Security model (enforced by Firestore rules, not by this code):
+//  - jobInviteCodes/{code}: get-only for signed-in users (no list) — you
+//    can check a code you were TOLD, but can't browse the collection to
+//    find codes you weren't given.
+// The modal below relies entirely on the write itself succeeding or being
+// rejected — see firestore.rules for the actual enforcement.
+
+function generateSixDigitCode() {
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  return String(100000 + (arr[0] % 900000));
+}
+
+function openAddJobModal() {
+  document.getElementById('add-job-code').value = '';
+  document.getElementById('add-job-error').style.display = 'none';
+  document.getElementById('add-job-modal').style.display = 'flex';
+}
+function closeAddJobModal() { document.getElementById('add-job-modal').style.display = 'none'; }
+
+async function submitAddJobCode() {
+  const code = document.getElementById('add-job-code').value.trim();
+  const errEl = document.getElementById('add-job-error');
+  errEl.style.display = 'none';
+  if (!/^\d{6}$/.test(code)) { errEl.textContent = 'Enter the 6-digit code.'; errEl.style.display = 'block'; return; }
+  try {
+    const codeDoc = await db.collection('jobInviteCodes').doc(code).get();
+    if (!codeDoc.exists) { errEl.textContent = "That code doesn't match any job."; errEl.style.display = 'block'; return; }
+    const jobId = codeDoc.data().jobId;
+    if (enabledJobs.includes(jobId)) { errEl.textContent = 'You already have this job.'; errEl.style.display = 'block'; return; }
+    await userDoc().update({
+      enabledJobs: firebase.firestore.FieldValue.arrayUnion(jobId),
+      _lastJobCode: code
+    });
+    enabledJobs = enabledJobs.concat([jobId]);
+    closeAddJobModal();
+    renderJobsGrid();
+    toast(`${getJob(jobId).label} added ✓`);
+  } catch (e) {
+    errEl.textContent = 'Something went wrong verifying that code — try again.';
+    errEl.style.display = 'block';
+  }
+}
+
 // ── Admin panel ──────────────────────────────────────────────
 // Visible only when this account's own user doc has isAdmin: true (set by
 // hand, once, in the Firebase console — see the setup notes). Everything
@@ -4886,7 +5024,7 @@ function closeAdminModal() { document.getElementById('admin-modal').style.displa
 // ── Admin: manage users' jobs directly ─────────────────────
 // Lists every account (from the `users` collection) and lets an admin
 // flip any job on/off for any account with a single click — no invite
-// code or removal code involved. Requires Firestore rules that let an
+// code involved. Requires Firestore rules that let an
 // isAdmin account list/read the users collection and update just the
 // enabledJobs field on other accounts' docs (see setup notes) — without
 // that rule change this will load with a permission error.
@@ -4910,12 +5048,6 @@ function openAdminUsersModal() {
   if (adminUsersUnsub) adminUsersUnsub();
   adminUsersUnsub = db.collection('users').onSnapshot(snap => {
     adminUsersList = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-    // ── DEBUG (temporary) ──────────────────────────────────────
-    const mine = currentUser && adminUsersList.find(u => u.uid === currentUser.uid);
-    console.log(
-      `[adminUsersList] fired ${new Date().toISOString()} fromCache=${snap.metadata.fromCache} ` +
-      `hasPendingWrites=${snap.metadata.hasPendingWrites} myEnabledJobs=${JSON.stringify(mine && mine.enabledJobs)}`
-    );
     adminUsersList.sort((a, b) =>
       (a.displayName || usernameFromEmail(a.email) || a.uid).localeCompare(b.displayName || usernameFromEmail(b.email) || b.uid));
     renderAdminUsersList();
@@ -4957,38 +5089,18 @@ function renderAdminUsersList() {
 
 async function adminToggleUserJob(uid, jobId, enable, btnEl) {
   if (btnEl) btnEl.disabled = true;
-  // ── DEBUG (temporary) ────────────────────────────────────────
-  const isSelf = !!(currentUser && uid === currentUser.uid);
-  const startedAt = new Date().toISOString();
-  console.log(`[adminToggleUserJob] START uid=${uid} job=${jobId} enable=${enable} isSelf=${isSelf} at ${startedAt}`);
   try {
     await db.collection('users').doc(uid).update({
       enabledJobs: enable
         ? firebase.firestore.FieldValue.arrayUnion(jobId)
         : firebase.firestore.FieldValue.arrayRemove(jobId)
     });
-    console.log(`[adminToggleUserJob] update() promise RESOLVED uid=${uid} isSelf=${isSelf}`);
-    // Force a read straight from the SERVER (source:'server' skips any local
-    // cache) right after the write resolves. This tells us immediately —
-    // without waiting for a page refresh — whether the change actually
-    // persisted server-side or only appears to have worked locally.
-    try {
-      const serverSnap = await db.collection('users').doc(uid).get({ source: 'server' });
-      console.log(`[adminToggleUserJob] SERVER re-read uid=${uid} isSelf=${isSelf} enabledJobs=`, serverSnap.data() && serverSnap.data().enabledJobs);
-    } catch (readErr) {
-      console.error(`[adminToggleUserJob] server re-read FAILED uid=${uid} isSelf=${isSelf}:`, readErr);
-    }
     toast(`${getJob(jobId).label} ${enable ? 'added to' : 'removed from'} that account`);
     // The live listener above re-renders once Firestore confirms the write,
     // so no manual DOM update is needed here.
   } catch (e) {
     if (btnEl) btnEl.disabled = false;
-    // Surface the real Firestore error (e.g. "permission-denied") instead of
-    // a generic message — this is almost always a security-rules mismatch
-    // (see comment above), and the code name pinpoints it immediately
-    // instead of requiring a trip to devtools.
-    console.error(`[adminToggleUserJob] update() promise REJECTED uid=${uid} isSelf=${isSelf}:`, e);
-    toast(`Could not update that account — ${e.code || e.message || 'check Firestore rules'}.`);
+    toast('Could not update that account — check Firestore rules.');
   }
 }
 
@@ -5099,7 +5211,11 @@ function deleteOther(id) {
   const e=otherMoney.find(e=>e.id===id);
   otherMoney=otherMoney.filter(e=>e.id!==id);
   pendingOtherDeletes.add(id); pendingOtherWrites.delete(id);
-  logHistory('delete',`Deleted entry — "${e.desc}" $${parseFloat(e.amount).toFixed(2)}`, { job: null });
+  logHistory('delete',`Deleted entry — "${e.desc}" $${parseFloat(e.amount).toFixed(2)}`, { job: e.job ?? null });
+  if (e.job === 'car' && e.type === 'expense') {
+    const pocket = carPocket();
+    if (pocket) adjustPocketBalance(pocket.id, parseFloat(e.amount)); // reverse the draw-down
+  }
   save(); render(); toast('Entry deleted');
 }
 
@@ -5425,6 +5541,376 @@ function renderTrends() {
   renderTrendBarChart(filterMonthlyByRange(buildMonthlyTotals(), trendsRange));
 }
 
+// ══ Car ═══════════════════════════════════════════════════════
+// Car is a hardcoded job (kind:'vehicle') like lawn_mowing/ca_it, but unlike
+// them it has no lawnEvents of its own — its money lives in otherMoney
+// (job:'car', category: gas|insurance|maintenance|registration), its miles
+// live in a new daily odometer log, and an optional linked pocket
+// (pockets.linkedJob === 'car') is what car spending draws down from.
+
+let odometerLog = []; // { id: 'YYYY-MM-DD', date: same, odometer: number }
+let pendingOdometerWrites  = new Set();
+let pendingOdometerDeletes = new Set();
+let carChartState = null; // set on first openCarJob() — { start, end, bars }
+let carTargetDate = null; // breakeven date picker — local UI state, not persisted
+
+function getOdometerEntry(date) { return odometerLog.find(o => o.date === date); }
+
+function upsertOdometerReading(date, odometer) {
+  if (!date || isNaN(odometer) || odometer < 0) { alert('Enter a date and a valid odometer reading.'); return; }
+  const existing = getOdometerEntry(date);
+  odometerLog = existing
+    ? odometerLog.map(o => o.date === date ? { ...o, odometer } : o)
+    : [...odometerLog, { id: date, date, odometer }];
+  odometerLog.sort((a, b) => a.date.localeCompare(b.date));
+  pendingOdometerWrites.add(date);
+  logHistory('odometer', `Logged odometer — ${fmt(date)}: ${odometer.toLocaleString()} mi`, { job: 'car' });
+  save(); renderCarView(); toast('Odometer logged ✓');
+}
+
+function deleteOdometerReading(date) {
+  if (!confirm('Delete this odometer reading?')) return;
+  odometerLog = odometerLog.filter(o => o.date !== date);
+  pendingOdometerWrites.delete(date);
+  pendingOdometerDeletes.add(date);
+  logHistory('odometer', `Deleted odometer reading — ${fmt(date)}`, { job: 'car' });
+  save(); renderCarView(); toast('Reading deleted');
+}
+
+// ── Car pocket (optional — the breakeven figure needs one linked) ──────
+function carPocket() { return pockets.find(p => p.linkedJob === 'car') || null; }
+
+// Car expenses draw down the linked pocket the moment they're logged —
+// mirrors applyPocketRules' pattern (adjustPocketBalance) but in reverse,
+// since this is money leaving a pocket rather than being set aside into one.
+function drawDownCarPocket(amount) {
+  const pocket = carPocket();
+  if (!pocket || !amount) return;
+  adjustPocketBalance(pocket.id, -amount);
+  logHistory('pocket', `Car expense drew down $${amount.toFixed(2)} from "${pocket.name}"`, { job: 'car', pocketId: pocket.id });
+}
+
+// ── Car expenses (otherMoney, job:'car') ───────────────────────────────
+function addCarExpense() {
+  const category = document.getElementById('car-exp-category').value;
+  const descRaw  = document.getElementById('car-exp-desc').value.trim();
+  const date     = parseFlexibleDate(document.getElementById('car-exp-date').value);
+  const amount   = parseFloat(document.getElementById('car-exp-amount').value);
+  const gallonsRaw = document.getElementById('car-exp-gallons').value;
+  if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount greater than 0.'); return; }
+  if (category === 'gas' && (!gallonsRaw || parseFloat(gallonsRaw) <= 0)) { alert('Enter gallons for a gas fill-up.'); return; }
+  const desc = descRaw || ({ gas: 'Gas', insurance: 'Insurance', maintenance: 'Maintenance', registration: 'Registration' }[category] || 'Car expense');
+  const newEntry = {
+    id: 'o' + Date.now(), desc, date, type: 'expense', amount, method: 'bank',
+    job: 'car', category,
+    ...(category === 'gas' ? { gallons: parseFloat(gallonsRaw) } : {})
+  };
+  otherMoney.push(newEntry);
+  pendingOtherWrites.add(newEntry.id);
+  logHistory('other', `Added car ${category} — "${desc}" $${amount.toFixed(2)} on ${fmt(date)}`, { job: 'car' });
+  drawDownCarPocket(amount);
+  save(); render(); renderCarView();
+  document.getElementById('car-exp-desc').value = '';
+  document.getElementById('car-exp-date').value = '';
+  document.getElementById('car-exp-amount').value = '';
+  document.getElementById('car-exp-gallons').value = '';
+  toast('Car expense added ✓');
+}
+
+// Car expenses are deleted through the existing deleteOther() (shared with
+// the general Income & Expenses list, so a car entry deletes the same way
+// and reverses its pocket draw-down no matter which list it's deleted
+// from) — see the small addition to deleteOther() itself. This calls it
+// and just also refreshes the Car page underneath.
+function deleteCarExpense(id) {
+  deleteOther(id);
+  renderCarView();
+}
+
+function carExpensesInRange(from, to) {
+  return otherMoney.filter(e => e.job === 'car' && e.type === 'expense' && e.date >= from && e.date <= to);
+}
+
+function carExpensesByCategory(from, to) {
+  const out = { gas: 0, insurance: 0, maintenance: 0, registration: 0 };
+  carExpensesInRange(from, to).forEach(e => { if (out[e.category] !== undefined) out[e.category] += parseFloat(e.amount) || 0; });
+  return out;
+}
+
+// otherMoney entries tagged job:'car' are this feature's cash-flow feed —
+// on the Car chart, "expense" bars are these; "income" bars are the app's
+// normal overall income (the whole point being to see car cost vs. total
+// earnings, not to invent car-specific income).
+function carCashFlowEvents() {
+  const carExpenses = otherMoney
+    .filter(e => e.job === 'car' && e.type === 'expense')
+    .map(e => ({ date: e.date, amount: parseFloat(e.amount) || 0, kind: 'expense' }));
+  const income = getCashFlowEvents().filter(f => f.kind === 'income');
+  return carExpenses.concat(income).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// Car-tagged recurring rules (insurance/registration) whose next occurrence
+// is due on/before `beforeDate` but hasn't generated an actual entry yet —
+// the "expected/pending bills" the breakeven figure needs to hold back.
+function carPendingBills(beforeDate) {
+  return recurringRules
+    .filter(r => r.active && r.job === 'car' && r.nextDate && r.nextDate <= beforeDate)
+    .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+}
+
+// Average MPG (needs 2+ fill-ups with a matching odometer reading on both
+// dates to get a mileage delta) and the most recent $/gallon. Returns null
+// rather than guessing when there isn't enough logged data.
+function carFuelStats() {
+  const fills = otherMoney
+    .filter(e => e.job === 'car' && e.category === 'gas' && e.gallons)
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date));
+  if (!fills.length) return null;
+  const last = fills[fills.length - 1];
+  const pricePerGallon = parseFloat(last.amount) / parseFloat(last.gallons);
+  let totalMiles = 0, totalGallons = 0;
+  for (let i = 1; i < fills.length; i++) {
+    const odoA = getOdometerEntry(fills[i - 1].date);
+    const odoB = getOdometerEntry(fills[i].date);
+    if (odoA && odoB && odoB.odometer > odoA.odometer) {
+      totalMiles += odoB.odometer - odoA.odometer;
+      totalGallons += parseFloat(fills[i].gallons);
+    }
+  }
+  const mpg = totalGallons > 0 ? totalMiles / totalGallons : null;
+  return { pricePerGallon, mpg };
+}
+
+// The breakeven figure: how many miles are left in the Car pocket before
+// `targetDate`, after holding back bills expected to land before then.
+// Returns { error } instead of a number for every state this can't answer
+// honestly (no pocket linked, no fuel data) rather than guessing.
+function carMilesLeft(targetDate) {
+  const pocket = carPocket();
+  if (!pocket) return { error: 'no-pocket' };
+  const fuel = carFuelStats();
+  if (!fuel || fuel.mpg == null || !fuel.pricePerGallon) return { error: 'no-fuel-data' };
+  const pending = carPendingBills(targetDate || todayISO());
+  const available = Math.max(0, (pocket.balance || 0) - pending);
+  const costPerMile = fuel.pricePerGallon / fuel.mpg;
+  if (!costPerMile) return { error: 'no-fuel-data' };
+  return { miles: available / costPerMile, available, costPerMile, pending, pocketBalance: pocket.balance || 0 };
+}
+
+// ── Car view (open/close, mirrors openCaIt/closeCaIt) ──────────────────
+function openCarJob() {
+  currentJobId = 'car';
+  if (!carChartState) carChartState = defaultChartRange();
+  if (!carTargetDate) carTargetDate = addDaysISO(todayISO(), 14);
+  document.getElementById('main-view').style.display = 'none';
+  document.getElementById('car-view').style.display = 'block';
+  renderCarView();
+  window.scrollTo(0, 0);
+}
+
+function closeCarJob() {
+  currentJobId = null;
+  document.getElementById('car-view').style.display = 'none';
+  document.getElementById('main-view').style.display = 'block';
+  render();
+  window.scrollTo(0, 0);
+}
+
+function setCarChartRange() {
+  const start = document.getElementById('car-chart-start').value;
+  const end   = document.getElementById('car-chart-end').value;
+  if (start) carChartState.start = parseFlexibleDate(start);
+  if (end)   carChartState.end   = parseFlexibleDate(end);
+  const bars = parseInt(document.getElementById('car-chart-bars').value, 10);
+  if (bars > 0) carChartState.bars = bars;
+  renderCarView();
+}
+
+function setCarTargetDate() {
+  const v = parseFlexibleDate(document.getElementById('car-target-date').value);
+  if (v) carTargetDate = v;
+  renderCarView();
+}
+
+function renderCarBreakeven() {
+  const wrap = document.getElementById('car-breakeven-wrap');
+  if (!wrap) return;
+  const result = carMilesLeft(carTargetDate);
+  if (result.error === 'no-pocket') {
+    wrap.innerHTML = '<div class="empty-state">Link a pocket to Car (in Pockets) to get a miles-left figure.</div>';
+    return;
+  }
+  if (result.error === 'no-fuel-data') {
+    wrap.innerHTML = '<div class="empty-state">Not enough data yet — log at least two gas fill-ups (with odometer readings on those dates) to calculate this.</div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="metric ${result.miles >= 0 ? 'green' : 'red'}">
+      <div class="metric-label">Miles left before ${fmt(carTargetDate)}</div>
+      <div class="metric-value">${Math.max(0, Math.round(result.miles)).toLocaleString()}</div>
+      <div class="metric-sub">$${result.available.toFixed(2)} available ÷ $${result.costPerMile.toFixed(3)}/mi${result.pending > 0 ? ` (after $${result.pending.toFixed(2)} in bills due by then)` : ''}</div>
+    </div>`;
+}
+
+function renderCarCategorySummary() {
+  const wrap = document.getElementById('car-category-summary');
+  if (!wrap) return;
+  const totals = carExpensesByCategory(carChartState.start, carChartState.end);
+  const labels = { gas: 'Gas', insurance: 'Insurance', maintenance: 'Maintenance', registration: 'Registration' };
+  wrap.innerHTML = Object.keys(labels).map(cat => `
+    <div class="metric">
+      <div class="metric-label">${labels[cat]}</div>
+      <div class="metric-value">$${totals[cat].toFixed(2)}</div>
+    </div>`).join('');
+}
+
+function renderOdometerList() {
+  const wrap = document.getElementById('car-odometer-list');
+  if (!wrap) return;
+  if (!odometerLog.length) { wrap.innerHTML = '<div class="empty-state">No odometer readings yet.</div>'; return; }
+  const sorted = [...odometerLog].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 14);
+  wrap.innerHTML = sorted.map((o, i) => {
+    const prev = sorted[i + 1]; // next-older reading in this already-desc list
+    const delta = prev ? o.odometer - prev.odometer : null;
+    return `<div class="history-row">
+      <span>${fmt(o.date)}</span>
+      <span class="mono">${o.odometer.toLocaleString()} mi${delta != null ? ` <span style="color:var(--text-faint)">(+${delta})</span>` : ''}</span>
+      <button class="act-btn" onclick="deleteOdometerReading('${o.date}')">delete</button>
+    </div>`;
+  }).join('');
+}
+
+function renderCarExpenseList() {
+  const wrap = document.getElementById('car-expense-list');
+  if (!wrap) return;
+  const entries = carExpensesInRange(carChartState.start, carChartState.end).sort((a, b) => b.date.localeCompare(a.date));
+  if (!entries.length) { wrap.innerHTML = '<div class="empty-state">No car expenses in this range.</div>'; return; }
+  wrap.innerHTML = entries.map(e => `
+    <div class="history-row">
+      <span>${fmt(e.date)} — ${e.desc}${e.gallons ? ` (${e.gallons} gal)` : ''}</span>
+      <span class="mono">$${parseFloat(e.amount).toFixed(2)}</span>
+      <button class="act-btn" onclick="deleteCarExpense('${e.id}')">delete</button>
+    </div>`).join('');
+}
+
+function renderCarView() {
+  if (!carChartState) return;
+  document.getElementById('car-chart-start').value = isoToDisplay(carChartState.start);
+  document.getElementById('car-chart-end').value = isoToDisplay(carChartState.end);
+  document.getElementById('car-chart-bars').value = carChartState.bars;
+  document.getElementById('car-target-date').value = isoToDisplay(carTargetDate);
+  renderComboChart(carChartState, carCashFlowEvents(), 'car-chart-wrap');
+  renderCarCategorySummary();
+  renderOdometerList();
+  renderCarExpenseList();
+  renderCarBreakeven();
+}
+
+// ── Combined income/expense/net chart ──────────────────────────────────
+// Shared by the main-page Trends card and the Car page above; each caller
+// keeps its own {start,end,bars} state object and supplies its own flows,
+// so the two are fully independent, per your "duplicate but separate" ask.
+
+function defaultChartRange() {
+  const end = todayISO();
+  return { start: addDaysISO(end, -180), end, bars: 12 };
+}
+
+function bucketFlows(flows, start, end, barCount) {
+  const startMs = new Date(start + 'T00:00:00').getTime();
+  const endMs   = new Date(end + 'T00:00:00').getTime() + 86400000; // include the end date fully
+  const span = Math.max(1, endMs - startMs);
+  const bucketMs = span / barCount;
+  const buckets = Array.from({ length: barCount }, (_, i) => {
+    const from = new Date(startMs + i * bucketMs);
+    return { from, income: 0, expense: 0 };
+  });
+  flows.forEach(f => {
+    const t = new Date(f.date + 'T00:00:00').getTime();
+    if (t < startMs || t >= endMs) return;
+    let idx = Math.floor((t - startMs) / bucketMs);
+    if (idx >= barCount) idx = barCount - 1;
+    if (idx < 0) idx = 0;
+    if (f.kind === 'expense') buckets[idx].expense += f.amount; else buckets[idx].income += f.amount;
+  });
+  const daySpan = span / 86400000 / barCount;
+  const labelOpts = daySpan <= 1.5 ? { month: 'short', day: 'numeric' }
+                  : daySpan <= 45  ? { month: 'short', day: 'numeric' }
+                  : { month: 'short', year: '2-digit' };
+  buckets.forEach(b => { b.label = b.from.toLocaleDateString('en-US', labelOpts); });
+  return buckets;
+}
+
+function renderComboChart(state, flows, wrapId) {
+  const wrap = document.getElementById(wrapId);
+  if (!wrap) return;
+  const buckets = bucketFlows(flows, state.start, state.end, state.bars);
+  if (!buckets.some(b => b.income || b.expense)) {
+    wrap.innerHTML = '<div class="empty-state" style="padding:2.2rem 1rem">No data in this range.</div>';
+    return;
+  }
+  const W = 600, H = 260, padTop = 12, padBottom = 30, padSide = 4;
+  const plotH = H - padTop - padBottom;
+  const maxVal = Math.max(...buckets.map(b => Math.max(b.income, b.expense)), 1);
+  const barW = (W - padSide * 2) / buckets.length;
+  const pairW = barW * 0.62, singleW = pairW / 2;
+
+  let running = 0;
+  const cum = buckets.map(b => (running += b.income - b.expense));
+  const net = buckets.map(b => b.income - b.expense);
+  const maxAbsNet = Math.max(...cum.map(Math.abs), ...net.map(Math.abs), 1);
+  const zeroY = padTop + plotH / 2;
+  const netScale = (plotH / 2 - 4) / maxAbsNet;
+  const cx = i => padSide + barW * i + barW / 2;
+
+  const barsSvg = buckets.map((b, i) => {
+    const incH = (b.income / maxVal) * plotH;
+    const expH = (b.expense / maxVal) * plotH;
+    const x0 = cx(i) - pairW / 2;
+    return `<rect x="${x0.toFixed(1)}" y="${(padTop + plotH - incH).toFixed(1)}" width="${singleW.toFixed(1)}" height="${incH.toFixed(1)}" fill="var(--green)" rx="1.5"
+        onmouseenter="showTrendTip(event,'${b.label} income','$${b.income.toFixed(2)}')" onmouseleave="hideTrendTip()"></rect>
+      <rect x="${(x0 + singleW).toFixed(1)}" y="${(padTop + plotH - expH).toFixed(1)}" width="${singleW.toFixed(1)}" height="${expH.toFixed(1)}" fill="var(--red)" rx="1.5"
+        onmouseenter="showTrendTip(event,'${b.label} expenses','$${b.expense.toFixed(2)}')" onmouseleave="hideTrendTip()"></rect>
+      <text x="${cx(i).toFixed(1)}" y="${H - 10}" text-anchor="middle" class="combo-axis-label">${b.label}</text>`;
+  }).join('');
+
+  const linePts = arr => arr.map((v, i) => `${cx(i).toFixed(1)},${(zeroY - v * netScale).toFixed(1)}`).join(' ');
+
+  wrap.innerHTML = `
+    <svg class="combo-chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+      <line x1="${padSide}" y1="${zeroY.toFixed(1)}" x2="${W - padSide}" y2="${zeroY.toFixed(1)}" class="combo-zero-line" />
+      ${barsSvg}
+      <polyline points="${linePts(cum)}" class="combo-line-cum" />
+      <polyline points="${linePts(net)}" class="combo-line-net" />
+    </svg>
+    <div class="combo-legend">
+      <span><i class="combo-dot" style="background:var(--green)"></i>Income</span>
+      <span><i class="combo-dot" style="background:var(--red)"></i>Expenses</span>
+      <span><i class="combo-line-swatch combo-line-cum"></i>Cumulative net</span>
+      <span><i class="combo-line-swatch combo-line-net"></i>Period net</span>
+    </div>`;
+}
+
+function setMainChartRange() {
+  const start = document.getElementById('main-chart-start').value;
+  const end   = document.getElementById('main-chart-end').value;
+  if (start) mainChartState.start = parseFlexibleDate(start);
+  if (end)   mainChartState.end   = parseFlexibleDate(end);
+  const bars = parseInt(document.getElementById('main-chart-bars').value, 10);
+  if (bars > 0) mainChartState.bars = bars;
+  renderMainChart();
+}
+
+function renderMainChart() {
+  document.getElementById('main-chart-start').value = isoToDisplay(mainChartState.start);
+  document.getElementById('main-chart-end').value = isoToDisplay(mainChartState.end);
+  document.getElementById('main-chart-bars').value = mainChartState.bars;
+  renderComboChart(mainChartState, getCashFlowEvents(), 'trend-bar-wrap');
+}
+
+let mainChartState = defaultChartRange();
+
 // ── Distribution of Funds bar (above Jobs) ───────────────────
 function renderFundsDistribution(barId = 'funds-bar-wrap', legendId = 'funds-legend') {
   const wrap = document.getElementById(barId);
@@ -5640,8 +6126,10 @@ function renderPocketsList() {
 function addPocket() {
   const name = document.getElementById('pk-name').value.trim();
   const wishlistItemId = document.getElementById('pk-wishlist').value;
+  const linkedJob = document.getElementById('pk-linked-job').value;
   const startBalRaw = document.getElementById('pk-balance').value;
   if (!name) { alert('Please enter a name.'); return; }
+  if (linkedJob && pockets.some(p => p.linkedJob === linkedJob)) { alert(`"${getJob(linkedJob).label}" is already linked to another pocket — unlink that one first.`); return; }
   let startBal = startBalRaw !== '' ? parseFloat(startBalRaw) : 0;
   if (isNaN(startBal) || startBal < 0) startBal = 0;
   const item = wishlistItemId ? getWishlistItem(wishlistItemId) : null;
@@ -5651,14 +6139,15 @@ function addPocket() {
   }
   const freeNow = freeAmount();
   if (startBal > freeNow) { alert(`Only $${freeNow.toFixed(2)} is currently free to dedicate.`); return; }
-  const newPocket = { id: 'pk' + Date.now(), name, wishlistItemId: wishlistItemId || null, balance: startBal, createdAt: new Date().toISOString() };
+  const newPocket = { id: 'pk' + Date.now(), name, wishlistItemId: wishlistItemId || null, linkedJob: linkedJob || null, balance: startBal, createdAt: new Date().toISOString() };
   pockets.push(newPocket);
   pendingPocketWrites.add(newPocket.id);
-  logHistory('pocket', `Added pocket — "${name}"${item ? ` (→ ${item.title})` : ''}${startBal > 0 ? ` with $${startBal.toFixed(2)} from Free` : ''}`, { job: null, pocketId: newPocket.id });
+  logHistory('pocket', `Added pocket — "${name}"${item ? ` (→ ${item.title})` : ''}${linkedJob ? ` (linked to ${getJob(linkedJob).label})` : ''}${startBal > 0 ? ` with $${startBal.toFixed(2)} from Free` : ''}`, { job: linkedJob || null, pocketId: newPocket.id });
   save(); render(); toast('Pocket added ✓');
   document.getElementById('pocket-form').classList.remove('open');
   document.getElementById('pk-name').value = '';
   document.getElementById('pk-balance').value = '';
+  document.getElementById('pk-linked-job').value = '';
 }
 
 function editPocket(id) {
@@ -5666,10 +6155,13 @@ function editPocket(id) {
   const row = document.getElementById('pocket-row-' + id);
   const wlOpts = `<option value=""${!p.wishlistItemId ? ' selected' : ''}>No linked item — general fund</option>` +
     wishlist.map(w => `<option value="${w.id}"${w.id === p.wishlistItemId ? ' selected' : ''}>${w.title} — $${parseFloat(w.price).toFixed(2)}</option>`).join('');
+  const jobOpts = `<option value=""${!p.linkedJob ? ' selected' : ''}>No linked job</option>` +
+    `<option value="car"${p.linkedJob === 'car' ? ' selected' : ''}>Car</option>`;
   row.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <input id="epk-name-${id}" value="${p.name}" style="flex:1;min-width:140px;font-size:13px;padding:5px 8px" />
       <select id="epk-wishlist-${id}" style="font-size:13px;padding:5px 8px">${wlOpts}</select>
+      <select id="epk-linked-job-${id}" style="font-size:13px;padding:5px 8px">${jobOpts}</select>
       <div class="row-actions" style="margin:0">
         <button class="act-btn save" onclick="savePocket('${id}')">save</button>
         <button class="act-btn" onclick="renderPocketsList()">cancel</button>
@@ -5680,16 +6172,19 @@ function editPocket(id) {
 function savePocket(id) {
   const name = document.getElementById('epk-name-' + id).value.trim();
   const wishlistItemId = document.getElementById('epk-wishlist-' + id).value;
+  const linkedJobEl = document.getElementById('epk-linked-job-' + id);
+  const linkedJob = linkedJobEl ? linkedJobEl.value : (pockets.find(p => p.id === id).linkedJob || '');
   if (!name) { alert('Name required.'); return; }
+  if (linkedJob && pockets.some(p => p.id !== id && p.linkedJob === linkedJob)) { alert(`"${getJob(linkedJob).label}" is already linked to another pocket — unlink that one first.`); return; }
   const old = pockets.find(p => p.id === id);
   const newItem = wishlistItemId ? getWishlistItem(wishlistItemId) : null;
   if (newItem) {
     const newItemPrice = parseFloat(newItem.price) || 0;
     if ((old.balance || 0) > newItemPrice) { alert(`Can't link to "${newItem.title}" — its price ($${newItemPrice.toFixed(2)}) is less than this pocket's current balance ($${(old.balance || 0).toFixed(2)}).`); return; }
   }
-  pockets = pockets.map(p => p.id === id ? { ...p, name, wishlistItemId: wishlistItemId || null } : p);
+  pockets = pockets.map(p => p.id === id ? { ...p, name, wishlistItemId: wishlistItemId || null, linkedJob: linkedJob || null } : p);
   pendingPocketWrites.add(id);
-  logHistory('pocket', `Edited pocket — "${old.name}" → "${name}"`, { job: null, pocketId: id });
+  logHistory('pocket', `Edited pocket — "${old.name}" → "${name}"`, { job: linkedJob || null, pocketId: id });
   save(); render(); toast('Pocket updated ✓');
 }
 
@@ -6506,10 +7001,7 @@ function rpComputeBalances() {
   let bank = 0, cash = 0;
   (rpData.lawnEvents || []).forEach(j => {
     if (j.status === 'cashed' || j.status === 'uncashed') {
-      if (j.status === 'cashed') {
-        if (j.paymentMethod === 'cash') cash += rpEffectiveEarnings(j);
-        else bank += rpEffectiveEarnings(j);
-      }
+      if (j.status === 'cashed') bank += rpEffectiveEarnings(j);
       return;
     }
     if (j.status !== 'paid' || !j.paymentMethod) return;
@@ -6535,7 +7027,7 @@ function rpComputeTithe() {
   const bank = Math.round((
     (rpData.lawnEvents||[]).filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && j.titheDeductible !== false && !j.tithePaid)
       .reduce((s,j)=>s+rpEventAmount(j),0) +
-    (rpData.lawnEvents||[]).filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid && j.paymentMethod !== 'cash')
+    (rpData.lawnEvents||[]).filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid)
       .reduce((s,j)=>s+rpEffectiveEarnings(j),0) +
     (rpData.otherMoney||[]).filter(e => e.type === 'income' && e.titheDeductible !== false && e.method !== 'cash' && !e.tithePaid)
       .reduce((s,e)=>s+parseFloat(e.amount),0)
@@ -6543,8 +7035,6 @@ function rpComputeTithe() {
   const cash = Math.round((
     (rpData.lawnEvents||[]).filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && j.titheDeductible !== false && !j.tithePaid)
       .reduce((s,j)=>s+rpEventAmount(j),0) +
-    (rpData.lawnEvents||[]).filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid && j.paymentMethod === 'cash')
-      .reduce((s,j)=>s+rpEffectiveEarnings(j),0) +
     (rpData.otherMoney||[]).filter(e => e.type === 'income' && e.titheDeductible !== false && e.method === 'cash' && !e.tithePaid)
       .reduce((s,e)=>s+parseFloat(e.amount),0)
   ) * 0.1 * 100) / 100;
@@ -6934,16 +7424,12 @@ function renderRpDashboard() {
         <div class="section-title"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Jobs</div>
       </div>
       <div class="jobs-grid">${JOBS.map(job => {
-        const isPeriodic = job.kind === 'periodic_income';
-        const sw = (job.config && job.config.statusWords) || null;
-        const openCount = isPeriodic
+        const openCount = job.id === 'ca_it'
           ? lawnEvents.filter(j => jobOf(j) === job.id && j.status === 'uncashed').length
           : lawnEvents.filter(j => jobOf(j) === job.id && j.status !== 'paid').length;
         const subLabel = openCount > 0
-          ? (isPeriodic
-              ? (sw ? `${openCount} ${sw.open.toLowerCase()} entr${openCount>1?'ies':'y'}` : openCount+' uncashed check'+(openCount>1?'s':''))
-              : openCount+' open event'+(openCount>1?'s':''))
-          : (isPeriodic ? (sw ? 'All settled' : 'All clear') : 'All settled');
+          ? (job.id === 'ca_it' ? openCount+' uncashed check'+(openCount>1?'s':'') : openCount+' open event'+(openCount>1?'s':''))
+          : (job.id === 'ca_it' ? 'All clear' : 'All settled');
         return `<button class="job-btn" onclick="switchRestoreTab('${job.id === 'ca_it' ? 'checks' : 'jobs'}')">
           <div class="job-btn-icon">${job.icon}</div>
           <div class="job-btn-label">${job.label}</div>
@@ -6982,19 +7468,13 @@ function renderRpDashboard() {
 }
 
 function renderRpJobs() {
-  // "Jobs" tab shows every client_service job (lawn_mowing-shaped) the old
-  // way below. ca_it keeps its own dedicated "Checks" tab. Any other
-  // periodic_income job (e.g. Work for Moores) has no clients to list, so
-  // it gets its own simpler read-only Uncashed/Cashed-style section further
-  // down instead of being forced through the per-client rendering above.
-  const regularJobs = JOBS.filter(j => j.kind === 'client_service');
-  const periodicJobs = JOBS.filter(j => j.kind === 'periodic_income' && j.id !== 'ca_it');
+  const regularJobs = JOBS.filter(j => j.id !== 'ca_it');
   const lawnEvents = rpData.lawnEvents || [];
   const clientsAll = rpData.clients || [];
   const historyLog = rpData.historyLog || [];
   const panel = document.getElementById('rp-panel-jobs');
 
-  const clientServiceHtml = regularJobs.map(job => {
+  panel.innerHTML = regularJobs.map(job => {
     const clients = clientsAll.filter(c => jobOf(c) === job.id).sort((a,b) => a.name.localeCompare(b.name));
     const clientsHtml = !clients.length ? '<div class="empty-state">No clients yet.</div>' : clients.map(c => {
       const clientJobs = lawnEvents.filter(j => j.client === c.name && jobOf(j) === job.id && j.status !== 'paid')
@@ -7052,50 +7532,6 @@ function renderRpJobs() {
         ${jobHistory.length > 40 ? `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center"><button class="pill-btn" onclick="rpGoToHistory('${job.id}')">View all ${jobHistory.length} in History tab →</button></div>` : ''}
       </section>`;
   }).join('');
-
-  const periodicHtml = periodicJobs.map(job => {
-    const cfg = job.config || {};
-    const sw = cfg.statusWords || null;
-    const openLabel = sw ? sw.open : 'Uncashed';
-    const closedLabel = sw ? sw.closed : 'Cashed';
-    const items = lawnEvents.filter(j => jobOf(j) === job.id);
-    const open = items.filter(j => j.status === 'uncashed')
-      .sort((a,b) => (b.dateEnd||b.date||'').localeCompare(a.dateEnd||a.date||'') || (b.id||'').localeCompare(a.id||''));
-    const closed = items.filter(j => j.status === 'cashed')
-      .sort((a,b) => (b.dateEnd||b.date||'').localeCompare(a.dateEnd||a.date||'') || (b.id||'').localeCompare(a.id||''));
-    const openTotal = open.reduce((s,j)=>s+rpEventAmount(j),0);
-    const closedTotal = closed.reduce((s,j)=>s+rpEventAmount(j),0);
-    const jobHistory = historyLog.filter(h => getEntryJob(h) === job.id);
-    const rows = (list, emptyText) => !list.length ? `<div class="empty-state">${emptyText}</div>` : `<div class="table-wrap"><table>
-        <thead><tr><th>${(cfg.dateMode||'range')==='single'?'Date':'Pay Period'}</th><th>Amount</th><th>Tithe</th></tr></thead>
-        <tbody>${list.map(j => `<tr><td class="mono">${genericEntryLabel(j, cfg)}</td><td class="mono amount-pos">$${rpEventAmount(j).toFixed(2)}</td><td class="mono" style="font-size:11px;color:var(--text-faint)">${j.titheDeductible ? '✓ tithe' : '—'}</td></tr>`).join('')}</tbody>
-      </table></div>`;
-
-    return `
-      <section>
-        <div class="section-header static">
-          <div class="section-title">${job.icon} ${job.label} — ${openLabel}</div>
-          <div class="header-actions"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)">${open.length ? `${open.length} · $${openTotal.toFixed(2)}` : ''}</span></div>
-        </div>
-        ${rows(open, `Nothing ${openLabel.toLowerCase()}.`)}
-      </section>
-      <section>
-        <div class="section-header static">
-          <div class="section-title">${closedLabel}</div>
-          <div class="header-actions"><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)">${closed.length ? `${closed.length} · $${closedTotal.toFixed(2)}` : ''}</span></div>
-        </div>
-        ${rows(closed, `Nothing ${closedLabel.toLowerCase()} yet.`)}
-      </section>
-      <section>
-        <div class="section-header static">
-          <div class="section-title"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>History</div>
-        </div>
-        <div style="max-height:340px;overflow-y:auto">${!jobHistory.length ? '<div class="empty-state">No history yet.</div>' : jobHistory.slice(0,40).map(rpHistoryEntryHTML).join('')}</div>
-        ${jobHistory.length > 40 ? `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center"><button class="pill-btn" onclick="rpGoToHistory('${job.id}')">View all ${jobHistory.length} in History tab →</button></div>` : ''}
-      </section>`;
-  }).join('');
-
-  panel.innerHTML = clientServiceHtml + periodicHtml;
 }
 
 function renderRpPockets() {
@@ -7513,24 +7949,37 @@ function renderMobileJobs() {
     </div>`;
   }
 
+  if (enabledJobs.includes('car')) {
+    html += `<div class="m-section-label">${getJob('car').label}</div>`;
+    const catTotals = carChartState ? carExpensesByCategory(carChartState.start, carChartState.end) : carExpensesByCategory(addDaysISO(todayISO(), -180), todayISO());
+    const catSum = Object.values(catTotals).reduce((s, v) => s + v, 0);
+    const breakeven = carMilesLeft(carTargetDate || addDaysISO(todayISO(), 14));
+    html += `<div class="m-card">
+      <div class="m-card-row"><div class="m-card-title">Car costs (this range)</div><div class="m-card-value">$${catSum.toFixed(2)}</div></div>
+      <div class="m-card-sub">Gas $${catTotals.gas.toFixed(2)} · Insurance $${catTotals.insurance.toFixed(2)} · Maint. $${catTotals.maintenance.toFixed(2)} · Reg. $${catTotals.registration.toFixed(2)}</div>
+    </div>
+    <div class="m-card">
+      <div class="m-card-row"><div class="m-card-title">Miles left</div><div class="m-card-value">${breakeven.error ? '—' : Math.max(0, Math.round(breakeven.miles)).toLocaleString()}</div></div>
+      <div class="m-card-sub">${breakeven.error === 'no-pocket' ? 'Link a pocket to Car on desktop' : breakeven.error === 'no-fuel-data' ? 'Not enough fill-up data yet' : 'Add expenses, log odometer readings, and pick a date on desktop'}</div>
+    </div>`;
+  }
+
   // Any custom job types this account has unlocked — read-only summary
   // (full add/edit for these happens on desktop, same as lawn_mowing/ca_it
   // above get no add/edit controls here either).
-  getEnabledJobs().filter(j => j.id !== 'lawn_mowing' && j.id !== 'ca_it').forEach(job => {
+  getEnabledJobs().filter(j => j.id !== 'lawn_mowing' && j.id !== 'ca_it' && j.id !== 'car').forEach(job => {
     html += `<div class="m-section-label">${job.icon} ${job.label}</div>`;
     const isPeriodic = job.kind === 'periodic_income';
-    const sw = (job.config && job.config.statusWords) || null;
     const items = lawnEvents.filter(j => j.job === job.id);
     const open = items.filter(j => isPeriodic ? j.status === 'uncashed' : j.status !== 'paid');
     const openTotal = open.reduce((s,j) => s + eventAmount(j), 0);
-    const openTitle = isPeriodic ? (sw ? sw.open : 'Uncashed') : 'Open';
-    const clearText = isPeriodic ? (sw ? 'All settled' : 'All clear') : 'All settled';
     html += `<div class="m-card">
-      <div class="m-card-row"><div class="m-card-title">${openTitle}</div><div class="m-card-value">$${openTotal.toFixed(2)}</div></div>
-      <div class="m-card-sub">${open.length ? open.length + ' entr' + (open.length>1?'ies':'y') : clearText} — full detail on desktop</div>
+      <div class="m-card-row"><div class="m-card-title">${isPeriodic ? 'Uncashed' : 'Open'}</div><div class="m-card-value">$${openTotal.toFixed(2)}</div></div>
+      <div class="m-card-sub">${open.length ? open.length + ' entr' + (open.length>1?'ies':'y') : (isPeriodic ? 'All clear' : 'All settled')} — full detail on desktop</div>
     </div>`;
   });
 
+  html += `<button class="m-job-add-btn" onclick="openAddJobModal()">+ New Job — have a code?</button>`;
 
   wrap.innerHTML = html;
 }
