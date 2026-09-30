@@ -2583,6 +2583,14 @@ function loadFromFirestore() {
       lastBankCompare = d.lastBankCompare || '';
       jobEarnPercent = d.jobEarnPercent || {};
       if (Array.isArray(d.enabledJobs)) {
+        // TEMP DEBUG — remove once the Car-toggle-not-persisting bug is found.
+        console.log('[DEBUG enabledJobs]', {
+          incoming: d.enabledJobs,
+          previousLocal: enabledJobs,
+          changed: JSON.stringify(d.enabledJobs) !== JSON.stringify(enabledJobs),
+          hasPendingWrites: snap.metadata.hasPendingWrites,
+          fromCache: snap.metadata.fromCache
+        });
         enabledJobs = d.enabledJobs;
       } else {
         // Predates this feature — grandfather this account into the same
@@ -5153,16 +5161,25 @@ function renderAdminUsersList() {
 
 async function adminToggleUserJob(uid, jobId, enable, btnEl) {
   if (btnEl) btnEl.disabled = true;
+  // TEMP DEBUG — remove once the Car-toggle-not-persisting bug is found.
+  console.log('[DEBUG adminToggleUserJob] attempting write', { uid, jobId, enable, requestingUid: currentUser && currentUser.uid, requestingIsAdmin: isAdmin });
   try {
     await db.collection('users').doc(uid).update({
       enabledJobs: enable
         ? firebase.firestore.FieldValue.arrayUnion(jobId)
         : firebase.firestore.FieldValue.arrayRemove(jobId)
     });
+    console.log('[DEBUG adminToggleUserJob] write call resolved without throwing (this can still mean it is only queued locally, not yet server-confirmed — see the [DEBUG enabledJobs] logs for that)');
+    // Read back with getFromServer, bypassing any local cache, to say
+    // definitively whether the server actually has this change.
+    db.collection('users').doc(uid).get({ source: 'server' }).then(fresh => {
+      console.log('[DEBUG adminToggleUserJob] server doc after write:', fresh.data() && fresh.data().enabledJobs);
+    }).catch(err => console.log('[DEBUG adminToggleUserJob] server read-back failed:', err.code, err.message));
     toast(`${getJob(jobId).label} ${enable ? 'added to' : 'removed from'} that account`);
     // The live listener above re-renders once Firestore confirms the write,
     // so no manual DOM update is needed here.
   } catch (e) {
+    console.log('[DEBUG adminToggleUserJob] write threw an error:', e.code, e.message);
     if (btnEl) btnEl.disabled = false;
     toast('Could not update that account — check Firestore rules.');
   }
