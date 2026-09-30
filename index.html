@@ -971,6 +971,7 @@ html.is-mobile body { padding: 0; }
 .trend-controls .date-field { width:128px; }
 .trend-controls-to { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-faint); }
 .trend-controls input[type="number"] { padding:8px 10px; font-family:'JetBrains Mono',monospace; font-size:12px; }
+.trend-controls select { width:auto; min-width:126px; padding:8px 10px; font-family:'JetBrains Mono',monospace; font-size:12px; }
 
 .combo-chart-wrap { width:100%; padding:0 1.25rem 1.1rem; }
 .combo-chart-svg { width:100%; height:260px; display:block; overflow:visible; }
@@ -1434,6 +1435,15 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
             <input type="date" id="main-chart-end-picker" class="date-picker-hidden" onchange="applyDatePicker('main-chart-end'); setMainChartRange()" tabindex="-1" />
           </div>
           <input type="number" id="main-chart-bars" min="2" max="60" step="1" style="width:64px" onchange="setMainChartRange()" title="Number of bars" />
+          <select id="main-chart-preset" onchange="applyChartPreset('main', this.value)">
+            <option value="">Custom range</option>
+            <option value="7d">Last 7 days</option>
+            <option value="2w">Last 2 weeks</option>
+            <option value="1m">Last month</option>
+            <option value="2m">Last 2 months</option>
+            <option value="6m">Last 6 months</option>
+            <option value="1y">Last year</option>
+          </select>
         </div>
         <div id="trend-bar-wrap" class="combo-chart-wrap"></div>
       </div>
@@ -1914,6 +1924,15 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
         <input type="date" id="car-chart-end-picker" class="date-picker-hidden" onchange="applyDatePicker('car-chart-end'); setCarChartRange()" tabindex="-1" />
       </div>
       <input type="number" id="car-chart-bars" min="2" max="60" step="1" style="width:64px" onchange="setCarChartRange()" title="Number of bars" />
+      <select id="car-chart-preset" onchange="applyChartPreset('car', this.value)">
+        <option value="">Custom range</option>
+        <option value="7d">Last 7 days</option>
+        <option value="2w">Last 2 weeks</option>
+        <option value="1m">Last month</option>
+        <option value="2m">Last 2 months</option>
+        <option value="6m">Last 6 months</option>
+        <option value="1y">Last year</option>
+      </select>
     </div>
     <div id="car-chart-wrap" class="combo-chart-wrap"></div>
   </section>
@@ -5815,6 +5834,41 @@ function renderCarView() {
 function defaultChartRange() {
   const end = todayISO();
   return { start: addDaysISO(end, -180), end, bars: 12 };
+}
+
+// Quick-pick ranges for the chart controls. Days/weeks use plain day math;
+// months/year use calendar month/year math (via setMonth/setFullYear) so
+// "last month" etc. line up with actual calendar months rather than a fixed
+// day-count approximation.
+function presetRange(preset) {
+  const end = new Date();
+  const start = new Date(end);
+  const steps = {
+    '7d': () => start.setDate(start.getDate() - 7),
+    '2w': () => start.setDate(start.getDate() - 14),
+    '1m': () => start.setMonth(start.getMonth() - 1),
+    '2m': () => start.setMonth(start.getMonth() - 2),
+    '6m': () => start.setMonth(start.getMonth() - 6),
+    '1y': () => start.setFullYear(start.getFullYear() - 1)
+  };
+  if (steps[preset]) steps[preset]();
+  const toIso = d => d.toISOString().slice(0, 10);
+  return { start: toIso(start), end: toIso(end) };
+}
+
+// which: 'main' or 'car' — leaves bar count untouched, only sets the range.
+function applyChartPreset(which, preset) {
+  const selectId = which === 'main' ? 'main-chart-preset' : 'car-chart-preset';
+  if (!preset) { document.getElementById(selectId).value = ''; return; }
+  const range = presetRange(preset);
+  if (which === 'main') {
+    mainChartState.start = range.start; mainChartState.end = range.end;
+    renderMainChart();
+  } else {
+    carChartState.start = range.start; carChartState.end = range.end;
+    renderCarView();
+  }
+  document.getElementById(selectId).value = '';
 }
 
 function bucketFlows(flows, start, end, barCount) {
