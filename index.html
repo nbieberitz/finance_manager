@@ -2915,7 +2915,8 @@ function generateItCheckFromRule(rule, dateStart) {
 }
 
 function generateOtherFromRule(rule, date) {
-  const newEntry = { id: 'o' + Date.now() + Math.floor(Math.random() * 1000), desc: rule.desc, date, type: rule.type, amount: rule.amount, method: rule.method, recurringId: rule.id, ...(rule.job ? { job: rule.job } : {}), ...(rule.category ? { category: rule.category } : {}), ...(rule.type === 'income' ? { titheDeductible: !!rule.titheDeductible } : {}) };
+  const pocketAllocations = (rule.type === 'income' && !rule.job) ? applyPocketRules(GENERAL_INCOME_JOB_ID, parseFloat(rule.amount)) : [];
+  const newEntry = { id: 'o' + Date.now() + Math.floor(Math.random() * 1000), desc: rule.desc, date, type: rule.type, amount: rule.amount, method: rule.method, recurringId: rule.id, ...(rule.job ? { job: rule.job } : {}), ...(rule.category ? { category: rule.category } : {}), ...(rule.type === 'income' ? { titheDeductible: !!rule.titheDeductible } : {}), ...(pocketAllocations.length ? { pocketAllocations } : {}) };
   otherMoney.push(newEntry);
   pendingOtherWrites.add(newEntry.id);
   logHistory('other', `Auto-added recurring ${rule.type} — "${rule.desc}" $${parseFloat(rule.amount).toFixed(2)} on ${fmt(date)}`, { job: rule.job ?? null });
@@ -3137,8 +3138,52 @@ function adjustPocketBalance(pocketId, delta) {
 // pocket(s). Returns the list of allocations made so the event can carry
 // them — letting a later undo/delete cleanly reverse exactly what was set
 // aside for it.
+// Sentinel jobId values a pocket rule can target besides a real job id.
+// slugify() always strips leading/trailing underscores from a typed label,
+// so a real job id can never collide with either of these.
+const GENERAL_INCOME_JOB_ID = '__general_income__';
+const ALL_INCOME_JOB_ID = '__all_income__';
+
+function jobLabelForRule(jobId) {
+  if (jobId === GENERAL_INCOME_JOB_ID) return 'General income';
+  if (jobId === ALL_INCOME_JOB_ID) return 'All income';
+  return getJob(jobId).label;
+}
+
+// An "All income" rule fires alongside every job/general-income rule, so
+// checking percent totals per exact jobId (like a simple filter+sum) isn't
+// enough on its own — it'd let a single paid event's rules add past 100%
+// combined. This checks the worst-case combination for whichever side of
+// that (a specific source, or "all income" itself) is being added/edited.
+function pocketRuleOverAllocates(jobId, newPercent, excludeRuleId) {
+  const others = pocketRules.filter(r => r.id !== excludeRuleId);
+  const allIncomeExisting = others.filter(r => r.jobId === ALL_INCOME_JOB_ID).reduce((s, r) => s + r.percent, 0);
+  if (jobId === ALL_INCOME_JOB_ID) {
+    const perSourceTotals = {};
+    others.forEach(r => { if (r.jobId !== ALL_INCOME_JOB_ID) perSourceTotals[r.jobId] = (perSourceTotals[r.jobId] || 0) + r.percent; });
+    const worstSourceTotal = Object.values(perSourceTotals).reduce((m, v) => Math.max(m, v), 0);
+    return (allIncomeExisting + newPercent + worstSourceTotal) > 100;
+  }
+  const ownExisting = others.filter(r => r.jobId === jobId).reduce((s, r) => s + r.percent, 0);
+  return (ownExisting + newPercent + allIncomeExisting) > 100;
+}
+
+// Full "X% of ..." phrase for a pocket rule, worded to fit whichever of the
+// three targets (a real job's paid events, general otherMoney income, or
+// every income source) the rule is actually aimed at.
+function pocketRuleDescription(r) {
+  if (r.jobId === ALL_INCOME_JOB_ID) return `${r.percent}% of all income`;
+  if (r.jobId === GENERAL_INCOME_JOB_ID) return `${r.percent}% of every general income entry`;
+  const job = getAllJobs().find(j => j.id === r.jobId);
+  return `${r.percent}% of every ${job ? job.label : '(removed job)'} event`;
+}
+
+// jobId is either a real job's id (called when that job's income is paid)
+// or GENERAL_INCOME_JOB_ID (called when a non-job income entry is added).
+// Either way this also fires any rule aimed at ALL_INCOME_JOB_ID, since
+// "all income" by definition includes both.
 function applyPocketRules(jobId, amount) {
-  const rules = pocketRules.filter(r => r.jobId === jobId);
+  const rules = pocketRules.filter(r => r.jobId === jobId || r.jobId === ALL_INCOME_JOB_ID);
   const allocations = [];
   rules.forEach(r => {
     const pocket = getPocket(r.pocketId);
@@ -3147,7 +3192,7 @@ function applyPocketRules(jobId, amount) {
     if (alloc <= 0) return;
     adjustPocketBalance(pocket.id, alloc);
     allocations.push({ pocketId: pocket.id, amount: alloc });
-    logHistory('pocket', `Auto-set-aside $${alloc.toFixed(2)} → "${pocket.name}" (${r.percent}% of paid ${getJob(jobId) ? getJob(jobId).label : jobId} event)`, { job: null, pocketId: pocket.id });
+    logHistory('pocket', `Auto-set-aside $${alloc.toFixed(2)} → "${pocket.name}" (${r.percent}% of ${r.jobId === ALL_INCOME_JOB_ID ? 'all income' : jobId === GENERAL_INCOME_JOB_ID ? 'general income' : 'paid ' + jobLabelForRule(jobId) + ' event'})`, { job: null, pocketId: pocket.id });
   });
   return allocations;
 }
@@ -5193,7 +5238,8 @@ function addOtherMoney() {
     if (!descRaw) { alert('Please enter a description.'); return; }
     const method = document.getElementById('om-method').value;
     const titheDeductible = type === 'income' ? document.getElementById('om-tithe').checked : false;
-    newEntry = {id:'o'+Date.now(), desc:descRaw, date, type, amount, method, titheDeductible};
+    const pocketAllocations = type === 'income' ? applyPocketRules(GENERAL_INCOME_JOB_ID, amount) : [];
+    newEntry = {id:'o'+Date.now(), desc:descRaw, date, type, amount, method, titheDeductible, ...(pocketAllocations.length ? { pocketAllocations } : {})};
     historyMsg = `Added ${type} — "${descRaw}" $${amount.toFixed(2)} on ${fmt(date)} (${method})`;
   }
   otherMoney.push(newEntry);
@@ -5235,6 +5281,7 @@ function deleteOther(id) {
     const pocket = carPocket();
     if (pocket) adjustPocketBalance(pocket.id, parseFloat(e.amount)); // reverse the draw-down
   }
+  reversePocketAllocations(e, 'entry deleted');
   save(); render(); toast('Entry deleted');
 }
 
@@ -6059,7 +6106,15 @@ function renderPocketsPage() {
 }
 
 function jobOptionsHtml(selectedId) {
-  return getEnabledJobs().map(j => `<option value="${j.id}"${j.id === selectedId ? ' selected' : ''}>${j.label}</option>`).join('');
+  const special = [
+    [GENERAL_INCOME_JOB_ID, 'General income'],
+    [ALL_INCOME_JOB_ID, 'All income']
+  ].map(([id, label]) => `<option value="${id}"${id === selectedId ? ' selected' : ''}>${label}</option>`).join('');
+  // Car is expense-only — it never has a "paid" income event for a rule to
+  // fire on, so it's left out here rather than offered as a dead option.
+  const jobs = getEnabledJobs().filter(j => j.kind !== 'vehicle')
+    .map(j => `<option value="${j.id}"${j.id === selectedId ? ' selected' : ''}>${j.label}</option>`).join('');
+  return special + jobs;
 }
 
 function updatePkFreeHint() {
@@ -6134,10 +6189,9 @@ function renderPocketsList() {
     const rulesForPocket = pocketRules.filter(r => r.pocketId === p.id);
     const rulesHtml = rulesForPocket.length
       ? rulesForPocket.map(r => {
-          const job = getJob(r.jobId);
           return `
             <div id="rule-row-${r.id}" class="pocket-rule-row">
-              <div style="flex:1">${r.percent}% of every <strong>${job ? job.label : '(removed job)'}</strong> event</div>
+              <div style="flex:1"><strong>${pocketRuleDescription(r)}</strong></div>
               <div class="row-actions" style="margin:0">
                 <button class="act-btn edit" onclick="editPocketRule('${r.id}')">edit</button>
                 <button class="act-btn danger" onclick="deletePocketRule('${r.id}')">delete</button>
@@ -6259,13 +6313,12 @@ function addPocketRule(pocketId) {
   const percent = parseFloat(document.getElementById('rl-percent-' + pocketId).value);
   if (!jobId) { alert('Choose a job.'); return; }
   if (isNaN(percent) || percent <= 0 || percent > 100) { alert('Enter a percent between 1 and 100.'); return; }
-  const existingTotal = pocketRules.filter(r => r.jobId === jobId).reduce((s, r) => s + r.percent, 0);
-  if (existingTotal + percent > 100) { alert(`That job already has ${existingTotal}% allocated across other rules — this would push it past 100%.`); return; }
+  if (pocketRuleOverAllocates(jobId, percent, null)) { alert(`That would push some source's total rules — including any "All income" rule — past 100% of a single payment.`); return; }
   const newRule = { id: 'rl' + Date.now(), jobId, pocketId, percent, createdAt: new Date().toISOString() };
   pocketRules.push(newRule);
   pendingRuleWrites.add(newRule.id);
   const pocket = getPocket(pocketId);
-  logHistory('pocket', `Added rule — ${percent}% of every ${getJob(jobId).label} event → "${pocket ? pocket.name : '?'}"`, { job: null });
+  logHistory('pocket', `Added rule — ${pocketRuleDescription({ jobId, percent })} → "${pocket ? pocket.name : '?'}"`, { job: null });
   save(); render(); toast('Rule added ✓');
 }
 
@@ -6287,12 +6340,11 @@ function savePocketRule(id) {
   const jobId = document.getElementById('erl-job-' + id).value;
   const percent = parseFloat(document.getElementById('erl-percent-' + id).value);
   if (isNaN(percent) || percent <= 0 || percent > 100) { alert('Enter a percent between 1 and 100.'); return; }
-  const existingTotal = pocketRules.filter(r => r.jobId === jobId && r.id !== id).reduce((s, r) => s + r.percent, 0);
-  if (existingTotal + percent > 100) { alert(`That job already has ${existingTotal}% allocated across other rules — this would push it past 100%.`); return; }
+  if (pocketRuleOverAllocates(jobId, percent, id)) { alert(`That would push some source's total rules — including any "All income" rule — past 100% of a single payment.`); return; }
   pocketRules = pocketRules.map(r => r.id === id ? { ...r, jobId, percent } : r);
   pendingRuleWrites.add(id);
   const r = pocketRules.find(r => r.id === id);
-  logHistory('pocket', `Edited rule — now ${percent}% of every ${getJob(jobId).label} event → ${getPocket(r.pocketId) ? getPocket(r.pocketId).name : '?'}`, { job: null });
+  logHistory('pocket', `Edited rule — now ${pocketRuleDescription({ jobId, percent })} → ${getPocket(r.pocketId) ? getPocket(r.pocketId).name : '?'}`, { job: null });
   save(); render(); toast('Rule updated ✓');
 }
 
@@ -6301,7 +6353,7 @@ function deletePocketRule(id) {
   if (!confirm('Delete this rule? Future events will no longer auto-allocate for it.')) return;
   pocketRules = pocketRules.filter(r => r.id !== id);
   pendingRuleDeletes.add(id); pendingRuleWrites.delete(id);
-  logHistory('pocket', `Deleted rule — ${r.percent}% of every ${getJob(r.jobId) ? getJob(r.jobId).label : r.jobId} event → ${getPocket(r.pocketId) ? getPocket(r.pocketId).name : '?'}`, { job: null });
+  logHistory('pocket', `Deleted rule — ${pocketRuleDescription(r)} → ${getPocket(r.pocketId) ? getPocket(r.pocketId).name : '?'}`, { job: null });
   save(); render(); toast('Rule deleted');
 }
 
@@ -7607,8 +7659,7 @@ function renderRpPockets() {
     const rulesForPocket = pocketRules.filter(r => r.pocketId === p.id);
     const rulesHtml = rulesForPocket.length
       ? rulesForPocket.map(r => {
-          const job = getJob(r.jobId);
-          return `<div class="pocket-rule-row"><div style="flex:1">${r.percent}% of every <strong>${job ? job.label : '(removed job)'}</strong> event</div></div>`;
+          return `<div class="pocket-rule-row"><div style="flex:1"><strong>${pocketRuleDescription(r)}</strong></div></div>`;
         }).join('')
       : `<div class="pocket-rule-empty">No rules — money only moves here manually.</div>`;
     return `
@@ -8056,7 +8107,7 @@ function renderMobilePockets() {
       const isComplete = price && (p.balance||0) >= price;
       const color = getPocketColor(p.id);
       const rulesForPocket = pocketRules.filter(r => r.pocketId === p.id);
-      const rulesText = rulesForPocket.map(r => { const j = getJob(r.jobId); return `${r.percent}% of ${j ? j.label : '(removed job)'}`; }).join(', ');
+      const rulesText = rulesForPocket.map(r => pocketRuleDescription(r)).join(', ');
       return `<div class="m-card">
         <div class="m-card-row">
           <div class="m-card-title">${p.name}${isComplete ? ' <span class="pocket-complete-badge">✓ GOAL MET</span>' : ''}</div>
