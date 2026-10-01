@@ -2593,6 +2593,9 @@ function loadFromFirestore() {
         });
         enabledJobs = d.enabledJobs;
       } else {
+        // TEMP DEBUG — remove once the Car-toggle-not-persisting bug is found.
+        console.log('[DEBUG enabledJobs] NON-ARRAY BRANCH FIRING — this writes enabledJobs back to the 2-job default. raw d.enabledJobs was:', d.enabledJobs);
+        console.trace('[DEBUG enabledJobs] non-array branch stack');
         // Predates this feature — grandfather this account into the same
         // 2 jobs it already had, and persist that so it's a real field
         // going forward instead of re-checking this every load.
@@ -2600,6 +2603,9 @@ function loadFromFirestore() {
         userDoc().set({ enabledJobs }, { merge: true });
       }
     } else {
+      // TEMP DEBUG — remove once the Car-toggle-not-persisting bug is found.
+      console.log('[DEBUG enabledJobs] DOC-DOES-NOT-EXIST BRANCH FIRING — this writes enabledJobs back to the 2-job default.');
+      console.trace('[DEBUG enabledJobs] doc-missing branch stack');
       balances = { bank: 0, cash: 0 };
       enabledJobs = ['lawn_mowing', 'ca_it'];
       userDoc().set({ balances, enabledJobs }, { merge: true });
