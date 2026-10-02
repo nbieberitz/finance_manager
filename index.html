@@ -2585,18 +2585,25 @@ function loadFromFirestore() {
       if (Array.isArray(d.enabledJobs)) {
         enabledJobs = d.enabledJobs;
       } else if (!snap.metadata.fromCache) {
-        // Only treat a missing enabledJobs as "this account predates the
-        // feature" once a server-confirmed read agrees it's really missing.
-        // A freshly (re-)attached listener's very first event can come back
-        // from local cache before the real document has synced down, and
-        // can report a field as missing even when the server has it — e.g.
-        // right after sign-in, a manual refresh, or a reload. Writing the
-        // 2-job seed on that unconfirmed read is what was silently wiping
-        // out newly granted jobs like Car: the cached read looked like a
-        // legacy account, got "grandfathered", and overwrote the real array
-        // moments before the true, synced value would have arrived on this
-        // same listener. Waiting for fromCache:false avoids acting on that
-        // incomplete first read at all.
+        // GOTCHA, confirmed by live debugging (the Car job wouldn't stay
+        // enabled across a reload) — generalize this before writing any
+        // similar "fallback/seed" logic elsewhere in this file:
+        // Never write a default/fallback value back to Firestore from
+        // inside an onSnapshot callback until snap.metadata.fromCache is
+        // false. A freshly (re-)attached listener's very first event is
+        // served from local cache before the real document has synced
+        // down, and can report a field as missing even when the server
+        // has it — e.g. right after sign-in, a manual refresh, or a
+        // reload (all of which re-attach this listener). Writing a seed
+        // value on that unconfirmed first read is what silently wiped out
+        // newly granted jobs like Car: the cached read looked like a
+        // legacy account with no enabledJobs, got "grandfathered" back to
+        // the 2-job default, and overwrote the real array moments before
+        // the true, synced value would have arrived on this same
+        // listener. Gating on fromCache:false (see this whole branch)
+        // avoids acting on that incomplete first read at all — the real
+        // value just arrives a moment later on the next event instead.
+        // Pointer: the note by the JOBS array above links back here.
         enabledJobs = ['lawn_mowing', 'ca_it'];
         userDoc().set({ enabledJobs }, { merge: true });
       }
@@ -2859,6 +2866,15 @@ const JOBS = [
 // The admin panel no longer creates job types or invite codes — a new type
 // gets defined directly in the `jobTypes` collection in Firestore, and any
 // account is granted it via Manage users' jobs.
+//
+// Adding a new job to the JOBS array above is safe on its own. But if
+// you're writing ANYTHING that reacts to enabledJobs (or any other field
+// read inside an onSnapshot callback) by writing a "default"/"fallback"
+// value back to Firestore — e.g. seeding a missing field — read the GOTCHA
+// comment inside the userDoc().onSnapshot listener below (search this file
+// for "GOTCHA") before you do. It's exactly the kind of fallback logic
+// that silently deleted the Car job from enabledJobs on reload once
+// already; the fix pattern there generalizes to any similar write.
 let enabledJobs    = ['lawn_mowing', 'ca_it']; // this account's unlocked job ids (pre-load default)
 let customJobTypes = [];                        // job docs from Firestore, kind: client_service | periodic_income
 let isAdmin         = false;
