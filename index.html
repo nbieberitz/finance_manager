@@ -979,12 +979,15 @@ html.is-mobile body { padding: 0; }
 .combo-zero-line { stroke:var(--border-mid); stroke-width:1; stroke-dasharray:3 3; }
 polyline.combo-line-cum { fill:none; stroke:var(--blue-bright); stroke-width:2; stroke-linejoin:round; stroke-linecap:round; }
 polyline.combo-line-net { fill:none; stroke:var(--purple); stroke-width:1.6; stroke-dasharray:4 3; stroke-linejoin:round; stroke-linecap:round; }
+polyline.combo-line-miles { fill:none; stroke:var(--teal); stroke-width:1.6; stroke-linejoin:round; stroke-linecap:round; opacity:0.85; }
+.combo-gap-dot { fill:var(--amber); opacity:0.8; }
 .combo-legend { display:flex; flex-wrap:wrap; gap:14px; margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--text-faint); }
 .combo-legend span { display:flex; align-items:center; gap:5px; }
 .combo-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
 .combo-line-swatch { width:14px; height:0; border-top:2px solid; display:inline-block; }
 .combo-line-swatch.combo-line-cum { border-top-color:var(--blue-bright); border-top-style:solid; }
 .combo-line-swatch.combo-line-net { border-top-color:var(--purple); border-top-style:dashed; }
+.combo-line-swatch.combo-line-miles { border-top-color:var(--teal); border-top-style:solid; }
 
 .trend-tooltip {
   position:fixed; z-index:10003; pointer-events:none; opacity:0;
@@ -1952,7 +1955,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
       <div class="form-grid">
         <div>
           <label>Category</label>
-          <select id="car-exp-category" onchange="document.getElementById('car-exp-gallons-wrap').style.display = this.value === 'gas' ? '' : 'none'">
+          <select id="car-exp-category" onchange="updateCarExpenseFormFields()">
             <option value="gas">Gas</option>
             <option value="insurance">Insurance</option>
             <option value="maintenance">Maintenance & repairs</option>
@@ -1969,6 +1972,21 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
         </div>
         <div><label>Amount ($)</label><input type="number" id="car-exp-amount" min="0" step="0.01" placeholder="0.00" /></div>
         <div id="car-exp-gallons-wrap"><label>Gallons</label><input type="number" id="car-exp-gallons" min="0" step="0.001" placeholder="e.g. 11.2" /></div>
+        <div id="car-exp-odo-wrap"><label>Odometer today (optional)</label><input type="number" id="car-exp-odo" min="0" step="1" placeholder="logs it in one go" /></div>
+        <div id="car-exp-full-wrap" style="display:flex;align-items:center;gap:8px;padding-top:22px">
+          <input type="checkbox" id="car-exp-full" checked style="width:auto" />
+          <label style="margin:0">Filled to full</label>
+        </div>
+        <div id="car-exp-maint-type-wrap" style="display:none">
+          <label>Type</label>
+          <select id="car-exp-maint-type">
+            <option value="">— unspecified —</option>
+            <option value="oilChange">Oil change</option>
+            <option value="tires">Tires</option>
+            <option value="brakes">Brakes</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
       </div>
       <div class="form-actions">
         <button class="btn btn-primary" onclick="addCarExpense()">Add expense</button>
@@ -1976,6 +1994,28 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
       </div>
     </div>
     <div id="car-expense-list"><div class="empty-state">No car expenses in this range.</div></div>
+  </section>
+
+  <!-- Maintenance-due nudges -->
+  <section id="car-maintenance-due-section" style="display:none">
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+        Maintenance Due
+      </div>
+    </div>
+    <div id="car-maintenance-due-wrap"></div>
+  </section>
+
+  <!-- Miles by job -->
+  <section id="car-miles-by-job-section" style="display:none">
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+        Miles by Job (this range)
+      </div>
+    </div>
+    <div id="car-miles-by-job-wrap"></div>
   </section>
 
   <!-- Daily odometer log -->
@@ -1989,6 +2029,7 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
         <button class="pill-btn success" tabindex="-1">+ Log reading</button>
       </div>
     </div>
+    <div id="car-odo-staleness" class="modal-desc" style="padding:0 1.25rem 0.5rem"></div>
     <div class="add-form" id="car-odometer-form">
       <div class="form-grid">
         <div><label>Date</label>
@@ -1999,13 +2040,30 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
           </div>
         </div>
         <div><label>Odometer</label><input type="number" id="car-odo-value" min="0" step="1" placeholder="e.g. 45213" /></div>
+        <div><label>Miles for a job (optional)</label><select id="car-odo-job"><option value="">— none —</option></select></div>
+        <div><label>Job miles</label><input type="number" id="car-odo-job-miles" min="0" step="1" placeholder="e.g. 15" /></div>
       </div>
       <div class="form-actions">
-        <button class="btn btn-primary" onclick="upsertOdometerReading(parseFlexibleDate(document.getElementById('car-odo-date').value) || todayISO(), parseInt(document.getElementById('car-odo-value').value, 10))">Log reading</button>
+        <button class="btn btn-primary" onclick="submitOdometerForm()">Log reading</button>
         <button class="btn btn-ghost" onclick="toggleForm('car-odometer-form')">Cancel</button>
       </div>
     </div>
     <div id="car-odometer-list"><div class="empty-state">No odometer readings yet.</div></div>
+  </section>
+
+  <!-- Maintenance interval settings -->
+  <section>
+    <div class="section-header static">
+      <div class="section-title">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        Maintenance Intervals
+      </div>
+    </div>
+    <div class="form-grid" style="padding:0 1.25rem 1.1rem">
+      <div><label>Oil change (mi)</label><input type="number" id="car-mi-oilChange" min="1" step="1" onchange="updateMaintenanceInterval('oilChange', this.value)" /></div>
+      <div><label>Tires (mi)</label><input type="number" id="car-mi-tires" min="1" step="1" onchange="updateMaintenanceInterval('tires', this.value)" /></div>
+      <div><label>Brakes (mi)</label><input type="number" id="car-mi-brakes" min="1" step="1" onchange="updateMaintenanceInterval('brakes', this.value)" /></div>
+    </div>
   </section>
 
 </div>
@@ -2582,6 +2640,7 @@ function loadFromFirestore() {
       isAdmin = d.isAdmin === true;
       lastBankCompare = d.lastBankCompare || '';
       jobEarnPercent = d.jobEarnPercent || {};
+      carMaintenanceIntervals = { oilChange: 5000, tires: 25000, brakes: 30000, ...(d.carMaintenanceIntervals || {}) };
       if (Array.isArray(d.enabledJobs)) {
         enabledJobs = d.enabledJobs;
       } else if (!snap.metadata.fromCache) {
@@ -2723,7 +2782,7 @@ async function saveToFirestore() {
 
   // Merge (not overwrite) — this doc also carries enabledJobs/isAdmin now,
   // and a bare .set() here would otherwise wipe those every debounced save.
-  await userDoc().set({ balances, lastBankCompare, jobEarnPercent }, { merge: true });
+  await userDoc().set({ balances, lastBankCompare, jobEarnPercent, carMaintenanceIntervals }, { merge: true });
 
   // Upsert only changed records into their subcollection
   const upsertItems = async (colName, ids, dataArr) => {
@@ -2876,6 +2935,7 @@ const JOBS = [
 // that silently deleted the Car job from enabledJobs on reload once
 // already; the fix pattern there generalizes to any similar write.
 let enabledJobs    = ['lawn_mowing', 'ca_it']; // this account's unlocked job ids (pre-load default)
+let carMaintenanceIntervals = { oilChange: 5000, tires: 25000, brakes: 30000 }; // miles-between defaults, editable in the Car view
 let customJobTypes = [];                        // job docs from Firestore, kind: client_service | periodic_income
 let isAdmin         = false;
 
@@ -5652,16 +5712,37 @@ let carTargetDate = null; // breakeven date picker — local UI state, not persi
 
 function getOdometerEntry(date) { return odometerLog.find(o => o.date === date); }
 
-function upsertOdometerReading(date, odometer) {
-  if (!date || isNaN(odometer) || odometer < 0) { alert('Enter a date and a valid odometer reading.'); return; }
+function submitOdometerForm() {
+  const date = parseFlexibleDate(document.getElementById('car-odo-date').value) || todayISO();
+  const odometer = parseInt(document.getElementById('car-odo-value').value, 10);
+  const jobId = document.getElementById('car-odo-job').value;
+  const jobMilesRaw = document.getElementById('car-odo-job-miles').value;
+  const jobMiles = jobId && jobMilesRaw !== '' && !isNaN(parseFloat(jobMilesRaw))
+    ? { [jobId]: parseFloat(jobMilesRaw) } : undefined;
+  if (upsertOdometerReading(date, odometer, { jobMiles })) {
+    document.getElementById('car-odo-job').value = '';
+    document.getElementById('car-odo-job-miles').value = '';
+  }
+}
+
+// opts.silent: true skips this function's own save/render/toast, for when
+// a caller (like the combined gas-fill-up form) handles that itself right
+// after. opts.jobMiles: {jobId: miles} — optional purpose-tag for the day,
+// merged onto whatever jobMiles the day already had rather than replacing
+// it, so tagging a second job later doesn't erase the first.
+function upsertOdometerReading(date, odometer, opts = {}) {
+  if (!date || isNaN(odometer) || odometer < 0) { if (!opts.silent) alert('Enter a date and a valid odometer reading.'); return false; }
   const existing = getOdometerEntry(date);
-  odometerLog = existing
-    ? odometerLog.map(o => o.date === date ? { ...o, odometer } : o)
-    : [...odometerLog, { id: date, date, odometer }];
+  const jobMiles = (existing && existing.jobMiles) || opts.jobMiles
+    ? { ...(existing && existing.jobMiles), ...opts.jobMiles }
+    : undefined;
+  const entry = { id: date, date, odometer, ...(jobMiles && Object.keys(jobMiles).length ? { jobMiles } : {}) };
+  odometerLog = existing ? odometerLog.map(o => o.date === date ? entry : o) : [...odometerLog, entry];
   odometerLog.sort((a, b) => a.date.localeCompare(b.date));
   pendingOdometerWrites.add(date);
   logHistory('odometer', `Logged odometer — ${fmt(date)}: ${odometer.toLocaleString()} mi`, { job: 'car' });
-  save(); renderCarView(); toast('Odometer logged ✓');
+  if (!opts.silent) { save(); renderCarView(); toast('Odometer logged ✓'); }
+  return true;
 }
 
 function deleteOdometerReading(date) {
@@ -5687,29 +5768,59 @@ function drawDownCarPocket(amount) {
 }
 
 // ── Car expenses (otherMoney, job:'car') ───────────────────────────────
+function updateMaintenanceInterval(type, value) {
+  const v = parseInt(value, 10);
+  if (isNaN(v) || v <= 0) return;
+  carMaintenanceIntervals = { ...carMaintenanceIntervals, [type]: v };
+  save(); renderCarView();
+}
+
+function updateCarExpenseFormFields() {
+  const cat = document.getElementById('car-exp-category').value;
+  document.getElementById('car-exp-gallons-wrap').style.display = cat === 'gas' ? '' : 'none';
+  document.getElementById('car-exp-odo-wrap').style.display = cat === 'gas' ? '' : 'none';
+  document.getElementById('car-exp-full-wrap').style.display = cat === 'gas' ? '' : 'none';
+  document.getElementById('car-exp-maint-type-wrap').style.display = cat === 'maintenance' ? '' : 'none';
+}
+
 function addCarExpense() {
   const category = document.getElementById('car-exp-category').value;
   const descRaw  = document.getElementById('car-exp-desc').value.trim();
   const date     = parseFlexibleDate(document.getElementById('car-exp-date').value);
   const amount   = parseFloat(document.getElementById('car-exp-amount').value);
   const gallonsRaw = document.getElementById('car-exp-gallons').value;
+  const filledToFull = document.getElementById('car-exp-full').checked;
+  const odoRaw = document.getElementById('car-exp-odo').value;
+  const maintType = document.getElementById('car-exp-maint-type').value;
   if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount greater than 0.'); return; }
   if (category === 'gas' && (!gallonsRaw || parseFloat(gallonsRaw) <= 0)) { alert('Enter gallons for a gas fill-up.'); return; }
+  if (category === 'gas') {
+    const avg = avgFillUpAmount();
+    if (avg && amount > avg * 1.75 && !confirm(`That's $${amount.toFixed(2)} — well above your usual fill-up (around $${avg.toFixed(2)}). Add it anyway?`)) return;
+  }
   const desc = descRaw || ({ gas: 'Gas', insurance: 'Insurance', maintenance: 'Maintenance', registration: 'Registration' }[category] || 'Car expense');
   const newEntry = {
     id: 'o' + Date.now(), desc, date, type: 'expense', amount, method: 'bank',
     job: 'car', category,
-    ...(category === 'gas' ? { gallons: parseFloat(gallonsRaw) } : {})
+    ...(category === 'gas' ? { gallons: parseFloat(gallonsRaw), filledToFull } : {}),
+    ...(category === 'maintenance' && maintType ? { maintType } : {})
   };
   otherMoney.push(newEntry);
   pendingOtherWrites.add(newEntry.id);
   logHistory('other', `Added car ${category} — "${desc}" $${amount.toFixed(2)} on ${fmt(date)}`, { job: 'car' });
   drawDownCarPocket(amount);
+  // A gas entry can log that same day's odometer reading in one go — see
+  // upsertOdometerReading's silent option, so this is one save/render/toast.
+  if (category === 'gas' && odoRaw !== '' && !isNaN(parseInt(odoRaw, 10))) {
+    upsertOdometerReading(date, parseInt(odoRaw, 10), { silent: true });
+  }
   save(); render(); renderCarView();
   document.getElementById('car-exp-desc').value = '';
   document.getElementById('car-exp-date').value = '';
   document.getElementById('car-exp-amount').value = '';
   document.getElementById('car-exp-gallons').value = '';
+  document.getElementById('car-exp-odo').value = '';
+  document.getElementById('car-exp-full').checked = true;
   toast('Car expense added ✓');
 }
 
@@ -5736,13 +5847,27 @@ function carExpensesByCategory(from, to) {
 // otherMoney entries tagged job:'car' are this feature's cash-flow feed —
 // on the Car chart, "expense" bars are these; "income" bars are the app's
 // normal overall income (the whole point being to see car cost vs. total
-// earnings, not to invent car-specific income).
+// earnings, not to invent car-specific income). category rides along so
+// the chart can stack expense bars by it.
 function carCashFlowEvents() {
   const carExpenses = otherMoney
     .filter(e => e.job === 'car' && e.type === 'expense')
-    .map(e => ({ date: e.date, amount: parseFloat(e.amount) || 0, kind: 'expense' }));
+    .map(e => ({ date: e.date, amount: parseFloat(e.amount) || 0, kind: 'expense', category: e.category }));
   const income = getCashFlowEvents().filter(f => f.kind === 'income');
   return carExpenses.concat(income).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// Day-to-day odometer deltas across the whole log, each attributed to the
+// later of its two dates — the raw series the chart's miles line, and the
+// "miles since" nudges below, both bucket/sum from.
+function dailyMileageDeltas() {
+  const sorted = [...odometerLog].sort((a, b) => a.date.localeCompare(b.date));
+  const deltas = [];
+  for (let i = 1; i < sorted.length; i++) {
+    const miles = sorted[i].odometer - sorted[i - 1].odometer;
+    if (miles >= 0) deltas.push({ date: sorted[i].date, miles });
+  }
+  return deltas;
 }
 
 // Car-tagged recurring rules (insurance/registration) whose next occurrence
@@ -5767,6 +5892,12 @@ function carFuelStats() {
   const pricePerGallon = parseFloat(last.amount) / parseFloat(last.gallons);
   let totalMiles = 0, totalGallons = 0;
   for (let i = 1; i < fills.length; i++) {
+    // A full-to-full pair is what makes "gallons at fill i = gallons used
+    // since fill i-1" true. If either side was a partial fill, filledToFull
+    // is false and that reference point is broken, so skip the pair rather
+    // than let a partial fill quietly skew MPG — the dollars still count
+    // toward category totals either way, just not this ratio.
+    if (fills[i - 1].filledToFull === false || fills[i].filledToFull === false) continue;
     const odoA = getOdometerEntry(fills[i - 1].date);
     const odoB = getOdometerEntry(fills[i].date);
     if (odoA && odoB && odoB.odometer > odoA.odometer) {
@@ -5776,6 +5907,48 @@ function carFuelStats() {
   }
   const mpg = totalGallons > 0 ? totalMiles / totalGallons : null;
   return { pricePerGallon, mpg };
+}
+
+// Average of past fill-ups, for flagging an unusually large one before it's
+// saved. null until there's enough history to compare against (avoids
+// false positives on your first couple of fill-ups).
+function avgFillUpAmount() {
+  const fills = otherMoney.filter(e => e.job === 'car' && e.category === 'gas').map(e => parseFloat(e.amount) || 0);
+  if (fills.length < 3) return null;
+  return fills.reduce((s, v) => s + v, 0) / fills.length;
+}
+
+// Dropdown options for "miles for a job" — only jobs that actually involve
+// driving to someone (client_service kind), so CA-IT (a desk job) and Car
+// itself never show up here.
+function carOdoJobOptionsHtml(selectedId) {
+  return getEnabledJobs().filter(j => j.kind === 'client_service')
+    .map(j => `<option value="${j.id}"${j.id === selectedId ? ' selected' : ''}>${j.label}</option>`).join('');
+}
+
+// Sums each day's tagged job-miles within a range — the "miles by job"
+// summary, and the input to its implied-gas-cost figure.
+function carMilesByJob(from, to) {
+  const totals = {};
+  odometerLog.filter(o => o.date >= from && o.date <= to && o.jobMiles)
+    .forEach(o => Object.entries(o.jobMiles).forEach(([jobId, miles]) => {
+      totals[jobId] = (totals[jobId] || 0) + (parseFloat(miles) || 0);
+    }));
+  return totals;
+}
+
+// Miles driven since the most recent entry of a given maintenance type —
+// needs an odometer reading logged on that entry's exact date (same
+// precision tradeoff as carFuelStats) and a current reading to compare
+// against; returns null rather than guessing when either is missing.
+function milesSinceLastMaintenance(type) {
+  const entries = otherMoney.filter(e => e.job === 'car' && e.category === 'maintenance' && e.maintType === type)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  if (!entries.length) return null;
+  const lastOdo = getOdometerEntry(entries[0].date);
+  if (!lastOdo || !odometerLog.length) return null;
+  const current = [...odometerLog].sort((a, b) => b.date.localeCompare(a.date))[0];
+  return { miles: current.odometer - lastOdo.odometer, lastDate: entries[0].date };
 }
 
 // The breakeven figure: how many miles are left in the Car pocket before
@@ -5869,8 +6042,9 @@ function renderOdometerList() {
   wrap.innerHTML = sorted.map((o, i) => {
     const prev = sorted[i + 1]; // next-older reading in this already-desc list
     const delta = prev ? o.odometer - prev.odometer : null;
+    const tagged = o.jobMiles ? Object.entries(o.jobMiles).map(([id, mi]) => `${getJob(id).label} ${mi}mi`).join(', ') : '';
     return `<div class="history-row">
-      <span>${fmt(o.date)}</span>
+      <span>${fmt(o.date)}${tagged ? ` <span style="color:var(--text-faint)">(${tagged})</span>` : ''}</span>
       <span class="mono">${o.odometer.toLocaleString()} mi${delta != null ? ` <span style="color:var(--text-faint)">(+${delta})</span>` : ''}</span>
       <button class="act-btn" onclick="deleteOdometerReading('${o.date}')">delete</button>
     </div>`;
@@ -5882,12 +6056,65 @@ function renderCarExpenseList() {
   if (!wrap) return;
   const entries = carExpensesInRange(carChartState.start, carChartState.end).sort((a, b) => b.date.localeCompare(a.date));
   if (!entries.length) { wrap.innerHTML = '<div class="empty-state">No car expenses in this range.</div>'; return; }
-  wrap.innerHTML = entries.map(e => `
+  const maintLabels = { oilChange: 'oil change', tires: 'tires', brakes: 'brakes', other: 'other' };
+  wrap.innerHTML = entries.map(e => {
+    const note = e.gallons ? ` (${e.gallons} gal${e.filledToFull === false ? ', partial' : ''})`
+      : e.maintType ? ` (${maintLabels[e.maintType] || e.maintType})` : '';
+    return `
     <div class="history-row">
-      <span>${fmt(e.date)} — ${e.desc}${e.gallons ? ` (${e.gallons} gal)` : ''}</span>
+      <span>${fmt(e.date)} — ${e.desc}${note}</span>
       <span class="mono">$${parseFloat(e.amount).toFixed(2)}</span>
       <button class="act-btn" onclick="deleteCarExpense('${e.id}')">delete</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+function renderMaintenanceDue() {
+  const section = document.getElementById('car-maintenance-due-section');
+  const wrap = document.getElementById('car-maintenance-due-wrap');
+  if (!section || !wrap) return;
+  const labels = { oilChange: 'Oil change', tires: 'Tires', brakes: 'Brakes' };
+  const rows = Object.keys(labels).map(type => {
+    const since = milesSinceLastMaintenance(type);
+    if (!since) return null;
+    const interval = carMaintenanceIntervals[type] || 0;
+    const over = interval > 0 && since.miles >= interval;
+    return `<div class="metric ${over ? 'red' : ''}">
+      <div class="metric-label">${labels[type]}</div>
+      <div class="metric-value">${since.miles.toLocaleString()} mi</div>
+      <div class="metric-sub">since ${fmt(since.lastDate)}${interval ? ` · due every ${interval.toLocaleString()} mi` : ''}${over ? ' · due now' : ''}</div>
+    </div>`;
+  }).filter(Boolean);
+  section.style.display = rows.length ? '' : 'none';
+  wrap.innerHTML = `<div class="summary-grid">${rows.join('')}</div>`;
+}
+
+function renderMilesByJob() {
+  const section = document.getElementById('car-miles-by-job-section');
+  const wrap = document.getElementById('car-miles-by-job-wrap');
+  if (!section || !wrap) return;
+  const totals = carMilesByJob(carChartState.start, carChartState.end);
+  const jobIds = Object.keys(totals).filter(id => totals[id] > 0);
+  section.style.display = jobIds.length ? '' : 'none';
+  if (!jobIds.length) { wrap.innerHTML = ''; return; }
+  const fuel = carFuelStats();
+  const costPerMile = fuel && fuel.mpg ? fuel.pricePerGallon / fuel.mpg : null;
+  wrap.innerHTML = `<div class="summary-grid">${jobIds.map(id => {
+    const miles = totals[id];
+    const costNote = costPerMile ? ` · ~$${(miles * costPerMile).toFixed(2)} in gas` : '';
+    return `<div class="metric"><div class="metric-label">${getJob(id).label}</div><div class="metric-value">${miles.toLocaleString()} mi</div><div class="metric-sub">tagged${costNote}</div></div>`;
+  }).join('')}</div>`;
+}
+
+function renderOdoStaleness() {
+  const el = document.getElementById('car-odo-staleness');
+  if (!el) return;
+  if (!odometerLog.length) { el.textContent = ''; return; }
+  const latest = [...odometerLog].sort((a, b) => b.date.localeCompare(a.date))[0];
+  const days = Math.round((new Date(todayISO() + 'T00:00:00') - new Date(latest.date + 'T00:00:00')) / 86400000);
+  if (days <= 0) { el.textContent = 'Last logged today.'; el.style.color = ''; return; }
+  el.textContent = `Last logged ${days} day${days === 1 ? '' : 's'} ago.`;
+  el.style.color = days >= 3 ? 'var(--amber)' : '';
 }
 
 function renderCarView() {
@@ -5896,11 +6123,23 @@ function renderCarView() {
   document.getElementById('car-chart-end').value = isoToDisplay(carChartState.end);
   document.getElementById('car-chart-bars').value = carChartState.bars;
   document.getElementById('car-target-date').value = isoToDisplay(carTargetDate);
-  renderComboChart(carChartState, carCashFlowEvents(), 'car-chart-wrap');
+  document.getElementById('car-odo-job').innerHTML = '<option value="">— none —</option>' + carOdoJobOptionsHtml();
+  document.getElementById('car-mi-oilChange').value = carMaintenanceIntervals.oilChange;
+  document.getElementById('car-mi-tires').value = carMaintenanceIntervals.tires;
+  document.getElementById('car-mi-brakes').value = carMaintenanceIntervals.brakes;
+  renderComboChart(carChartState, carCashFlowEvents(), 'car-chart-wrap', {
+    categorize: f => f.category,
+    categoryColors: { gas: 'var(--red)', insurance: 'var(--amber)', maintenance: 'var(--rose)', registration: 'var(--teal-dim)' },
+    milesDeltas: dailyMileageDeltas(),
+    checkOdometerGaps: true
+  });
   renderCarCategorySummary();
   renderOdometerList();
   renderCarExpenseList();
   renderCarBreakeven();
+  renderMaintenanceDue();
+  renderMilesByJob();
+  renderOdoStaleness();
 }
 
 // ── Combined income/expense/net chart ──────────────────────────────────
@@ -5948,23 +6187,56 @@ function applyChartPreset(which, preset) {
   document.getElementById(selectId).value = '';
 }
 
-function bucketFlows(flows, start, end, barCount) {
+// opts (all optional, used by the Car chart only — the main chart doesn't
+// pass any of these and behaves exactly as before):
+//   categorize(flow) -> a category key, to also stack expenses by category
+//   milesDeltas: [{date, miles}] -> also bucket a miles-driven series
+//   checkOdometerGaps: true -> flag a bucket if any day in its range has no
+//     logged odometer reading (reads the global odometerLog directly)
+function bucketFlows(flows, start, end, barCount, opts = {}) {
   const startMs = new Date(start + 'T00:00:00').getTime();
   const endMs   = new Date(end + 'T00:00:00').getTime() + 86400000; // include the end date fully
   const span = Math.max(1, endMs - startMs);
   const bucketMs = span / barCount;
   const buckets = Array.from({ length: barCount }, (_, i) => {
     const from = new Date(startMs + i * bucketMs);
-    return { from, income: 0, expense: 0 };
+    return { from, income: 0, expense: 0, categories: {}, miles: 0, hasGap: false };
   });
-  flows.forEach(f => {
-    const t = new Date(f.date + 'T00:00:00').getTime();
-    if (t < startMs || t >= endMs) return;
+  const bucketIndexFor = t => {
     let idx = Math.floor((t - startMs) / bucketMs);
     if (idx >= barCount) idx = barCount - 1;
     if (idx < 0) idx = 0;
-    if (f.kind === 'expense') buckets[idx].expense += f.amount; else buckets[idx].income += f.amount;
+    return idx;
+  };
+  flows.forEach(f => {
+    const t = new Date(f.date + 'T00:00:00').getTime();
+    if (t < startMs || t >= endMs) return;
+    const idx = bucketIndexFor(t);
+    if (f.kind === 'expense') {
+      buckets[idx].expense += f.amount;
+      if (opts.categorize) {
+        const cat = opts.categorize(f) || 'other';
+        buckets[idx].categories[cat] = (buckets[idx].categories[cat] || 0) + f.amount;
+      }
+    } else {
+      buckets[idx].income += f.amount;
+    }
   });
+  if (opts.milesDeltas) {
+    opts.milesDeltas.forEach(d => {
+      const t = new Date(d.date + 'T00:00:00').getTime();
+      if (t < startMs || t >= endMs) return;
+      buckets[bucketIndexFor(t)].miles += d.miles;
+    });
+  }
+  if (opts.checkOdometerGaps) {
+    const logged = new Set(odometerLog.map(o => o.date));
+    const oneDay = 86400000;
+    for (let t = startMs; t < endMs; t += oneDay) {
+      const iso = new Date(t).toISOString().slice(0, 10);
+      if (!logged.has(iso)) buckets[bucketIndexFor(t)].hasGap = true;
+    }
+  }
   const daySpan = span / 86400000 / barCount;
   const labelOpts = daySpan <= 1.5 ? { month: 'short', day: 'numeric' }
                   : daySpan <= 45  ? { month: 'short', day: 'numeric' }
@@ -5973,10 +6245,12 @@ function bucketFlows(flows, start, end, barCount) {
   return buckets;
 }
 
-function renderComboChart(state, flows, wrapId) {
+// opts: same shape bucketFlows takes, plus an optional categoryColors map
+// ({key: cssColor}) used both to pick stacking order and to color segments.
+function renderComboChart(state, flows, wrapId, opts = {}) {
   const wrap = document.getElementById(wrapId);
   if (!wrap) return;
-  const buckets = bucketFlows(flows, state.start, state.end, state.bars);
+  const buckets = bucketFlows(flows, state.start, state.end, state.bars, opts);
   if (!buckets.some(b => b.income || b.expense)) {
     wrap.innerHTML = '<div class="empty-state" style="padding:2.2rem 1rem">No data in this range.</div>';
     return;
@@ -5994,19 +6268,54 @@ function renderComboChart(state, flows, wrapId) {
   const zeroY = padTop + plotH / 2;
   const netScale = (plotH / 2 - 4) / maxAbsNet;
   const cx = i => padSide + barW * i + barW / 2;
+  const categoryColors = opts.categoryColors || {};
 
   const barsSvg = buckets.map((b, i) => {
     const incH = (b.income / maxVal) * plotH;
-    const expH = (b.expense / maxVal) * plotH;
     const x0 = cx(i) - pairW / 2;
-    return `<rect x="${x0.toFixed(1)}" y="${(padTop + plotH - incH).toFixed(1)}" width="${singleW.toFixed(1)}" height="${incH.toFixed(1)}" fill="var(--green)" rx="1.5"
-        onmouseenter="showTrendTip(event,'${b.label} income','$${b.income.toFixed(2)}')" onmouseleave="hideTrendTip()"></rect>
-      <rect x="${(x0 + singleW).toFixed(1)}" y="${(padTop + plotH - expH).toFixed(1)}" width="${singleW.toFixed(1)}" height="${expH.toFixed(1)}" fill="var(--red)" rx="1.5"
-        onmouseenter="showTrendTip(event,'${b.label} expenses','$${b.expense.toFixed(2)}')" onmouseleave="hideTrendTip()"></rect>
+    const incRect = `<rect x="${x0.toFixed(1)}" y="${(padTop + plotH - incH).toFixed(1)}" width="${singleW.toFixed(1)}" height="${incH.toFixed(1)}" fill="var(--green)" rx="1.5"
+        onmouseenter="showTrendTip(event,'${b.label} income','$${b.income.toFixed(2)}')" onmouseleave="hideTrendTip()"></rect>`;
+
+    let expRects;
+    if (opts.categorize) {
+      // Stack category segments bottom-up so the bar's total height still
+      // reads the same as a single solid expense bar did before.
+      let stacked = 0;
+      expRects = Object.keys(categoryColors).filter(cat => b.categories[cat]).map(cat => {
+        const amt = b.categories[cat];
+        const segH = Math.max(0, (amt / maxVal) * plotH);
+        const y = padTop + plotH - stacked - segH;
+        stacked += segH;
+        return `<rect x="${(x0 + singleW).toFixed(1)}" y="${y.toFixed(1)}" width="${singleW.toFixed(1)}" height="${segH.toFixed(1)}" fill="${categoryColors[cat]}" rx="1"
+          onmouseenter="showTrendTip(event,'${b.label} ${cat}','$${amt.toFixed(2)}')" onmouseleave="hideTrendTip()"></rect>`;
+      }).join('');
+    } else {
+      const expH = (b.expense / maxVal) * plotH;
+      expRects = `<rect x="${(x0 + singleW).toFixed(1)}" y="${(padTop + plotH - expH).toFixed(1)}" width="${singleW.toFixed(1)}" height="${expH.toFixed(1)}" fill="var(--red)" rx="1.5"
+        onmouseenter="showTrendTip(event,'${b.label} expenses','$${b.expense.toFixed(2)}')" onmouseleave="hideTrendTip()"></rect>`;
+    }
+
+    const gapMark = (opts.checkOdometerGaps && b.hasGap)
+      ? `<circle cx="${cx(i).toFixed(1)}" cy="${(H - padBottom + 6).toFixed(1)}" r="2" class="combo-gap-dot"><title>No odometer reading logged somewhere in this range</title></circle>`
+      : '';
+    return `${incRect}${expRects}${gapMark}
       <text x="${cx(i).toFixed(1)}" y="${H - 10}" text-anchor="middle" class="combo-axis-label">${b.label}</text>`;
   }).join('');
 
   const linePts = arr => arr.map((v, i) => `${cx(i).toFixed(1)},${(zeroY - v * netScale).toFixed(1)}`).join(' ');
+
+  let milesSvg = '', milesLegend = '';
+  if (opts.milesDeltas) {
+    const maxMiles = Math.max(...buckets.map(b => b.miles), 1);
+    const milesY = v => (padTop + plotH) - (v / maxMiles) * (plotH - 6);
+    const milesPts = buckets.map((b, i) => `${cx(i).toFixed(1)},${milesY(b.miles).toFixed(1)}`).join(' ');
+    milesSvg = `<polyline points="${milesPts}" class="combo-line-miles" />`;
+    milesLegend = `<span><i class="combo-line-swatch combo-line-miles"></i>Miles driven</span>`;
+  }
+
+  const expenseLegend = opts.categorize
+    ? Object.keys(categoryColors).map(cat => `<span><i class="combo-dot" style="background:${categoryColors[cat]}"></i>${cat.charAt(0).toUpperCase() + cat.slice(1)}</span>`).join('')
+    : `<span><i class="combo-dot" style="background:var(--red)"></i>Expenses</span>`;
 
   wrap.innerHTML = `
     <svg class="combo-chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
@@ -6014,12 +6323,14 @@ function renderComboChart(state, flows, wrapId) {
       ${barsSvg}
       <polyline points="${linePts(cum)}" class="combo-line-cum" />
       <polyline points="${linePts(net)}" class="combo-line-net" />
+      ${milesSvg}
     </svg>
     <div class="combo-legend">
       <span><i class="combo-dot" style="background:var(--green)"></i>Income</span>
-      <span><i class="combo-dot" style="background:var(--red)"></i>Expenses</span>
+      ${expenseLegend}
       <span><i class="combo-line-swatch combo-line-cum"></i>Cumulative net</span>
       <span><i class="combo-line-swatch combo-line-net"></i>Period net</span>
+      ${milesLegend}
     </div>`;
 }
 
