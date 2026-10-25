@@ -1373,6 +1373,61 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 .aj-toggle.off:hover { border-color: var(--text-faint); color: var(--text-muted); }
 .aj-toggle:disabled { opacity: 0.5; cursor: default; }
 .admin-badge-tag { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--purple-bright); background: var(--purple-pale); border: 1px solid var(--purple-border); border-radius: var(--radius-pill); padding: 1px 6px; }
+
+/* ── Global save indicator (top-right, always on screen) ──────────
+   Hidden state is the slow fade-out; .show overrides it with a quick
+   fade-in. Saving = spinning arrows, done = check mark that draws itself
+   then fades out with the chip, error = red "!" you can click to retry. */
+#sync-indicator {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  right: 14px;
+  z-index: 10010;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface3);
+  border: 1px solid var(--border-mid);
+  box-shadow: var(--shadow-pop);
+  opacity: 0;
+  transform: scale(0.85);
+  pointer-events: none;
+  transition: opacity 0.7s var(--ease), transform 0.7s var(--ease), border-color 0.25s var(--ease), background 0.25s var(--ease);
+}
+#sync-indicator.show {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 0.18s var(--ease), transform 0.3s var(--ease-spring), border-color 0.25s var(--ease), background 0.25s var(--ease);
+}
+#sync-indicator .sync-ic {
+  position: absolute;
+  width: 20px; height: 20px;
+  fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+  opacity: 0; transform: scale(0.6);
+  transition: opacity 0.2s var(--ease), transform 0.28s var(--ease-spring);
+}
+#sync-indicator .sync-ic-spin  { stroke: var(--accent); }
+#sync-indicator .sync-ic-check { stroke: var(--green); stroke-width: 2.4; }
+#sync-indicator .sync-ic-err   { stroke: var(--red); stroke-width: 2.6; }
+#sync-indicator.sync-saving .sync-ic-spin,
+#sync-indicator.sync-done .sync-ic-check,
+#sync-indicator.sync-error .sync-ic-err { opacity: 1; transform: scale(1); }
+#sync-indicator.sync-saving .sync-ic-spin { animation: syncSpin 0.9s linear infinite; }
+#sync-indicator .sync-ic-check path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+#sync-indicator.sync-done .sync-ic-check path { animation: syncCheck 0.35s 0.05s var(--ease) forwards; }
+#sync-indicator.sync-done  { border-color: var(--green-border); }
+#sync-indicator.sync-error { border-color: var(--red-border); background: var(--red-pale); }
+#sync-indicator.sync-error.show { pointer-events: auto; cursor: pointer; }
+@keyframes syncSpin  { to { transform: rotate(360deg); } }
+@keyframes syncCheck { to { stroke-dashoffset: 0; } }
+/* The global reduced-motion rule would freeze the spinner; a slow spin is the
+   only "still saving" signal, so keep it (gently). */
+@media (prefers-reduced-motion: reduce) {
+  #sync-indicator.sync-saving .sync-ic-spin { animation-duration: 1.8s !important; animation-iteration-count: infinite !important; }
+}
+/* Don't sit on top of the test-mode banner's Exit button, or the mobile admin badge */
+body.test-mode-active #sync-indicator { top: 58px; }
+html.is-mobile .m-admin-badge-btn { right: 62px; }
 </style>
 </head>
 <body>
@@ -2409,6 +2464,15 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 
 </div><!-- /#pc-app -->
 
+<!-- Global save indicator — lives outside #pc-app / #mobile-app and is
+     position:fixed, so it's visible on every page, desktop and mobile, at any
+     scroll position. States are driven by the sync* functions in the script. -->
+<div id="sync-indicator" role="status" aria-live="polite" onclick="retrySaveNow()">
+  <svg class="sync-ic sync-ic-spin" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+  <svg class="sync-ic sync-ic-check" viewBox="0 0 24 24"><path pathLength="1" d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+  <svg class="sync-ic sync-ic-err" viewBox="0 0 24 24"><path d="M12 7v6.5"/><path d="M12 17.2v.01"/></svg>
+</div>
+
 <!-- ══════════════════════════════════════════════════════════
      Job admin/unlock modals — deliberately OUTSIDE both #pc-app
      and #mobile-app (which hide one another via .is-mobile) so
@@ -2636,12 +2700,15 @@ function loadFromFirestore() {
         userDoc().update({
           'balances.tithe_bank': firebase.firestore.FieldValue.delete(),
           'balances.tithe_cash': firebase.firestore.FieldValue.delete()
-        });
+        }).catch(err => console.warn('Could not clear legacy tithe fields:', err));
       }
       isAdmin = d.isAdmin === true;
-      lastBankCompare = d.lastBankCompare || '';
-      jobEarnPercent = d.jobEarnPercent || {};
-      carMaintenanceIntervals = { oilChange: 5000, tires: 25000, brakes: 30000, ...(d.carMaintenanceIntervals || {}) };
+      // Don't let a snapshot overwrite these while a local change to them is still unsaved.
+      if (!mainDocDirty) {
+        lastBankCompare = d.lastBankCompare || '';
+        jobEarnPercent = d.jobEarnPercent || {};
+        carMaintenanceIntervals = { oilChange: 5000, tires: 25000, brakes: 30000, ...(d.carMaintenanceIntervals || {}) };
+      }
       if (Array.isArray(d.enabledJobs)) {
         enabledJobs = d.enabledJobs;
       } else if (!snap.metadata.fromCache) {
@@ -2665,7 +2732,7 @@ function loadFromFirestore() {
         // value just arrives a moment later on the next event instead.
         // Pointer: the note by the JOBS array above links back here.
         enabledJobs = ['lawn_mowing', 'ca_it'];
-        userDoc().set({ enabledJobs }, { merge: true });
+        userDoc().set({ enabledJobs }, { merge: true }).catch(err => console.warn('Could not seed enabledJobs (check Firestore rules):', err));
       }
       // else: cached read reporting enabledJobs missing — leave enabledJobs
       // as it was and wait for the server-confirmed snapshot on this same
@@ -2675,7 +2742,7 @@ function loadFromFirestore() {
       // itself confirms it doesn't exist, not on an unconfirmed cached read.
       balances = { bank: 0, cash: 0 };
       enabledJobs = ['lawn_mowing', 'ca_it'];
-      userDoc().set({ balances, enabledJobs }, { merge: true });
+      userDoc().set({ balances, enabledJobs }, { merge: true }).catch(err => console.warn('Could not seed new user doc (check Firestore rules):', err));
     }
     if (!ready.main) { ready.main = true; checkReady(); }
     else if (initialRenderDone) render();
@@ -2695,7 +2762,7 @@ function loadFromFirestore() {
   // Clients — sorted alphabetically so the list order is stable regardless
   // of whatever order Firestore happens to hand back documents in.
   unsubscribers.push(userDoc().collection('clients').onSnapshot(snap => {
-    clients = snap.docs.map(d => d.data())
+    clients = mergePending(snap.docs.map(d => d.data()), clients, pendingClientWrites, pendingClientDeletes)
       .sort((a,b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
     if (!ready.clients) { ready.clients = true; checkReady(); }
     else if (initialRenderDone) render();
@@ -2703,21 +2770,21 @@ function loadFromFirestore() {
 
   // Events
   unsubscribers.push(userDoc().collection('jobs').onSnapshot(snap => {
-    lawnEvents = snap.docs.map(d => d.data());
+    lawnEvents = mergePending(snap.docs.map(d => d.data()), lawnEvents, pendingEventWrites, pendingEventDeletes);
     if (!ready.events) { ready.events = true; checkReady(); }
     else if (initialRenderDone) render();
   }));
 
   // Other
   unsubscribers.push(userDoc().collection('other').onSnapshot(snap => {
-    otherMoney = snap.docs.map(d => d.data());
+    otherMoney = mergePending(snap.docs.map(d => d.data()), otherMoney, pendingOtherWrites, pendingOtherDeletes);
     if (!ready.other) { ready.other = true; checkReady(); }
     else if (initialRenderDone) render();
   }));
 
   // Wishlist
   unsubscribers.push(userDoc().collection('wishlist').onSnapshot(snap => {
-    wishlist = snap.docs.map(d => d.data());
+    wishlist = mergePending(snap.docs.map(d => d.data()), wishlist, pendingWishlistWrites, pendingWishlistDeletes);
     if (!ready.wishlist) { ready.wishlist = true; checkReady(); }
     else if (initialRenderDone) render();
   }));
@@ -2726,7 +2793,7 @@ function loadFromFirestore() {
   // which are assigned by array position in getPocketColor) stay stable
   // across reloads instead of drifting with Firestore's snapshot order.
   unsubscribers.push(userDoc().collection('pockets').onSnapshot(snap => {
-    pockets = snap.docs.map(d => d.data())
+    pockets = mergePending(snap.docs.map(d => d.data()), pockets, pendingPocketWrites, pendingPocketDeletes)
       .sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||'') || a.id.localeCompare(b.id));
     if (!ready.pockets) { ready.pockets = true; checkReady(); }
     else if (initialRenderDone) render();
@@ -2734,7 +2801,7 @@ function loadFromFirestore() {
 
   // Pocket Rules — same stability fix as Pockets above.
   unsubscribers.push(userDoc().collection('pocketRules').onSnapshot(snap => {
-    pocketRules = snap.docs.map(d => d.data())
+    pocketRules = mergePending(snap.docs.map(d => d.data()), pocketRules, pendingRuleWrites, pendingRuleDeletes)
       .sort((a,b) => (a.createdAt||'').localeCompare(b.createdAt||'') || a.id.localeCompare(b.id));
     if (!ready.pocketRules) { ready.pocketRules = true; checkReady(); }
     else if (initialRenderDone) render();
@@ -2743,7 +2810,7 @@ function loadFromFirestore() {
   // Recurring rules — sorted by next-due date so the management list and
   // any auto-generation logic see a stable, predictable order.
   unsubscribers.push(userDoc().collection('recurring').onSnapshot(snap => {
-    recurringRules = snap.docs.map(d => d.data())
+    recurringRules = mergePending(snap.docs.map(d => d.data()), recurringRules, pendingRecurringWrites, pendingRecurringDeletes)
       .sort((a,b) => (a.nextDate||'').localeCompare(b.nextDate||'') || a.id.localeCompare(b.id));
     if (!ready.recurring) { ready.recurring = true; checkReady(); }
     else if (initialRenderDone) render();
@@ -2752,17 +2819,268 @@ function loadFromFirestore() {
   // Odometer log — one reading per day, doc id === date, so it's naturally
   // deduped and sorts chronologically the same way its id sorts.
   unsubscribers.push(userDoc().collection('odometer').onSnapshot(snap => {
-    odometerLog = snap.docs.map(d => d.data()).sort((a,b) => a.date.localeCompare(b.date));
+    odometerLog = mergePending(snap.docs.map(d => d.data()), odometerLog, pendingOdometerWrites, pendingOdometerDeletes).sort((a,b) => a.date.localeCompare(b.date));
     if (!ready.odometer) { ready.odometer = true; checkReady(); }
     else if (initialRenderDone) render();
   }));
 }
 
-let saveTimer;
-function save() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveToFirestore, 800);
+// ══════════════════════════════════════════════════════════
+// ── Save pipeline + sync indicator ──────────────────────────
+// Every change calls save(), which (a) starts the top-right spinner right
+// away and (b) debounces a single flush. The flush rules that keep data
+// from being lost:
+//   1. Only one flush runs at a time; changes made during a flush are
+//      picked up by the same run instead of racing it.
+//   2. A pending id is only forgotten AFTER Firestore acknowledges the
+//      commit (and only if that record hasn't been edited again since).
+//      A failed commit leaves everything pending and retries.
+//   3. Realtime snapshots never overwrite a record that still has an
+//      unsaved local change (see mergePending) — otherwise a snapshot
+//      arriving mid-burst silently reverted the newest entries.
+//   4. The queue is flushed before sign-out / refresh / test mode, and
+//      kicked when the tab is hidden or closing; closing with unsaved
+//      changes shows the browser's "leave site?" warning.
+// ══════════════════════════════════════════════════════════
+let saveTimer = null;
+let saveRunPromise = null;   // the flush currently running, if any
+let saveRerun = false;       // a change arrived while a flush was running
+let saveCycleOpen = false;   // true from first change until everything is confirmed saved
+let retryTimer = null, retryAttempt = 0;
+let mainDocDirty = false;    // balances/lastBankCompare/etc. not yet written
+let mainDocSeq = 0;
+let historySeq = 0;
+const SAVE_DEBOUNCE_MS = 800;
+const COMMIT_TIMEOUT_MS = 30000;
+
+// ── Top-right indicator: spinner → check (fades out) / error ──
+const sync = { busy: 0, error: false, errorMsg: '', hideTimer: null };
+function syncRender(state) {
+  const el = document.getElementById('sync-indicator');
+  if (!el) return;
+  if (state === 'idle') { el.classList.remove('show'); return; } // keep the last icon so the check stays visible while it fades
+  el.classList.remove('sync-saving', 'sync-done', 'sync-error');
+  el.classList.add('show', 'sync-' + state);
+  const label = { saving: 'Saving changes…', done: 'Changes saved', error: sync.errorMsg || 'Save failed — click to retry' }[state];
+  el.setAttribute('aria-label', label);
+  el.title = label;
 }
+function syncBegin() {
+  sync.busy++;
+  clearTimeout(sync.hideTimer);
+  syncRender('saving');
+}
+function syncSettle() {
+  if (sync.busy > 0) return;
+  clearTimeout(sync.hideTimer);
+  if (sync.error) { syncRender('error'); return; }
+  syncRender('done');
+  sync.hideTimer = setTimeout(() => syncRender('idle'), 1200);
+}
+function syncDone() {
+  sync.busy = Math.max(0, sync.busy - 1);
+  syncSettle();
+}
+// sticky = the main save queue failed (stays red until a later save succeeds
+// or the user clicks it); otherwise it's a one-off write, shown for a few seconds.
+function syncFailed(sticky) {
+  sync.busy = Math.max(0, sync.busy - 1);
+  if (sticky) { sync.error = true; syncSettle(); return; }
+  if (sync.busy > 0) return;
+  clearTimeout(sync.hideTimer);
+  syncRender('error');
+  sync.hideTimer = setTimeout(() => { if (!sync.error) syncRender('idle'); }, 3500);
+}
+function syncReset() {
+  clearTimeout(sync.hideTimer);
+  sync.busy = 0; sync.error = false; sync.errorMsg = '';
+  syncRender('idle');
+}
+// Wraps a one-off Firestore write (history edits, job codes, admin toggles…)
+// so it shows up in the indicator too.
+async function trackWrite(work) {
+  syncBegin();
+  try {
+    const result = await (typeof work === 'function' ? work() : work);
+    syncDone();
+    return result;
+  } catch (err) {
+    syncFailed(false);
+    throw err;
+  }
+}
+
+// ── Pending bookkeeping ──
+function allPendingSets() {
+  return [
+    pendingClientWrites, pendingClientDeletes, pendingEventWrites, pendingEventDeletes,
+    pendingOtherWrites, pendingOtherDeletes, pendingWishlistWrites, pendingWishlistDeletes,
+    pendingPocketWrites, pendingPocketDeletes, pendingRuleWrites, pendingRuleDeletes,
+    pendingRecurringWrites, pendingRecurringDeletes, pendingOdometerWrites, pendingOdometerDeletes
+  ];
+}
+function hasPendingWrites() {
+  return mainDocDirty || pendingHistoryEntries.length > 0 || allPendingSets().some(s => s.size > 0);
+}
+function hasUnsavedChanges() { return hasPendingWrites() || !!saveTimer || !!saveRunPromise; }
+function clearAllPending() {
+  allPendingSets().forEach(s => s.clear());
+  pendingHistoryEntries = [];
+  mainDocDirty = false;
+}
+
+// Snapshot listeners use this: server docs, except any record with an
+// unsaved local change keeps its local version (and a locally-deleted,
+// not-yet-saved record stays deleted).
+function mergePending(serverItems, localItems, writes, deletes) {
+  if (!writes.size && !deletes.size) return serverItems;
+  const local = new Map(localItems.map(i => [i.id, i]));
+  const out = [];
+  serverItems.forEach(i => {
+    if (writes.has(i.id) && local.has(i.id)) return; // replaced by the local copy below
+    if (deletes.has(i.id)) return;
+    out.push(i);
+  });
+  writes.forEach(id => { if (local.has(id)) out.push(local.get(id)); });
+  return out;
+}
+
+function withTimeout(promise) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('Save timed out — check your connection')), COMMIT_TIMEOUT_MS);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+function save() {
+  if (!currentUser || testMode) return;
+  mainDocDirty = true; mainDocSeq++;
+  clearTimeout(retryTimer);
+  if (!saveCycleOpen) { saveCycleOpen = true; syncBegin(); }
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(runSave, SAVE_DEBOUNCE_MS);
+}
+
+function endSaveCycle(ok) {
+  if (!saveCycleOpen) return;
+  saveCycleOpen = false;
+  if (ok) { sync.error = false; sync.errorMsg = ''; retryAttempt = 0; syncDone(); }
+  else syncFailed(true);
+}
+
+function scheduleRetry() {
+  clearTimeout(retryTimer);
+  const delay = Math.min(30000, 4000 * Math.pow(2, retryAttempt++));
+  retryTimer = setTimeout(() => {
+    if (!currentUser || testMode) return;
+    if (!saveCycleOpen) { saveCycleOpen = true; syncBegin(); }
+    runSave();
+  }, delay);
+}
+
+function retrySaveNow() {
+  if (!currentUser || testMode) return;
+  clearTimeout(retryTimer); retryAttempt = 0;
+  if (!saveCycleOpen) { saveCycleOpen = true; syncBegin(); }
+  runSave();
+}
+
+// Runs (or joins) the single flush. Always returns a promise that settles
+// once that flush has finished, so callers can await it.
+function runSave() {
+  clearTimeout(saveTimer); saveTimer = null;
+  if (saveRunPromise) { saveRerun = true; return saveRunPromise; }
+  saveRunPromise = (async () => {
+    const uid = currentUser && currentUser.uid;
+    let ok = true;
+    try {
+      let passes = 0;
+      do {
+        saveRerun = false;
+        await saveToFirestore();
+        passes++;
+      } while ((saveRerun || hasPendingWrites()) && passes < 6);
+    } catch (err) {
+      ok = false;
+      const where = err && err.saveStep ? ` [${err.saveStep}]` : '';
+      console.error('Save failed — changes are kept and will retry:' + where, err);
+      if (err && err.code === 'permission-denied') {
+        sync.errorMsg = 'Firestore rules blocked a save' + where + ' — click to retry';
+        retryAttempt = Math.max(retryAttempt, 3); // rules won't fix themselves — don't hammer the server
+      } else {
+        sync.errorMsg = 'Save failed — click to retry';
+      }
+    } finally {
+      saveRunPromise = null;
+    }
+    // The account changed while saving — nothing here belongs to it anymore.
+    if (!currentUser || currentUser.uid !== uid) return ok;
+    if (ok) {
+      if (hasPendingWrites() || saveTimer) { // more arrived at the last moment — keep the cycle open
+        if (!saveTimer) saveTimer = setTimeout(runSave, 100);
+        return true;
+      }
+      endSaveCycle(true);
+    } else {
+      endSaveCycle(false);
+      scheduleRetry();
+    }
+    return ok;
+  })();
+  return saveRunPromise;
+}
+
+// Resolves true when nothing is left unsaved. Used before anything that
+// could throw the pending changes away (sign out, refresh, test mode).
+async function flushSaves() {
+  if (!currentUser || testMode) return true;
+  if (!hasUnsavedChanges()) return true;
+  if (!saveCycleOpen) { saveCycleOpen = true; syncBegin(); }
+  await runSave();
+  return !hasUnsavedChanges();
+}
+
+async function refreshData() {
+  if (!testMode) await flushSaves();
+  loadFromFirestore();
+}
+
+// Fresh start for a different (or no) account: drop every in-memory record
+// and every queued write so one account's changes can never be written into
+// another's, or silently discarded later.
+function resetLocalState() {
+  clearTimeout(saveTimer); saveTimer = null;
+  clearTimeout(retryTimer); retryAttempt = 0;
+  saveCycleOpen = false; saveRerun = false;
+  clients = []; lawnEvents = []; otherMoney = []; wishlist = [];
+  pockets = []; pocketRules = []; recurringRules = []; odometerLog = [];
+  historyLog = []; lastHistoryDoc = null; allHistoryLoaded = false;
+  balances = { bank: 0, cash: 0 };
+  lastBankCompare = ''; jobEarnPercent = {};
+  enabledJobs = ['lawn_mowing', 'ca_it']; isAdmin = false;
+  clearAllPending();
+  syncReset();
+}
+
+// Safety net: any Firestore write nobody was awaiting that the server rejects
+// because of the security rules ends up here instead of failing silently.
+window.addEventListener('unhandledrejection', ev => {
+  const e = ev.reason;
+  if (e && e.code === 'permission-denied') {
+    console.error('Firestore rules rejected a write nobody was waiting on:', e);
+    sync.errorMsg = 'Firestore rules blocked a write — see the browser console';
+    syncBegin(); syncFailed(false);
+  }
+});
+
+// Best effort: push anything pending the moment the tab is hidden/closing.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && currentUser && !testMode && hasUnsavedChanges()) runSave();
+});
+window.addEventListener('pagehide', () => {
+  if (currentUser && !testMode && hasUnsavedChanges()) runSave();
+});
 
 async function loadMoreHistory() {
   if (allHistoryLoaded || testMode) return;
@@ -2778,67 +3096,115 @@ async function loadMoreHistory() {
   renderAllHistory();
 }
 
+// One pass over everything pending. Throws on any failure WITHOUT forgetting
+// what it couldn't confirm, so runSave() can retry it.
 async function saveToFirestore() {
   if (!currentUser || testMode) return;
+  const ud = userDoc();
+  const hc = historyCol();
 
   // Merge (not overwrite) — this doc also carries enabledJobs/isAdmin now,
-  // and a bare .set() here would otherwise wipe those every debounced save.
-  await userDoc().set({ balances, lastBankCompare, jobEarnPercent, carMaintenanceIntervals }, { merge: true });
-
-  // Upsert only changed records into their subcollection
-  const upsertItems = async (colName, ids, dataArr) => {
-    if (!ids.size) return;
-    const items = dataArr.filter(i => ids.has(i.id));
-    ids.clear();
-    for (let i = 0; i < items.length; i += 50) {
-      const batch = db.batch();
-      items.slice(i, i + 50).forEach(item =>
-        batch.set(userDoc().collection(colName).doc(item.id), item));
-      await batch.commit();
+  // and a bare .set() here would otherwise wipe those every save.
+  // Each step below runs on its own. A Firestore *rules* rejection on one
+  // collection/document ('permission-denied') is recorded and the remaining
+  // steps still run, so one blocked write can't hold every other entry
+  // hostage. Anything else (offline, timeout) aborts the pass so it retries.
+  const denied = [];
+  const step = async (label, fn) => {
+    try { await fn(); }
+    catch (e) {
+      if (!e || e.code !== 'permission-denied') { if (e && !e.saveStep) e.saveStep = label; throw e; }
+      e.saveStep = label; denied.push(e);
+      console.error('Firestore rules rejected a write to ' + label, e);
     }
   };
 
-  // Delete removed records from their subcollection
+  const seq = mainDocSeq;
+  await step('users/' + currentUser.uid, async () => {
+    await withTimeout(ud.set({ balances, lastBankCompare, jobEarnPercent, carMaintenanceIntervals }, { merge: true }));
+    if (mainDocSeq === seq) mainDocDirty = false; // unchanged since we read it
+  });
+
+  // Delete removed records. Deletes run BEFORE upserts so that deleting and
+  // then re-creating the same id (e.g. an odometer date) ends up re-created.
   const deleteItems = async (colName, ids) => {
     if (!ids.size) return;
+    const col = ud.collection(colName);
     const arr = [...ids];
-    ids.clear();
     for (let i = 0; i < arr.length; i += 50) {
+      const chunk = arr.slice(i, i + 50);
       const batch = db.batch();
-      arr.slice(i, i + 50).forEach(id =>
-        batch.delete(userDoc().collection(colName).doc(id)));
-      await batch.commit();
+      chunk.forEach(id => batch.delete(col.doc(id)));
+      await withTimeout(batch.commit());
+      chunk.forEach(id => ids.delete(id)); // acknowledged — only now forget them
     }
   };
 
-  await upsertItems('clients', pendingClientWrites, clients);
-  await upsertItems('jobs',    pendingEventWrites,    lawnEvents);
-  await upsertItems('other',   pendingOtherWrites,  otherMoney);
-  await upsertItems('wishlist', pendingWishlistWrites, wishlist);
-  await upsertItems('pockets', pendingPocketWrites, pockets);
-  await upsertItems('pocketRules', pendingRuleWrites, pocketRules);
-  await upsertItems('recurring', pendingRecurringWrites, recurringRules);
-  await upsertItems('odometer', pendingOdometerWrites, odometerLog);
-  await deleteItems('clients', pendingClientDeletes);
-  await deleteItems('jobs',    pendingEventDeletes);
-  await deleteItems('other',   pendingOtherDeletes);
-  await deleteItems('wishlist', pendingWishlistDeletes);
-  await deleteItems('pockets', pendingPocketDeletes);
-  await deleteItems('pocketRules', pendingRuleDeletes);
-  await deleteItems('recurring', pendingRecurringDeletes);
-  await deleteItems('odometer', pendingOdometerDeletes);
+  // Upsert only changed records. getArr() re-reads the live array after every
+  // await, since the global is reassigned whenever the data changes.
+  const upsertItems = async (colName, ids, getArr) => {
+    if (!ids.size) return;
+    const col = ud.collection(colName);
+    const byId = new Map(getArr().map(i => [i.id, i]));
+    const toWrite = [];
+    [...ids].forEach(id => {
+      const item = byId.get(id);
+      if (item) toWrite.push({ item, snap: JSON.stringify(item) });
+      else ids.delete(id); // record no longer exists locally — nothing to write
+    });
+    for (let i = 0; i < toWrite.length; i += 50) {
+      const chunk = toWrite.slice(i, i + 50);
+      const batch = db.batch();
+      chunk.forEach(({ item }) => batch.set(col.doc(item.id), item));
+      await withTimeout(batch.commit());
+      // Acknowledged. Forget the id only if the record is unchanged since we
+      // sent it; if it was edited meanwhile it stays pending for the next pass.
+      const live = new Map(getArr().map(r => [r.id, r]));
+      chunk.forEach(({ item, snap }) => {
+        const cur = live.get(item.id);
+        if (!cur || JSON.stringify(cur) === snap) ids.delete(item.id);
+      });
+    }
+  };
 
-  // History entries (unchanged)
-  while (pendingHistoryEntries.length > 0) {
-    const chunk = pendingHistoryEntries.splice(0, 50);
-    const batch = db.batch();
-    chunk.forEach(entry => batch.set(historyCol().doc(entry.id), entry));
-    await batch.commit();
-  }
+  await step('users/' + currentUser.uid + '/clients', () => deleteItems('clients', pendingClientDeletes));
+  await step('users/' + currentUser.uid + '/jobs', () => deleteItems('jobs',    pendingEventDeletes));
+  await step('users/' + currentUser.uid + '/other', () => deleteItems('other',   pendingOtherDeletes));
+  await step('users/' + currentUser.uid + '/wishlist', () => deleteItems('wishlist', pendingWishlistDeletes));
+  await step('users/' + currentUser.uid + '/pockets', () => deleteItems('pockets', pendingPocketDeletes));
+  await step('users/' + currentUser.uid + '/pocketRules', () => deleteItems('pocketRules', pendingRuleDeletes));
+  await step('users/' + currentUser.uid + '/recurring', () => deleteItems('recurring', pendingRecurringDeletes));
+  await step('users/' + currentUser.uid + '/odometer', () => deleteItems('odometer', pendingOdometerDeletes));
+  await step('users/' + currentUser.uid + '/clients', () => upsertItems('clients', pendingClientWrites, () => clients));
+  await step('users/' + currentUser.uid + '/jobs', () => upsertItems('jobs',    pendingEventWrites,    () => lawnEvents));
+  await step('users/' + currentUser.uid + '/other', () => upsertItems('other',   pendingOtherWrites,  () => otherMoney));
+  await step('users/' + currentUser.uid + '/wishlist', () => upsertItems('wishlist', pendingWishlistWrites, () => wishlist));
+  await step('users/' + currentUser.uid + '/pockets', () => upsertItems('pockets', pendingPocketWrites, () => pockets));
+  await step('users/' + currentUser.uid + '/pocketRules', () => upsertItems('pocketRules', pendingRuleWrites, () => pocketRules));
+  await step('users/' + currentUser.uid + '/recurring', () => upsertItems('recurring', pendingRecurringWrites, () => recurringRules));
+  await step('users/' + currentUser.uid + '/odometer', () => upsertItems('odometer', pendingOdometerWrites, () => odometerLog));
+
+  // History entries
+  await step('users/' + currentUser.uid + '/history', async () => {
+    while (pendingHistoryEntries.length > 0) {
+      const chunk = pendingHistoryEntries.slice(0, 50);
+      const batch = db.batch();
+      chunk.forEach(entry => batch.set(hc.doc(entry.id), entry));
+      await withTimeout(batch.commit());
+      pendingHistoryEntries = pendingHistoryEntries.filter(e => !chunk.includes(e));
+    }
+  });
+
+  if (denied.length) throw denied[0];
 }
 
+let lastAuthUid = null;
 auth.onAuthStateChanged(user => {
   const area = document.getElementById('auth-area');
+  // A different account (or nobody) — wipe local data and any queued writes so
+  // nothing leaks between accounts or gets applied to the wrong one.
+  if (!user || (lastAuthUid && lastAuthUid !== user.uid)) resetLocalState();
+  lastAuthUid = user ? user.uid : null;
   if (user) {
     currentUser = user;
     // Keep a copy of basic profile info on the user doc — this is the
@@ -2858,7 +3224,7 @@ auth.onAuthStateChanged(user => {
         <img src="${user.photoURL || ''}" onerror="this.style.display='none'" />
         <span>${user.displayName || user.email}</span>
         <button class="admin-badge" id="admin-badge-btn" style="display:none" onclick="openAdminModal()">⚙ admin</button>
-        <button class="btn-signout" onclick="loadFromFirestore()" title="Refresh data">↻ refresh</button>
+        <button class="btn-signout" onclick="refreshData()" title="Refresh data">↻ refresh</button>
         <button class="btn-signout" onclick="signOut()">sign out</button>
       </div>`;
     loadFromFirestore();
@@ -2885,8 +3251,14 @@ function signIn() {
     toast('Sign-in failed — ' + (err.message || err.code || 'please try again'));
   });
 }
-function signOut() {
-  if (confirm('Sign out?')) { detachListeners(); auth.signOut(); }
+async function signOut() {
+  if (!confirm('Sign out?')) return;
+  // Signing out used to throw away anything still waiting in the 0.8s save
+  // delay. Finish saving first, and warn if that isn't possible.
+  const saved = await flushSaves();
+  if (!saved && !confirm('Some recent changes have not finished saving and will be lost if you sign out now. Sign out anyway?')) return;
+  detachListeners();
+  auth.signOut();
 }
 
 // ── Realtime listeners ────────────────────────────────────
@@ -3483,7 +3855,7 @@ function historyCol() { return db.collection('users').doc(currentUser.uid).colle
 // are detached, and every write path is blocked. Nothing touches the DB.
 // On exit (or page refresh), loadFromFirestore() reconnects to real data.
 
-function enterTestMode() {
+async function enterTestMode() {
   if (testMode || !currentUser) return;
   if (!confirm(
     'Enter test mode?\n\n' +
@@ -3492,8 +3864,11 @@ function enterTestMode() {
     'Exit test mode (or refresh the page) to restore your real data.'
   )) return;
 
-  // Cancel any pending debounced save so it doesn\'t fire after we detach
-  clearTimeout(saveTimer);
+  // Save anything still waiting (previously the pending save was just cancelled
+  // here, silently dropping it) before the listeners are detached.
+  const saved = await flushSaves();
+  if (!saved) { alert('Some recent changes have not finished saving yet — try entering test mode again in a moment.'); return; }
+  if (testMode) return; // double-click while waiting
 
   // Deep-copy the entire app state
   testModeSnapshot = {
@@ -3535,7 +3910,10 @@ function exitTestMode() {
   historyLog       = testModeSnapshot.historyLog;
   lastNetCash      = testModeSnapshot.lastNetCash;
   allHistoryLoaded = testModeSnapshot.allHistoryLoaded;
-  pendingHistoryEntries = [];
+  // Test mode records its fake adds/deletes in the pending lists too. If those
+  // survived, the next real save would delete the matching REAL documents.
+  clearAllPending();
+  syncReset();
 
   testModeSnapshot = null;
   testMode = false;
@@ -3563,11 +3941,17 @@ function updateTestModeUI() {
   updateBackupBadge();
 }
 
-// Warn before navigating away or refreshing while in test mode
+// Warn before navigating away or refreshing while in test mode, or while
+// real changes are still waiting to be saved.
 window.addEventListener('beforeunload', e => {
   if (testMode) {
     e.preventDefault();
     return (e.returnValue = 'You\'re in test mode — leaving will discard all test changes.');
+  }
+  if (currentUser && hasUnsavedChanges()) {
+    runSave(); // last-ditch attempt to push it out
+    e.preventDefault();
+    return (e.returnValue = 'Your latest changes are still saving — leaving now could lose them.');
   }
 });
 
@@ -3668,7 +4052,9 @@ function applyDatePicker(textId) {
 }
 
 function logHistory(type, message, extra = {}) {
-  const entry = { id: extra.id || ('h'+Date.now()), type, message, ts: new Date().toISOString(), ...extra };
+  // The counter keeps ids unique when several entries are logged in the same
+  // millisecond (one action often logs 2+) — identical ids overwrote each other.
+  const entry = { id: extra.id || ('h' + Date.now() + '_' + (historySeq++ % 1000)), type, message, ts: new Date().toISOString(), ...extra };
   historyLog.unshift(entry);
   pendingHistoryEntries.push(entry);
 }
@@ -4220,14 +4606,24 @@ async function saveHistory(id) {
   const msg = document.getElementById('hmsg-'+id).value.trim();
   if (!msg) { alert('Message cannot be empty.'); return; }
   historyLog = historyLog.map(h => h.id===id ? {...h, message: msg} : h);
-  if (currentUser && !testMode) await historyCol().doc(id).update({ message: msg });
+  if (currentUser && !testMode) {
+    if (pendingHistoryEntries.some(h => h.id === id)) {
+      // Not written to Firestore yet (update() would fail on a missing doc) — edit the queued copy instead.
+      pendingHistoryEntries = pendingHistoryEntries.map(h => h.id === id ? { ...h, message: msg } : h);
+      save();
+    } else {
+      await trackWrite(() => historyCol().doc(id).update({ message: msg }));
+    }
+  }
   renderAllHistory(); toast('Log entry updated ✓');
 }
 
 async function deleteHistory(id) {
   if (!confirm('Delete this log entry?')) return;
   historyLog = historyLog.filter(h=>h.id!==id);
-  if (currentUser && !testMode) await historyCol().doc(id).delete();
+  // If it was still queued, drop it from the queue so it can't be written back after deleting.
+  pendingHistoryEntries = pendingHistoryEntries.filter(h => h.id !== id);
+  if (currentUser && !testMode) await trackWrite(() => historyCol().doc(id).delete());
   renderAllHistory(); toast('Log entry deleted');
 }
 
@@ -4235,13 +4631,15 @@ async function clearHistory() {
   if (!confirm('Clear ALL history? This includes every job, not just one, and cannot be undone.')) return;
   historyLog = []; pendingHistoryEntries = []; lastHistoryDoc = null; allHistoryLoaded = true;
   if (currentUser && !testMode) {
-    let snap = await historyCol().limit(50).get();
-    while (!snap.empty) {
-      const batch = db.batch();
-      snap.docs.forEach(d => batch.delete(d.ref));
-      await batch.commit();
-      snap = await historyCol().limit(50).get();
-    }
+    await trackWrite(async () => {
+      let snap = await historyCol().limit(50).get();
+      while (!snap.empty) {
+        const batch = db.batch();
+        snap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+        snap = await historyCol().limit(50).get();
+      }
+    });
   }
   renderAllHistory(); toast('History cleared');
 }
@@ -4256,11 +4654,13 @@ async function clearJobHistory(jobId) {
   historyLog = historyLog.filter(h => !ids.includes(h.id));
   pendingHistoryEntries = pendingHistoryEntries.filter(h => !ids.includes(h.id));
   if (currentUser && !testMode) {
-    for (let i = 0; i < ids.length; i += 50) {
-      const batch = db.batch();
-      ids.slice(i, i + 50).forEach(id => batch.delete(historyCol().doc(id)));
-      await batch.commit();
-    }
+    await trackWrite(async () => {
+      for (let i = 0; i < ids.length; i += 50) {
+        const batch = db.batch();
+        ids.slice(i, i + 50).forEach(id => batch.delete(historyCol().doc(id)));
+        await batch.commit();
+      }
+    });
   }
   renderAllHistory(); toast(`${ids.length} entries cleared`);
 }
@@ -4491,7 +4891,7 @@ async function undoPaid(hid) {
     lawnEvents = lawnEvents.map(j=>j.id===h.jobId ? {...j, status:restore, paymentMethod:null, paymentAmount:null} : j);
     pendingEventWrites.add(h.jobId);
     historyLog = historyLog.filter(h=>h.id!==hid);
-    if (currentUser) await historyCol().doc(hid).delete();
+    if (currentUser) await historyCol().doc(hid).delete().catch(e => console.warn('Could not delete the history entry — the undo itself still goes through:', e));
     logHistory('add', `Undid payment — ${label} restored to ${restore}`, { job: getEntryJob(h) });
   }
 
@@ -4503,7 +4903,7 @@ async function undoPaid(hid) {
       pendingEventWrites.add(jid);
     });
     historyLog = historyLog.filter(h=>h.id!==hid);
-    if (currentUser) await historyCol().doc(hid).delete();
+    if (currentUser) await historyCol().doc(hid).delete().catch(e => console.warn('Could not delete the history entry — the undo itself still goes through:', e));
     logHistory('add', `Undid bulk payment — ${h.bulkJobIds.length} events restored`, { job: getEntryJob(h) });
   }
 
@@ -5189,10 +5589,10 @@ async function submitAddJobCode() {
     if (!codeDoc.exists) { errEl.textContent = "That code doesn't match any job."; errEl.style.display = 'block'; return; }
     const jobId = codeDoc.data().jobId;
     if (enabledJobs.includes(jobId)) { errEl.textContent = 'You already have this job.'; errEl.style.display = 'block'; return; }
-    await userDoc().update({
+    await trackWrite(() => userDoc().update({
       enabledJobs: firebase.firestore.FieldValue.arrayUnion(jobId),
       _lastJobCode: code
-    });
+    }));
     enabledJobs = enabledJobs.concat([jobId]);
     closeAddJobModal();
     renderJobsGrid();
@@ -5288,11 +5688,11 @@ function renderAdminUsersList() {
 async function adminToggleUserJob(uid, jobId, enable, btnEl) {
   if (btnEl) btnEl.disabled = true;
   try {
-    await db.collection('users').doc(uid).update({
+    await trackWrite(() => db.collection('users').doc(uid).update({
       enabledJobs: enable
         ? firebase.firestore.FieldValue.arrayUnion(jobId)
         : firebase.firestore.FieldValue.arrayRemove(jobId)
-    });
+    }));
     toast(`${getJob(jobId).label} ${enable ? 'added to' : 'removed from'} that account`);
     // The live listener above re-renders once Firestore confirms the write,
     // so no manual DOM update is needed here.
