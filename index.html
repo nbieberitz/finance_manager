@@ -2923,6 +2923,10 @@ function hasPendingWrites() {
   return mainDocDirty || pendingHistoryEntries.length > 0 || allPendingSets().some(s => s.size > 0);
 }
 function hasUnsavedChanges() { return hasPendingWrites() || !!saveTimer || !!saveRunPromise; }
+// True while anything the user changed isn't confirmed by the server yet:
+// queued / debounced / running saves, plus one-off tracked writes (history
+// edits, job codes, admin toggles, restores) that are still in flight.
+function hasUnconfirmedWrites() { return hasUnsavedChanges() || sync.busy > 0; }
 function clearAllPending() {
   allPendingSets().forEach(s => s.clear());
   pendingHistoryEntries = [];
@@ -3948,10 +3952,12 @@ window.addEventListener('beforeunload', e => {
     e.preventDefault();
     return (e.returnValue = 'You\'re in test mode — leaving will discard all test changes.');
   }
-  if (currentUser && hasUnsavedChanges()) {
-    runSave(); // last-ditch attempt to push it out
+  if (currentUser && hasUnconfirmedWrites()) {
+    if (hasUnsavedChanges()) runSave(); // last-ditch attempt to push it out
     e.preventDefault();
-    return (e.returnValue = 'Your latest changes are still saving — leaving now could lose them.');
+    return (e.returnValue = sync.error
+      ? 'Some changes could NOT be saved yet — leaving now will lose them.'
+      : 'Your latest changes are still saving — leaving now could lose them.');
   }
 });
 
@@ -8626,6 +8632,10 @@ async function wipeAndWriteCollection(colName, items) {
   }
 }
 async function restoreFullState(data) {
+  // trackWrite keeps the unload guard armed for the whole (multi-step) restore.
+  return trackWrite(() => restoreFullStateInner(data));
+}
+async function restoreFullStateInner(data) {
   await wipeAndWriteCollection('clients', data.clients || []);
   await wipeAndWriteCollection('jobs', data.lawnEvents || []);
   await wipeAndWriteCollection('other', data.otherMoney || []);
