@@ -1386,6 +1386,29 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 .aj-toggle.on { color: var(--green); border-color: var(--green-border); background: var(--green-pale); }
 .aj-toggle.off:hover { border-color: var(--text-faint); color: var(--text-muted); }
 .aj-toggle:disabled { opacity: 0.5; cursor: default; }
+.aj-none { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-style: italic; color: var(--text-faint); align-self: center; }
+.aj-add {
+  width: 28px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace; font-size: 16px; line-height: 1;
+  border-radius: var(--radius-pill); border: 1px dashed var(--border-mid); background: transparent;
+  color: var(--text-faint); cursor: pointer;
+  transition: transform 0.2s var(--ease), color 0.15s var(--ease), border-color 0.15s var(--ease), background 0.15s var(--ease);
+}
+.aj-add:hover { color: var(--accent); border-color: var(--accent); }
+.aj-add.open { transform: rotate(45deg); color: var(--accent); border-color: var(--accent); background: var(--accent-pale); }
+.aj-picker { display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--border); padding-top: 8px; animation: modalFade 0.18s var(--ease); }
+.aj-picker-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 4px; }
+.aj-pick-row {
+  display: flex; align-items: center; gap: 9px; padding: 6px 8px; border-radius: var(--radius-sm); cursor: pointer;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted); transition: background 0.15s var(--ease);
+}
+.aj-pick-row:hover { background: var(--surface3); }
+.aj-pick-row.on { color: var(--green); }
+.aj-pick-row input { accent-color: var(--green); width: 15px; height: 15px; margin: 0; cursor: pointer; flex-shrink: 0; }
+.aj-pick-row svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.7; flex-shrink: 0; }
+#aj-confirm-msg strong { color: var(--text); font-weight: 600; }
+.btn-danger { background: var(--red-pale); color: var(--red); border: 1px solid var(--red-border); font-weight: 600; }
+.btn-danger:hover { border-color: var(--red); transform: translateY(-1px); }
 .admin-badge-tag { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--purple-bright); background: var(--purple-pale); border: 1px solid var(--purple-border); border-radius: var(--radius-pill); padding: 1px 6px; }
 
 /* ── Global save indicator (top-right, always on screen) ──────────
@@ -2553,8 +2576,21 @@ html.is-mobile .m-admin-badge-btn { right: 62px; }
 <div class="modal-overlay" id="admin-users-modal">
   <div class="modal-box modal-wide">
     <div class="modal-title"><span style="display:flex;align-items:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Manage Users' Jobs</span><button class="modal-close-x" onclick="closeAdminUsersModal()">✕</button></div>
-    <div class="modal-desc">Tap a job to grant or remove it for that account. Changes apply immediately — this bypasses invite codes entirely.</div>
+    <div class="modal-desc">Green jobs are live for that account — tap one to disable it. Use + to turn more jobs on. Changes apply immediately — this bypasses invite codes entirely.</div>
     <div class="admin-users-list" id="admin-users-list"><div class="empty-state">Loading accounts…</div></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="aj-confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="aj-confirm-title" style="z-index:10004"
+     onmousedown="this.dataset.down = (event.target === this) ? '1' : ''"
+     onclick="if (event.target === this && this.dataset.down === '1') closeAdminConfirm()">
+  <div class="modal-box">
+    <div class="modal-title"><span id="aj-confirm-title">Disable job?</span> <button class="modal-close-x" onclick="closeAdminConfirm()" aria-label="Close">✕</button></div>
+    <div class="modal-desc" id="aj-confirm-msg"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="aj-confirm-cancel" onclick="closeAdminConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="aj-confirm-yes" onclick="adminConfirmDisable()">Disable</button>
+    </div>
   </div>
 </div>
 
@@ -5816,46 +5852,138 @@ function openAdminUsersModal() {
 function closeAdminUsersModal() {
   document.getElementById('admin-users-modal').style.display = 'none';
   if (adminUsersUnsub) { adminUsersUnsub(); adminUsersUnsub = null; }
+  adminPickerUid = null;
+  closeAdminConfirm();
 }
+
+// ── Manage Users' Jobs ───────────────────────────────────────
+// Each account's row lists only the jobs that are live for it (green chips).
+// Clicking a chip asks for confirmation, then disables that job. The "+" at
+// the end of the row opens an inline checklist of every job: ticking one turns
+// it on right away, and unticking a live one shows the same disable
+// confirmation. Every change shows on screen immediately and is rolled back
+// (with a toast) if Firestore rejects it.
+let adminPickerUid = null;   // account whose "+" checklist is open (one at a time)
+let adminConfirmCtx = null;  // { uid, jobId } waiting on the disable confirmation
+
+function ajEsc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function adminUserLabel(u) { return u.displayName || usernameFromEmail(u.email) || u.email || u.uid; }
 
 function renderAdminUsersList() {
   const wrap = document.getElementById('admin-users-list');
   if (!wrap) return;
   if (!adminUsersList.length) { wrap.innerHTML = '<div class="empty-state">No accounts found yet.</div>'; return; }
+  // Re-rendering replaces the DOM, so remember what had keyboard focus and put it back.
+  const ae = document.activeElement;
+  const focusKey = ae && wrap.contains(ae) ? ae.getAttribute('data-fk') : null;
   const jobs = getAllJobs();
   wrap.innerHTML = adminUsersList.map(u => {
     const enabled = Array.isArray(u.enabledJobs) ? u.enabledJobs : [];
-    const jobToggles = jobs.map(j => {
-      const on = enabled.includes(j.id);
-      return `<button class="aj-toggle ${on ? 'on' : 'off'}" onclick="adminToggleUserJob('${u.uid}','${j.id}',${!on},this)">${j.icon}<span>${j.label}${on ? ' ✓' : ''}</span></button>`;
-    }).join('');
+    const uid = ajEsc(u.uid);
+    const who = ajEsc(adminUserLabel(u));
+    const open = adminPickerUid === u.uid;
+    const live = jobs.filter(j => enabled.includes(j.id));
+    const chips = live.length
+      ? live.map(j => `<button class="aj-toggle on" data-uid="${uid}" data-job="${ajEsc(j.id)}" data-fk="${uid}|${ajEsc(j.id)}|chip" title="Click to disable for ${who}" onclick="adminAskDisableJob(this.dataset.uid, this.dataset.job)">${j.icon}<span>${ajEsc(j.label)} ✓</span></button>`).join('')
+      : '<span class="aj-none">No live jobs</span>';
+    const picker = open ? `
+        <div class="aj-picker">
+          <div class="aj-picker-title">Jobs for ${who}</div>
+          ${jobs.map(j => {
+            const on = enabled.includes(j.id);
+            return `<label class="aj-pick-row${on ? ' on' : ''}"><input type="checkbox"${on ? ' checked' : ''} data-uid="${uid}" data-job="${ajEsc(j.id)}" data-fk="${uid}|${ajEsc(j.id)}|pick" onchange="adminPickerChange(this)">${j.icon}<span>${ajEsc(j.label)}</span></label>`;
+          }).join('')}
+        </div>` : '';
     return `
       <div class="admin-user-row">
         <div class="admin-user-head">
-          <img src="${u.photoURL || ''}" onerror="this.style.display='none'" />
+          <img src="${ajEsc(u.photoURL || '')}" onerror="this.style.display='none'" />
           <div class="admin-user-id">
-            <div class="admin-user-name">${u.displayName || usernameFromEmail(u.email) || u.uid}${u.isAdmin ? ' <span class=\"admin-badge-tag\">admin</span>' : ''}</div>
-            <div class="admin-user-email">${u.email || u.uid}</div>
+            <div class="admin-user-name">${who}${u.isAdmin ? ' <span class="admin-badge-tag">admin</span>' : ''}</div>
+            <div class="admin-user-email">${ajEsc(u.email || u.uid)}</div>
           </div>
         </div>
-        <div class="admin-user-jobs">${jobToggles}</div>
+        <div class="admin-user-jobs">${chips}<button class="aj-add${open ? ' open' : ''}" data-uid="${uid}" data-fk="${uid}|add" aria-expanded="${open}" aria-label="Add or remove jobs for ${who}" title="Add or remove jobs" onclick="adminTogglePicker(this.dataset.uid)">+</button></div>${picker}
       </div>`;
   }).join('');
+  if (focusKey) {
+    const el = [...wrap.querySelectorAll('[data-fk]')].find(n => n.getAttribute('data-fk') === focusKey);
+    if (el) el.focus();
+  }
 }
 
-async function adminToggleUserJob(uid, jobId, enable, btnEl) {
-  if (btnEl) btnEl.disabled = true;
+function adminTogglePicker(uid) {
+  adminPickerUid = (adminPickerUid === uid) ? null : uid;
+  renderAdminUsersList();
+}
+
+// Checkbox in the "+" list. Ticking enables the job immediately. Unticking
+// never takes effect by itself: the box snaps back to checked and the same
+// confirmation as the green chips opens; only "Disable" actually turns it off.
+function adminPickerChange(el) {
+  const uid = el.dataset.uid, jobId = el.dataset.job;
+  if (el.checked) { adminToggleUserJob(uid, jobId, true); return; }
+  el.checked = true;
+  adminAskDisableJob(uid, jobId);
+}
+
+function adminAskDisableJob(uid, jobId) {
+  const u = adminUsersList.find(x => x.uid === uid);
+  if (!u) return;
+  adminConfirmCtx = { uid, jobId };
+  document.getElementById('aj-confirm-msg').innerHTML =
+    'Disable <strong>' + ajEsc(getJob(jobId).label) + '</strong> for <strong>' + ajEsc(adminUserLabel(u)) + '</strong>? ' +
+    'It disappears from their live jobs right away. Nothing is deleted, and you can turn it back on with the + button.';
+  document.getElementById('aj-confirm-modal').style.display = 'flex';
+  const cancel = document.getElementById('aj-confirm-cancel');
+  if (cancel) cancel.focus();
+}
+
+function closeAdminConfirm() {
+  adminConfirmCtx = null;
+  const m = document.getElementById('aj-confirm-modal');
+  if (m) m.style.display = 'none';
+}
+
+function adminConfirmDisable() {
+  const ctx = adminConfirmCtx;
+  closeAdminConfirm();
+  if (ctx) adminToggleUserJob(ctx.uid, ctx.jobId, false);
+}
+
+document.addEventListener('keydown', e => {
+  const m = document.getElementById('aj-confirm-modal');
+  if (e.key === 'Escape' && m && m.style.display === 'flex') closeAdminConfirm();
+});
+
+async function adminToggleUserJob(uid, jobId, enable) {
+  const u = adminUsersList.find(x => x.uid === uid);
+  const label = getJob(jobId).label;
+  const who = u ? adminUserLabel(u) : 'that account';
+  // Show the change on screen right away; the live listener then confirms it
+  // (or rolls it back) once Firestore answers.
+  if (u) {
+    const cur = Array.isArray(u.enabledJobs) ? u.enabledJobs : [];
+    u.enabledJobs = enable ? Array.from(new Set(cur.concat([jobId]))) : cur.filter(id => id !== jobId);
+    renderAdminUsersList();
+  }
   try {
     await trackWrite(() => db.collection('users').doc(uid).update({
       enabledJobs: enable
         ? firebase.firestore.FieldValue.arrayUnion(jobId)
         : firebase.firestore.FieldValue.arrayRemove(jobId)
     }));
-    toast(`${getJob(jobId).label} ${enable ? 'added to' : 'removed from'} that account`);
-    // The live listener above re-renders once Firestore confirms the write,
-    // so no manual DOM update is needed here.
+    toast(`${label} ${enable ? 'enabled' : 'disabled'} for ${who}`);
   } catch (e) {
-    if (btnEl) btnEl.disabled = false;
+    // Undo the on-screen change (idempotent — the listener may already have).
+    const now = adminUsersList.find(x => x.uid === uid);
+    if (now) {
+      const list = Array.isArray(now.enabledJobs) ? now.enabledJobs : [];
+      now.enabledJobs = enable ? list.filter(id => id !== jobId) : Array.from(new Set(list.concat([jobId])));
+      renderAdminUsersList();
+    }
     toast('Could not update that account — check Firestore rules.');
   }
 }
