@@ -1323,6 +1323,20 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 .modal-close-x:hover { color: var(--text); }
 .modal-error { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--red); display: none; }
 
+/* Pay-tithe modal — total owed + editable bank/cash split */
+.tithe-total { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; background: var(--accent-pale); border: 1px solid var(--gold-border); border-radius: var(--radius-sm); padding: 10px 14px; }
+.tithe-total-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
+.tithe-total-amt { font-family: 'JetBrains Mono', monospace; font-size: 22px; color: var(--accent-bright); }
+.tithe-split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.tithe-split label { display: flex; flex-direction: column; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
+.tithe-amt { position: relative; }
+.tithe-amt-sign { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-family: 'JetBrains Mono', monospace; font-size: 16px; color: var(--text-faint); pointer-events: none; }
+.tithe-amt input { width: 100%; background: var(--surface2); border: 1px solid var(--border-mid); border-radius: var(--radius-sm); padding: 12px 12px 12px 26px; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 18px; transition: border-color 0.15s var(--ease); }
+.tithe-amt input:focus { outline: none; border-color: var(--accent); }
+.tithe-amt input.invalid { border-color: var(--red); }
+.tithe-warn { display: none; white-space: pre-line; font-family: 'JetBrains Mono', monospace; font-size: 11px; line-height: 1.5; color: var(--amber); }
+#tithe-go-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
 /* 6-digit code entry — large, spaced, monospace so it reads like a PIN */
 .code-input {
   width: 100%; background: var(--surface2); border: 1px solid var(--border-mid);
@@ -2488,6 +2502,36 @@ html.is-mobile .m-admin-badge-btn { right: 62px; }
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeAddJobModal()">Cancel</button>
       <button class="btn btn-primary" onclick="submitAddJobCode()">Add job</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="tithe-modal" role="dialog" aria-modal="true" aria-labelledby="tithe-modal-title"
+     onmousedown="this.dataset.down = (event.target === this) ? '1' : ''"
+     onclick="if (event.target === this && this.dataset.down === '1') closeTitheModal()">
+  <div class="modal-box">
+    <div class="modal-title"><span id="tithe-modal-title">Pay tithe</span> <button class="modal-close-x" onclick="closeTitheModal()" aria-label="Close">✕</button></div>
+    <div class="tithe-total"><span class="tithe-total-label">Total owed</span><span class="tithe-total-amt" id="tithe-total">$0.00</span></div>
+    <div class="modal-desc">Choose how much comes out of each. Change one and the other adjusts so the total stays the same.</div>
+    <div class="tithe-split">
+      <label>Bank
+        <div class="tithe-amt"><span class="tithe-amt-sign">$</span>
+          <input type="text" id="tithe-bank-input" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Bank amount"
+                 oninput="titheModalInput('bank', this)" onkeydown="if (event.key === 'Enter') { event.preventDefault(); submitTithe(); }" />
+        </div>
+      </label>
+      <label>Cash
+        <div class="tithe-amt"><span class="tithe-amt-sign">$</span>
+          <input type="text" id="tithe-cash-input" inputmode="decimal" autocomplete="off" placeholder="—" aria-label="Cash amount"
+                 oninput="titheModalInput('cash', this)" onkeydown="if (event.key === 'Enter') { event.preventDefault(); submitTithe(); }" />
+        </div>
+      </label>
+    </div>
+    <div class="modal-error" id="tithe-error"></div>
+    <div class="tithe-warn" id="tithe-warn"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeTitheModal()">Cancel</button>
+      <button class="btn btn-primary" id="tithe-go-btn" onclick="submitTithe()">Go</button>
     </div>
   </div>
 </div>
@@ -4404,10 +4448,118 @@ function historyEntryHTML(h) {
   </div>`;
 }
 
+// ── Pay tithe modal ──────────────────────────────────────────
+// Opens pre-filled with the bank/cash split the app tracked (computeTithe).
+// The total owed is fixed: editing one box instantly sets the other to
+// (total − what was typed), so the two always add up to exactly what's owed.
+// Amounts outside $0–total are flagged and Go is disabled. Taking more than
+// the current bank/cash balance only shows a warning.
+let titheModalTotalC = 0; // total owed in cents, as of when the modal was (re)opened
+
+function titheMoney(n) { return (n < 0 ? '-' : '') + '$' + Math.abs(n).toFixed(2); }
+
 function payTithe() {
-  const { bank: tb, cash: tc, total } = computeTithe();
+  const { bank, cash, total } = computeTithe();
   if (!total) return;
-  if (!confirm(`Pay tithe of $${total.toFixed(2)}?\n\n$${tb.toFixed(2)} from bank\n$${tc.toFixed(2)} from cash`)) return;
+  titheModalTotalC = Math.round(total * 100);
+  document.getElementById('tithe-total').textContent = titheMoney(total);
+  const bankEl = document.getElementById('tithe-bank-input');
+  document.getElementById('tithe-cash-input').value = cash.toFixed(2);
+  bankEl.value = bank.toFixed(2);
+  titheModalValidate(null);
+  document.getElementById('tithe-modal').style.display = 'flex';
+  bankEl.focus(); bankEl.select();
+}
+
+function closeTitheModal() { document.getElementById('tithe-modal').style.display = 'none'; }
+
+// Only digits, one decimal point (max 2 decimals) and a leading minus are kept
+// while typing; the minus is kept so a negative number can be flagged.
+function titheModalInput(which, el) {
+  const raw = el.value;
+  const neg = /^\s*-/.test(raw);
+  let v = raw.replace(/[^0-9.]/g, '');
+  const dot = v.indexOf('.');
+  if (dot !== -1) v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+  if (neg) v = '-' + v;
+  if (v !== raw) {
+    const caret = Math.max(0, (el.selectionStart == null ? raw.length : el.selectionStart) - (raw.length - v.length));
+    el.value = v;
+    try { el.setSelectionRange(caret, caret); } catch (_) {}
+  }
+  titheModalValidate(which);
+}
+
+// typed = 'bank' | 'cash' (that box drives the other one), or null to just
+// re-check both boxes as they are (used when the modal opens).
+function titheModalValidate(typed) {
+  const bankEl = document.getElementById('tithe-bank-input');
+  const cashEl = document.getElementById('tithe-cash-input');
+  const errEl = document.getElementById('tithe-error');
+  const warnEl = document.getElementById('tithe-warn');
+  const goBtn = document.getElementById('tithe-go-btn');
+  const totalC = titheModalTotalC;
+  bankEl.classList.remove('invalid'); cashEl.classList.remove('invalid');
+  let error = '';
+
+  if (typed) {
+    const src = typed === 'cash' ? cashEl : bankEl;
+    const dst = typed === 'cash' ? bankEl : cashEl;
+    const name = typed === 'cash' ? 'Cash' : 'Bank';
+    const txt = src.value.trim();
+    const n = (txt === '' || txt === '.' || txt === '-' || txt === '-.') ? NaN : parseFloat(txt);
+    if (isNaN(n)) error = 'Enter a dollar amount for ' + name.toLowerCase() + ' (0 is fine).';
+    else if (n < 0) error = name + " can't be negative.";
+    else if (Math.round(n * 100) > totalC) error = name + " can't be more than the " + titheMoney(totalC / 100) + ' owed.';
+    if (error) { src.classList.add('invalid'); dst.value = ''; }
+    else dst.value = ((totalC - Math.round(n * 100)) / 100).toFixed(2);
+  }
+
+  const bankC = Math.round(parseFloat(bankEl.value) * 100);
+  const cashC = Math.round(parseFloat(cashEl.value) * 100);
+  if (!error && !(bankC >= 0 && cashC >= 0 && bankC + cashC === totalC)) error = 'The bank and cash amounts must add up to ' + titheMoney(totalC / 100) + '.';
+
+  errEl.textContent = error;
+  errEl.style.display = error ? 'block' : 'none';
+  goBtn.disabled = !!error;
+
+  // Warning only (never blocks): this split takes more than the current balance.
+  const warns = [];
+  if (!error) {
+    const bal = computeBalances();
+    if (bankC > 0 && bankC > Math.round(bal.bank * 100)) warns.push('Heads up: this takes ' + titheMoney(bankC / 100) + ' from bank, but your bank balance is ' + titheMoney(bal.bank) + '.');
+    if (cashC > 0 && cashC > Math.round(bal.cash * 100)) warns.push('Heads up: this takes ' + titheMoney(cashC / 100) + ' from cash, but your cash on hand is ' + titheMoney(bal.cash) + '.');
+  }
+  warnEl.textContent = warns.join('\n');
+  warnEl.style.display = warns.length ? 'block' : 'none';
+}
+
+function submitTithe() {
+  // The amount owed can change while the window is open (e.g. a change synced
+  // from another device) — never pay a stale total; reopen with fresh numbers.
+  const cur = computeTithe();
+  if (Math.round(cur.total * 100) !== titheModalTotalC) {
+    if (!cur.total) { closeTitheModal(); toast('No tithe is owed anymore'); return; }
+    payTithe();
+    const warnEl = document.getElementById('tithe-warn');
+    warnEl.textContent = 'The amount owed changed while this window was open. Check the new amounts, then press Go.';
+    warnEl.style.display = 'block';
+    return;
+  }
+  const bankC = Math.round(parseFloat(document.getElementById('tithe-bank-input').value) * 100);
+  const cashC = Math.round(parseFloat(document.getElementById('tithe-cash-input').value) * 100);
+  if (!(bankC >= 0 && cashC >= 0 && bankC + cashC === titheModalTotalC)) return; // Go is disabled in this state anyway
+  closeTitheModal();
+  performTithePayment(bankC / 100, cashC / 100);
+}
+
+document.addEventListener('keydown', e => {
+  const m = document.getElementById('tithe-modal');
+  if (e.key === 'Escape' && m && m.style.display === 'flex') closeTitheModal();
+});
+
+function performTithePayment(tb, tc) {
+  const total = Math.round((tb + tc) * 100) / 100;
   // Mark all untithed paid events so they no longer count toward tithe
   const affectedIds = [];
   lawnEvents = lawnEvents.map(j => {
