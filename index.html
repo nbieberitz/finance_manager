@@ -275,6 +275,19 @@ header::after {
 .tithe-pay-btn:hover { background:rgba(245,158,11,0.28); transform: translateY(-1px); }
 .transfer-btn { margin-top:8px; padding:4px 12px; font-size:11px; font-family:'JetBrains Mono',monospace; background:rgba(96,165,250,0.13); border:1px solid rgba(96,165,250,0.4); color:var(--blue); border-radius:var(--radius-pill); cursor:pointer; transition:background 0.18s var(--ease), transform 0.15s var(--ease); }
 .transfer-btn:hover { background:rgba(96,165,250,0.26); transform: translateY(-1px); }
+.transfer-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.transfer-actions .transfer-btn { margin-top:0; }
+/* "Which account(s)?" dialog */
+.bs-list { display:flex; flex-direction:column; gap:8px; max-height:40vh; overflow-y:auto; padding-right:2px; }
+.bs-row { display:grid; grid-template-columns: 1fr 130px auto; align-items:center; gap:10px; }
+.bs-name { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bs-bal { display:block; font-size:10px; color:var(--text-faint); }
+.bs-row .tithe-amt input { font-size:15px; padding:9px 10px 9px 24px; }
+.bs-rest { background:none; border:1px dashed var(--border-mid); color:var(--text-faint); border-radius:var(--radius-pill); font-family:'JetBrains Mono',monospace; font-size:10px; padding:3px 9px; cursor:pointer; }
+.bs-rest:hover { color:var(--accent); border-color:var(--accent); }
+.bs-remaining { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-faint); }
+.bs-remaining.ok { color:var(--green); }
+#bs-go:disabled { opacity:0.4; cursor:not-allowed; transform:none; box-shadow:none; }
 
 .metric-label {
   font-size: 10px;
@@ -1386,6 +1399,12 @@ textarea.backup-input { resize: vertical; min-height: 110px; line-height: 1.5; }
 .aj-toggle.on { color: var(--green); border-color: var(--green-border); background: var(--green-pale); }
 .aj-toggle.off:hover { border-color: var(--text-faint); color: var(--text-muted); }
 .aj-toggle:disabled { opacity: 0.5; cursor: default; }
+.aj-edit { display: inline-flex; align-items: center; gap: 4px; }
+.aj-edit-input { width: 160px; background: var(--surface2); border: 1px solid var(--accent); border-radius: var(--radius-pill); color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 4px 11px; }
+.aj-edit-input:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-pale); }
+.aj-edit-btn { width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 1px solid var(--border-mid); background: transparent; color: var(--text-muted); cursor: pointer; font-size: 12px; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+.aj-edit-btn.ok { color: var(--green); }
+.aj-edit-btn:hover { border-color: var(--accent); color: var(--accent); }
 .aj-none { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-style: italic; color: var(--text-faint); align-self: center; }
 .aj-add {
   width: 28px; height: 24px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
@@ -1623,7 +1642,7 @@ html.is-mobile .m-admin-badge-btn { right: 62px; }
             <option value="gift">Gift / birthday</option>
             <option value="income">Other income</option>
             <option value="expense">Expense</option>
-            <option value="transfer">Transfer (bank ⇄ cash)</option>
+            <option value="transfer">Transfer (move money)</option>
           </select>
         </div>
         <div><label id="om-method-label">Method</label>
@@ -1631,6 +1650,9 @@ html.is-mobile .m-admin-badge-btn { right: 62px; }
             <option value="bank">Bank</option>
             <option value="cash">Cash</option>
           </select>
+        </div>
+        <div id="om-to-wrap" style="display:none"><label>To</label>
+          <select id="om-method-to"></select>
         </div>
         <div><label>Amount ($)</label><input type="number" id="om-amount" placeholder="0.00" min="0" step="0.01" /></div>
         <div id="om-tithe-wrap" style="display:none;align-self:end">
@@ -2321,7 +2343,11 @@ html.is-mobile .m-admin-badge-btn { right: 62px; }
         <div id="rec-amount-wrap"><label id="rec-amount-label">Amount ($) <span style="font-size:10px;color:var(--text-faint);text-transform:none">— blank = client rate</span></label><input type="number" id="rec-amount" min="0" step="0.01" placeholder="0.00" /></div>
         <div id="rec-method-wrap" style="display:none">
           <label>Method</label>
-          <select id="rec-method"><option value="bank">Bank</option><option value="cash">Cash</option></select>
+          <select id="rec-method" onchange="updateRecurringFields()"><option value="bank">Bank</option><option value="cash">Cash</option></select>
+        </div>
+        <div id="rec-acct-wrap" style="display:none">
+          <label>Bank account</label>
+          <select id="rec-acct"></select>
         </div>
         <div id="rec-tithe-wrap" style="display:none;align-self:end">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:0">
@@ -2559,6 +2585,24 @@ html.is-mobile .m-admin-badge-btn { right: 62px; }
   </div>
 </div>
 
+<div class="modal-overlay" id="bank-split-modal" role="dialog" aria-modal="true" aria-labelledby="bs-title" style="z-index:10005"
+     onmousedown="this.dataset.down = (event.target === this) ? '1' : ''"
+     onclick="if (event.target === this && this.dataset.down === '1') bankSplitCancel()">
+  <div class="modal-box">
+    <div class="modal-title"><span id="bs-title">Which account?</span> <button class="modal-close-x" onclick="bankSplitCancel()" aria-label="Close">✕</button></div>
+    <div class="tithe-total"><span class="tithe-total-label" id="bs-total-label">Total</span><span class="tithe-total-amt" id="bs-total">$0.00</span></div>
+    <div class="modal-desc" id="bs-desc"></div>
+    <div class="bs-list" id="bs-list"></div>
+    <div class="bs-remaining" id="bs-remaining"></div>
+    <div class="modal-error" id="bs-error"></div>
+    <div class="tithe-warn" id="bs-warn"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="bankSplitCancel()">Cancel</button>
+      <button class="btn btn-primary" id="bs-go" onclick="bankSplitGo()">Go</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="admin-modal">
   <div class="modal-box modal-wide">
     <div class="modal-title">⚙ Job Admin <button class="modal-close-x" onclick="closeAdminModal()">✕</button></div>
@@ -2568,6 +2612,14 @@ html.is-mobile .m-admin-badge-btn { right: 62px; }
       <div class="modal-desc">See every account and flip any job on or off for them directly — no invite code needed.</div>
       <div class="form-actions" style="margin-top:8px">
         <button class="btn btn-primary" onclick="openAdminUsersModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Manage users' jobs</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="admin-section-label">Bank accounts</div>
+      <div class="modal-desc">Rename a user's bank accounts or add new ones. Users then split their bank money across them.</div>
+      <div class="form-actions" style="margin-top:8px">
+        <button class="btn btn-primary" onclick="openAdminBankModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M3 21h18"/><path d="M5 21V10"/><path d="M19 21V10"/><path d="M9 21V10"/><path d="M15 21V10"/><path d="M12 3 3 8h18z"/></svg>Manage bank accounts</button>
       </div>
     </div>
   </div>
@@ -2591,6 +2643,14 @@ html.is-mobile .m-admin-badge-btn { right: 62px; }
       <button class="btn btn-ghost" id="aj-confirm-cancel" onclick="closeAdminConfirm()">Cancel</button>
       <button class="btn btn-danger" id="aj-confirm-yes" onclick="adminConfirmDisable()">Disable</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="admin-bank-modal">
+  <div class="modal-box modal-wide">
+    <div class="modal-title"><span style="display:flex;align-items:center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:5px"><path d="M3 21h18"/><path d="M5 21V10"/><path d="M19 21V10"/><path d="M9 21V10"/><path d="M15 21V10"/><path d="M12 3 3 8h18z"/></svg>Manage Bank Accounts</span><button class="modal-close-x" onclick="closeAdminBankModal()">✕</button></div>
+    <div class="modal-desc">These are each user's bank accounts (savings, checking…). Click a name to rename it. Use + to add another — there's no limit.</div>
+    <div class="admin-users-list" id="admin-bank-list"><div class="empty-state">Loading accounts…</div></div>
   </div>
 </div>
 
@@ -2783,6 +2843,7 @@ function loadFromFirestore() {
         }).catch(err => console.warn('Could not clear legacy tithe fields:', err));
       }
       isAdmin = d.isAdmin === true;
+      bankAccountsRaw = (d.bankAccounts && typeof d.bankAccounts === 'object') ? d.bankAccounts : {};
       // Don't let a snapshot overwrite these while a local change to them is still unsaved.
       if (!mainDocDirty) {
         lastBankCompare = d.lastBankCompare || '';
@@ -3141,6 +3202,7 @@ function resetLocalState() {
   pockets = []; pocketRules = []; recurringRules = []; odometerLog = [];
   historyLog = []; lastHistoryDoc = null; allHistoryLoaded = false;
   balances = { bank: 0, cash: 0 };
+  bankAccountsRaw = {}; bankSplitLastAcct = null;
   lastBankCompare = ''; jobEarnPercent = {};
   enabledJobs = ['lawn_mowing', 'ca_it']; isAdmin = false;
   clearAllPending();
@@ -3469,7 +3531,7 @@ function generateItCheckFromRule(rule, dateStart) {
 
 function generateOtherFromRule(rule, date) {
   const pocketAllocations = (rule.type === 'income' && !rule.job) ? applyPocketRules(GENERAL_INCOME_JOB_ID, parseFloat(rule.amount)) : [];
-  const newEntry = { id: 'o' + Date.now() + Math.floor(Math.random() * 1000), desc: rule.desc, date, type: rule.type, amount: rule.amount, method: rule.method, recurringId: rule.id, ...(rule.job ? { job: rule.job } : {}), ...(rule.category ? { category: rule.category } : {}), ...(rule.type === 'income' ? { titheDeductible: !!rule.titheDeductible } : {}), ...(pocketAllocations.length ? { pocketAllocations } : {}) };
+  const newEntry = { id: 'o' + Date.now() + Math.floor(Math.random() * 1000), desc: rule.desc, date, type: rule.type, amount: rule.amount, method: rule.method, ...(rule.method === 'bank' && rule.acct ? { bankSplits: [{ acct: rule.acct, amount: roundCents(parseFloat(rule.amount)) }] } : {}), recurringId: rule.id, ...(rule.job ? { job: rule.job } : {}), ...(rule.category ? { category: rule.category } : {}), ...(rule.type === 'income' ? { titheDeductible: !!rule.titheDeductible } : {}), ...(pocketAllocations.length ? { pocketAllocations } : {}) };
   otherMoney.push(newEntry);
   pendingOtherWrites.add(newEntry.id);
   logHistory('other', `Auto-added recurring ${rule.type} — "${rule.desc}" $${parseFloat(rule.amount).toFixed(2)} on ${fmt(date)}`, { job: rule.job ?? null });
@@ -3523,6 +3585,17 @@ function updateRecurringFields() {
   const otherType = document.getElementById('rec-other-type').value;
   document.getElementById('rec-car-category-wrap').style.display = (isOther && otherType === 'expense') ? '' : 'none';
   document.getElementById('rec-method-wrap').style.display = isOther ? '' : 'none';
+  {
+    // Which bank account an automatic bank entry uses (only when there are 2+).
+    const acctWrap = document.getElementById('rec-acct-wrap'), acctSel = document.getElementById('rec-acct');
+    const showAcct = isOther && document.getElementById('rec-method').value === 'bank' && hasMultipleAccounts();
+    acctWrap.style.display = showAcct ? '' : 'none';
+    if (showAcct) {
+      const keep = acctSel.value;
+      acctSel.innerHTML = getBankAccounts().map(a => `<option value="${ajEsc(a.id)}">${ajEsc(a.name)}</option>`).join('');
+      if (keep && getBankAccounts().some(a => a.id === keep)) acctSel.value = keep;
+    }
+  }
   document.getElementById('rec-tithe-wrap').style.display = (isIt || (isOther && otherType === 'income')) ? '' : 'none';
   document.getElementById('rec-amount-label').innerHTML = isLawn
     ? 'Amount ($) <span style="font-size:10px;color:var(--text-faint);text-transform:none">— blank = client rate</span>'
@@ -3564,10 +3637,11 @@ function addRecurringRuleFromForm() {
     const amount = parseFloat(amountRaw);
     const type = document.getElementById('rec-other-type').value;
     const method = document.getElementById('rec-method').value;
+    const recAcct = (method === 'bank' && hasMultipleAccounts()) ? document.getElementById('rec-acct').value : '';
     const carCategory = type === 'expense' ? document.getElementById('rec-car-category').value : '';
     if (!desc) { alert('Enter a description.'); return; }
     if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
-    data = { kind: 'other', job: carCategory ? 'car' : null, ...(carCategory ? { category: carCategory } : {}), desc, amount, type, method, intervalDays, nextDate, ...(type === 'income' ? { titheDeductible: document.getElementById('rec-tithe').checked } : {}) };
+    data = { kind: 'other', job: carCategory ? 'car' : null, ...(carCategory ? { category: carCategory } : {}), desc, amount, type, method, ...(recAcct ? { acct: recAcct } : {}), intervalDays, nextDate, ...(type === 'income' ? { titheDeductible: document.getElementById('rec-tithe').checked } : {}) };
   }
 
   addRecurringRule(data);
@@ -4149,38 +4223,289 @@ function logHistory(type, message, extra = {}) {
 // income/expense entries — every time this is called, instead of being a
 // manually incremented running total. This means there's no longer any way
 // for the displayed balance to drift out of sync with the underlying data.
+// ── Bank accounts ────────────────────────────────────────────
+// A user's bank money is one total divided across named accounts (savings vs
+// checking, etc. — not the same thing as pockets). The list lives on the user's
+// doc as a map, bankAccounts.<id> = { name, created }, which only an admin
+// writes; the user just reads it. The default account always exists, so the
+// list is never empty, and every entry saved before accounts existed (no
+// bankSplits / fromAcct / toAcct on it) simply counts toward that account.
+// Tagging is only added when a user has 2+ accounts, so single-account users'
+// data is exactly what it was before.
+const DEFAULT_ACCT_ID = 'savings';
+const DEFAULT_ACCT_NAME = 'Savings Account';
+let bankAccountsRaw = {};          // the user doc's bankAccounts map, as stored
+let bankSplitLastAcct = null;      // account picked last time (pre-selected next time)
+
+function roundCents(n) { return Math.round(n * 100) / 100; }
+
+function normalizeBankAccounts(rawIn) {
+  const raw = (rawIn && typeof rawIn === 'object') ? rawIn : {};
+  const dflt = raw[DEFAULT_ACCT_ID] || {};
+  const list = [{
+    id: DEFAULT_ACCT_ID,
+    name: (typeof dflt.name === 'string' && dflt.name.trim()) || DEFAULT_ACCT_NAME,
+    created: 0
+  }];
+  Object.keys(raw).filter(id => id !== DEFAULT_ACCT_ID).forEach(id => {
+    const a = raw[id];
+    if (!a || typeof a.name !== 'string' || !a.name.trim()) return;
+    list.push({ id, name: a.name.trim(), created: Number(a.created) || 0 });
+  });
+  const rest = list.slice(1).sort((a, b) => (a.created - b.created) || a.id.localeCompare(b.id));
+  return [list[0]].concat(rest);
+}
+function getBankAccounts() { return normalizeBankAccounts(bankAccountsRaw); }
+function hasMultipleAccounts() { return getBankAccounts().length > 1; }
+// " → Savings Account $10.00, Checking $5.00" for history lines ('' when untagged)
+function acctSuffix(splits) {
+  return (splits && splits.length) ? ' → ' + splits.map(sp => acctName(sp.acct) + ' $' + parseFloat(sp.amount).toFixed(2)).join(', ') : '';
+}
+function acctName(id) {
+  const a = getBankAccounts().find(a => a.id === id);
+  return a ? a.name : (getBankAccounts()[0].name);
+}
+
+// The accounts an entry's bank money went into / came out of, as
+// [{acct, amount}] adding up to `total`. No tags = everything in the default
+// account. If the entry's amount was edited after it was tagged, the
+// difference lands on the first tagged account so the total stays right.
+function bankSplitParts(entry, total) {
+  const ids = new Set(getBankAccounts().map(a => a.id));
+  const raw = Array.isArray(entry.bankSplits) ? entry.bankSplits : [];
+  const parts = raw
+    .filter(sp => sp && isFinite(parseFloat(sp.amount)))
+    .map(sp => ({ acct: ids.has(sp.acct) ? sp.acct : DEFAULT_ACCT_ID, amount: roundCents(parseFloat(sp.amount)) }));
+  if (!parts.length) return [{ acct: DEFAULT_ACCT_ID, amount: total }];
+  const diff = roundCents(total - roundCents(parts.reduce((t, x) => t + x.amount, 0)));
+  if (diff !== 0) parts[0].amount = roundCents(parts[0].amount + diff);
+  return parts;
+}
+
+// Spreads several payments (e.g. a bulk "mark paid") across one set of
+// account amounts, filling the first account's amount first. Works in whole
+// cents so every payment gets splits that add up exactly.
+function allocateSplitsAcross(amounts, splits) {
+  const rem = splits.map(sp => ({ acct: sp.acct, c: Math.round(sp.amount * 100) }));
+  return amounts.map(a => {
+    let need = Math.round(a * 100);
+    const out = [];
+    for (const r of rem) {
+      if (need <= 0) break;
+      if (r.c <= 0) continue;
+      const take = Math.min(r.c, need);
+      out.push({ acct: r.acct, amount: take / 100 });
+      r.c -= take; need -= take;
+    }
+    if (need > 0) { // rounding safety — never lose a cent
+      if (out.length) out[out.length - 1].amount = roundCents(out[out.length - 1].amount + need / 100);
+      else if (rem.length) out.push({ acct: rem[0].acct, amount: need / 100 });
+    }
+    return out;
+  });
+}
+
 function computeBalances() {
-  let bank = 0, cash = 0;
+  const accts = getBankAccounts();
+  const by = {};
+  accts.forEach(a => { by[a.id] = 0; });
+  let cash = 0;
+  const addBank = (parts, sign) => parts.forEach(p => {
+    const id = Object.prototype.hasOwnProperty.call(by, p.acct) ? p.acct : DEFAULT_ACCT_ID;
+    by[id] += sign * p.amount;
+  });
   lawnEvents.forEach(j => {
     // 'uncashed'/'cashed' is the status vocabulary for any periodic-income
     // job (ca_it, or a custom job type of that same kind) — cashed always
     // deposits to bank, matching a paycheck rather than a cash-in-hand job.
     if (j.status === 'cashed' || j.status === 'uncashed') {
-      if (j.status === 'cashed') bank += effectiveEarnings(j);
+      if (j.status === 'cashed') addBank(bankSplitParts(j, effectiveEarnings(j)), 1);
       return;
     }
     if (j.status !== 'paid' || !j.paymentMethod) return;
     const amt = eventAmount(j);
-    if (j.paymentMethod === 'bank') bank += amt;
+    if (j.paymentMethod === 'bank') addBank(bankSplitParts(j, amt), 1);
     else if (j.paymentMethod === 'cash') cash += amt;
   });
   otherMoney.forEach(e => {
     const amt = parseFloat(e.amount) || 0;
     if (e.type === 'transfer') {
-      if (e.fromMethod === 'bank') bank -= amt; else if (e.fromMethod === 'cash') cash -= amt;
-      if (e.toMethod === 'bank') bank += amt; else if (e.toMethod === 'cash') cash += amt;
+      if (e.fromMethod === 'bank') addBank([{ acct: e.fromAcct, amount: amt }], -1); else if (e.fromMethod === 'cash') cash -= amt;
+      if (e.toMethod === 'bank') addBank([{ acct: e.toAcct, amount: amt }], 1); else if (e.toMethod === 'cash') cash += amt;
       return;
     }
     if (!e.method) return; // entries with no recorded method don't move bank/cash
-    const delta = e.type === 'expense' ? -amt : amt;
-    if (e.method === 'bank') bank += delta;
-    else if (e.method === 'cash') cash += delta;
+    const sign = e.type === 'expense' ? -1 : 1;
+    if (e.method === 'bank') addBank(bankSplitParts(e, amt), sign);
+    else if (e.method === 'cash') cash += sign * amt;
   });
-  return {
-    bank: Math.round(bank * 100) / 100,
-    cash: Math.round(cash * 100) / 100
-  };
+  const accounts = {};
+  let bank = 0;
+  accts.forEach(a => { accounts[a.id] = roundCents(by[a.id]); bank += by[a.id]; });
+  return { bank: roundCents(bank), cash: roundCents(cash), accounts };
 }
+
+// Cash block first, then one block per bank account, biggest balance first.
+function summaryCashAndBankHTML(bal) {
+  const accts = getBankAccounts();
+  const multi = accts.length > 1;
+  const ordered = accts
+    .map((a, i) => ({ a, i, amt: (bal.accounts && bal.accounts[a.id]) || 0 }))
+    .sort((x, y) => (y.amt - x.amt) || (x.i - y.i));
+  const cashBlock = `<div class="metric" id="bal-cash-card">
+      <div class="metric-label">Cash on hand</div>
+      <div class="metric-value" id="bal-cash-val" style="color:var(--amber)">$${parseFloat(bal.cash).toFixed(2)}</div>
+      <div class="transfer-actions"><button class="transfer-btn" onclick="quickTransfer('cash-to-bank')">⇄ Move to bank</button></div>
+    </div>`;
+  const bankBlocks = ordered.map(({ a, amt }, n) => `<div class="metric purple bank-acct-card"${n === 0 ? ' id="bal-bank-card"' : ''} data-acct="${ajEsc(a.id)}">
+      <div class="metric-label">${ajEsc(a.name)}</div>
+      <div class="metric-value"${n === 0 ? ' id="bal-bank-val"' : ''}>$${parseFloat(amt).toFixed(2)}</div>
+      <div class="transfer-actions">
+        <button class="transfer-btn" data-acct="${ajEsc(a.id)}" onclick="quickTransfer('bank-to-cash', this.dataset.acct)">⇄ Move to cash</button>${multi ? `
+        <button class="transfer-btn" data-acct="${ajEsc(a.id)}" onclick="quickTransfer('bank-to-bank', this.dataset.acct)">⇄ Move to account</button>` : ''}
+      </div>
+    </div>`).join('');
+  return cashBlock + bankBlocks;
+}
+
+// Mobile overview version (no move buttons there).
+function mobileCashAndBankHTML(balIn) {
+  const bal = (balIn && balIn.accounts) ? balIn : computeBalances();
+  const accts = getBankAccounts();
+  const ordered = accts
+    .map((a, i) => ({ a, i, amt: bal.accounts[a.id] || 0 }))
+    .sort((x, y) => (y.amt - x.amt) || (x.i - y.i));
+  return `<div class="metric"><div class="metric-label">Cash on hand</div><div class="metric-value" style="color:var(--amber)">$${parseFloat(bal.cash).toFixed(2)}</div></div>` +
+    ordered.map(({ a, amt }) => `<div class="metric purple"><div class="metric-label">${ajEsc(a.name)}</div><div class="metric-value">$${parseFloat(amt).toFixed(2)}</div></div>`).join('');
+}
+
+// ── "Which account(s)?" dialog ───────────────────────────────
+// Opened whenever money goes into / out of the bank and the user has more than
+// one account. Resolves to [{acct, amount}] (only amounts > 0, adding up to the
+// total), or null if cancelled. With a single account there is nothing to ask,
+// so it resolves to [] straight away and callers store no tags.
+// opts: { title, direction: 'in' | 'out' }  ('out' also warns — never blocks —
+// when an account would be taken below what it holds)
+let bankSplitCtx = null;
+
+function askBankSplit(total, opts) {
+  opts = opts || {};
+  const accts = getBankAccounts();
+  const totalC = Math.round(total * 100);
+  if (accts.length <= 1 || totalC <= 0) return Promise.resolve([]);
+  if (bankSplitCtx) { const prev = bankSplitCtx; bankSplitCtx = null; prev.resolve(null); }
+  return new Promise(resolve => {
+    const out = opts.direction === 'out';
+    bankSplitCtx = { totalC, resolve, accts, out, bal: computeBalances() };
+    document.getElementById('bs-title').textContent = opts.title || (out ? 'Take it from which account?' : 'Put it in which account?');
+    document.getElementById('bs-total-label').textContent = out ? 'Total to take out' : 'Total to deposit';
+    document.getElementById('bs-total').textContent = titheMoney(totalC / 100);
+    document.getElementById('bs-desc').textContent = accts.length === 2
+      ? 'Change one amount and the other adjusts. You can split it between both.'
+      : 'Split it across your accounts any way you like. The amounts must add up to the total.';
+    const pref = accts.find(a => a.id === bankSplitLastAcct) || accts[0];
+    document.getElementById('bs-list').innerHTML = accts.map((a, i) => `
+      <div class="bs-row">
+        <div class="bs-name">${ajEsc(a.name)}<span class="bs-bal">balance ${titheMoney(bankSplitCtx.bal.accounts[a.id] || 0)}</span></div>
+        <div class="tithe-amt"><span class="tithe-amt-sign">$</span>
+          <input type="text" id="bs-in-${i}" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-label="Amount for ${ajEsc(a.name)}"
+                 value="${a.id === pref.id ? (totalC / 100).toFixed(2) : '0.00'}"
+                 oninput="bankSplitInput(${i}, this)" onkeydown="if (event.key === 'Enter') { event.preventDefault(); bankSplitGo(); }" />
+        </div>
+        ${accts.length > 2 ? `<button type="button" class="bs-rest" onclick="bankSplitRest(${i})" title="Put whatever is left here">rest</button>` : '<span></span>'}
+      </div>`).join('');
+    document.getElementById('bank-split-modal').style.display = 'flex';
+    const first = document.getElementById('bs-in-' + accts.indexOf(pref));
+    if (first) { first.focus(); first.select(); }
+    bankSplitValidate();
+  });
+}
+
+function bankSplitCents(i) {
+  const t = (document.getElementById('bs-in-' + i).value || '').trim();
+  const n = (t === '' || t === '.') ? 0 : parseFloat(t);
+  return isNaN(n) ? 0 : Math.round(n * 100);
+}
+
+function bankSplitInput(i, el) {
+  const ctx = bankSplitCtx; if (!ctx) return;
+  const raw = el.value;
+  let v = raw.replace(/[^0-9.]/g, '');
+  const dot = v.indexOf('.');
+  if (dot !== -1) v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '').slice(0, 2);
+  if (v !== raw) {
+    const caret = Math.max(0, (el.selectionStart == null ? raw.length : el.selectionStart) - (raw.length - v.length));
+    el.value = v;
+    try { el.setSelectionRange(caret, caret); } catch (_) {}
+  }
+  if (ctx.accts.length === 2) { // two accounts: the other box follows, like the tithe popup
+    const other = document.getElementById('bs-in-' + (1 - i));
+    const c = bankSplitCents(i);
+    other.value = c <= ctx.totalC ? ((ctx.totalC - c) / 100).toFixed(2) : '';
+  }
+  bankSplitValidate();
+}
+
+function bankSplitRest(i) {
+  const ctx = bankSplitCtx; if (!ctx) return;
+  let others = 0;
+  ctx.accts.forEach((a, k) => { if (k !== i) others += bankSplitCents(k); });
+  document.getElementById('bs-in-' + i).value = (Math.max(0, ctx.totalC - others) / 100).toFixed(2);
+  bankSplitValidate();
+}
+
+function bankSplitValidate() {
+  const ctx = bankSplitCtx; if (!ctx) return;
+  const cents = ctx.accts.map((a, i) => bankSplitCents(i));
+  const sumC = cents.reduce((t, c) => t + c, 0);
+  const diff = ctx.totalC - sumC;
+  const remEl = document.getElementById('bs-remaining');
+  const errEl = document.getElementById('bs-error');
+  const warnEl = document.getElementById('bs-warn');
+  let error = '';
+  if (diff < 0) error = 'Over by ' + titheMoney(-diff / 100) + ' — the amounts must add up to ' + titheMoney(ctx.totalC / 100) + '.';
+  remEl.textContent = diff > 0 ? (titheMoney(diff / 100) + ' left to place') : (diff === 0 ? 'Fully placed ✓' : '');
+  remEl.classList.toggle('ok', diff === 0);
+  errEl.textContent = error;
+  errEl.style.display = error ? 'block' : 'none';
+  ctx.accts.forEach((a, i) => document.getElementById('bs-in-' + i).classList.toggle('invalid', diff < 0 && cents[i] > 0));
+  const warns = [];
+  if (ctx.out && !error) {
+    ctx.accts.forEach((a, i) => {
+      if (cents[i] > 0 && cents[i] > Math.round((ctx.bal.accounts[a.id] || 0) * 100)) {
+        warns.push('Heads up: this takes ' + titheMoney(cents[i] / 100) + ' from ' + a.name + ', but its balance is ' + titheMoney(ctx.bal.accounts[a.id] || 0) + '.');
+      }
+    });
+  }
+  warnEl.textContent = warns.join('\n');
+  warnEl.style.display = warns.length ? 'block' : 'none';
+  document.getElementById('bs-go').disabled = diff !== 0;
+}
+
+function bankSplitGo() {
+  const ctx = bankSplitCtx; if (!ctx) return;
+  const cents = ctx.accts.map((a, i) => bankSplitCents(i));
+  if (cents.reduce((t, c) => t + c, 0) !== ctx.totalC) return; // Go is disabled in this state anyway
+  const splits = [];
+  ctx.accts.forEach((a, i) => { if (cents[i] > 0) splits.push({ acct: a.id, amount: cents[i] / 100 }); });
+  const biggest = splits.slice().sort((x, y) => y.amount - x.amount)[0];
+  if (biggest) bankSplitLastAcct = biggest.acct;
+  bankSplitCtx = null;
+  document.getElementById('bank-split-modal').style.display = 'none';
+  ctx.resolve(splits);
+}
+
+function bankSplitCancel() {
+  const ctx = bankSplitCtx;
+  bankSplitCtx = null;
+  document.getElementById('bank-split-modal').style.display = 'none';
+  if (ctx) ctx.resolve(null);
+}
+
+document.addEventListener('keydown', e => {
+  const m = document.getElementById('bank-split-modal');
+  if (e.key === 'Escape' && m && m.style.display === 'flex') { e.stopImmediatePropagation(); bankSplitCancel(); }
+});
 
 function computeTithe() {
   // "Other income" is tithe-deductible only when its own checkbox says so
@@ -4393,8 +4718,8 @@ function renderOtherMoney() {
           ? `<td class="mono" style="color:var(--blue)">$${parseFloat(e.amount).toFixed(2)}</td>`
           : `<td class="mono ${isExp?'amount-neg':'amount-pos'}">${isExp?'-':'+'}$${parseFloat(e.amount).toFixed(2)}</td>`;
         const methodCell = isTransfer
-          ? `<td class="mono">${e.fromMethod==='cash'?'Cash':'Bank'} → ${e.toMethod==='cash'?'Cash':'Bank'}</td>`
-          : `<td class="mono">${e.method ? (e.method==='cash'?'Cash':'Bank') : '—'}</td>`;
+          ? `<td class="mono">${transferEndLabel(e.fromMethod, e.fromAcct)} → ${transferEndLabel(e.toMethod, e.toAcct)}</td>`
+          : `<td class="mono">${e.method ? entryMethodLabel(e) : '—'}</td>`;
         return `<tr id="orow-${e.id}">
           <td class="mono">${fmt(e.date)}</td>
           <td>${e.desc}</td>
@@ -4444,16 +4769,7 @@ function render() {
       <div class="metric-sub">${titheOwed>0?`$${tithe.bank.toFixed(2)} bank · $${tithe.cash.toFixed(2)} cash`:'10% of paid events + other income'}</div>
       ${titheOwed>0?`<button class="tithe-pay-btn" onclick="payTithe()">Pay tithe</button>`:''}
     </div>
-    <div class="metric purple" id="bal-bank-card">
-      <div class="metric-label">In bank</div>
-      <div class="metric-value" id="bal-bank-val">$${parseFloat(balances.bank).toFixed(2)}</div>
-      <button class="transfer-btn" onclick="quickTransfer('bank-to-cash')">⇄ Move to cash</button>
-    </div>
-    <div class="metric" id="bal-cash-card">
-      <div class="metric-label">Cash on hand</div>
-      <div class="metric-value" id="bal-cash-val" style="color:var(--amber)">$${parseFloat(balances.cash).toFixed(2)}</div>
-      <button class="transfer-btn" onclick="quickTransfer('cash-to-bank')">⇄ Move to bank</button>
-    </div>
+    ${summaryCashAndBankHTML(balances)}
   `;
 
 renderPaidEvents();
@@ -4570,7 +4886,7 @@ function titheModalValidate(typed) {
   warnEl.style.display = warns.length ? 'block' : 'none';
 }
 
-function submitTithe() {
+async function submitTithe() {
   // The amount owed can change while the window is open (e.g. a change synced
   // from another device) — never pay a stale total; reopen with fresh numbers.
   const cur = computeTithe();
@@ -4585,8 +4901,15 @@ function submitTithe() {
   const bankC = Math.round(parseFloat(document.getElementById('tithe-bank-input').value) * 100);
   const cashC = Math.round(parseFloat(document.getElementById('tithe-cash-input').value) * 100);
   if (!(bankC >= 0 && cashC >= 0 && bankC + cashC === titheModalTotalC)) return; // Go is disabled in this state anyway
+  // The bank part comes out of one or more accounts. The tithe popup stays open
+  // underneath, so cancelling the account dialog just returns to it untouched.
+  let splits = [];
+  if (bankC > 0) {
+    splits = await askBankSplit(bankC / 100, { direction: 'out', title: 'Take the tithe from which account?' });
+    if (splits === null) return;
+  }
   closeTitheModal();
-  performTithePayment(bankC / 100, cashC / 100);
+  performTithePayment(bankC / 100, cashC / 100, splits);
 }
 
 document.addEventListener('keydown', e => {
@@ -4594,7 +4917,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && m && m.style.display === 'flex') closeTitheModal();
 });
 
-function performTithePayment(tb, tc) {
+function performTithePayment(tb, tc, splits) {
   const total = Math.round((tb + tc) * 100) / 100;
   // Mark all untithed paid events so they no longer count toward tithe
   const affectedIds = [];
@@ -4614,7 +4937,7 @@ function performTithePayment(tb, tc) {
   affectedOtherIds.forEach(id => pendingOtherWrites.add(id));
   const today = new Date().toISOString().slice(0,10);
   if (tb > 0) {
-    const e1 = {id:'o'+Date.now()+'b', desc:'Tithe', date:today, type:'expense', amount:tb, method:'bank'};
+    const e1 = {id:'o'+Date.now()+'b', desc:'Tithe', date:today, type:'expense', amount:tb, method:'bank', ...(splits && splits.length ? { bankSplits: splits } : {})};
     otherMoney.push(e1);
     pendingOtherWrites.add(e1.id);
   }
@@ -4624,7 +4947,7 @@ function performTithePayment(tb, tc) {
     pendingOtherWrites.add(e2.id);
   }
   const parts = [];
-  if (tb>0) parts.push(`$${tb.toFixed(2)} from bank`);
+  if (tb>0) parts.push(`$${tb.toFixed(2)} from bank${acctSuffix(splits)}`);
   if (tc>0) parts.push(`$${tc.toFixed(2)} from cash`);
   logHistory('add', `Tithe paid — $${total.toFixed(2)} (${parts.join(', ')})`, { job: null });
   save(); render(); toast(`Tithe of $${total.toFixed(2)} paid ✓`);
@@ -4633,7 +4956,7 @@ function performTithePayment(tb, tc) {
 function unpayEvent(id) {
   const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? {...jb, status: 'unpaid', paymentMethod: null, paymentAmount: null} : jb);
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? {...jb, status: 'unpaid', paymentMethod: null, paymentAmount: null, bankSplits: null} : jb);
   pendingEventWrites.add(id);
   logHistory('add', `Restored event to unpaid — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`, { job: currentJobId });
   save(); render(); reopenPanel(j.client); toast('Event moved back to unpaid ✓');
@@ -4952,15 +5275,33 @@ async function bulkMarkPaid() {
       if (!m) continue; // skip this event if cancelled
       const amount = eventAmount(j);
       const prev = j.status;
+      let splits = [];
+      if (m === 'bank') {
+        splits = await askBankSplit(amount, { direction: 'in', title: 'Deposit into which account?' });
+        if (splits === null) continue; // cancelled — skip this event
+      }
       const allocations = applyPocketRules(jobOf(j), amount);
-      lawnEvents = lawnEvents.map(jb => jb.id===j.id ? {...jb, status:'paid', paymentMethod:m, paymentAmount:amount, ...(allocations.length?{pocketAllocations:allocations}:{})} : jb);
+      lawnEvents = lawnEvents.map(jb => jb.id===j.id ? {...jb, status:'paid', paymentMethod:m, paymentAmount:amount, bankSplits:splits.length?splits:null, ...(allocations.length?{pocketAllocations:allocations}:{})} : jb);
       pendingEventWrites.add(j.id);
-      logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${m})`, { jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount, job: currentJobId });
+      logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${m}${acctSuffix(splits)})`, { jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount, job: currentJobId });
       affectedPocketIds.push(...allocations.map(a => a.pocketId));
     }
     save(); render(); updateBulkBar(); toast(`Events marked as paid ✓`);
     if (affectedPocketIds.length) await checkPocketsForGoalCompletion(affectedPocketIds);
     return;
+  }
+
+  // One bank deposit covering the whole batch: ask once for the account split,
+  // then spread it over the events in order (each event keeps its own exact
+  // splits, so undoing or deleting one stays correct).
+  const splitsByJob = {};
+  if (method === 'bank') {
+    const batchSplits = await askBankSplit(jobs.reduce((t, j) => t + eventAmount(j), 0), { direction: 'in', title: 'Deposit into which account(s)?' });
+    if (batchSplits === null) return;
+    if (batchSplits.length) {
+      const per = allocateSplitsAcross(jobs.map(j => eventAmount(j)), batchSplits);
+      jobs.forEach((j, k) => { splitsByJob[j.id] = per[k]; });
+    }
   }
 
   // Group by client
@@ -5001,7 +5342,7 @@ async function bulkMarkPaid() {
     });
   });
 
-  lawnEvents = lawnEvents.map(j => ids.includes(j.id) ? {...j, status:'paid', paymentMethod:method, ...(allocationsByJobId[j.id]?{pocketAllocations:allocationsByJobId[j.id]}:{})} : j);
+  lawnEvents = lawnEvents.map(j => ids.includes(j.id) ? {...j, status:'paid', paymentMethod:method, bankSplits:splitsByJob[j.id]||null, ...(allocationsByJobId[j.id]?{pocketAllocations:allocationsByJobId[j.id]}:{})} : j);
   ids.forEach(id => pendingEventWrites.add(id));
   save(); render(); updateBulkBar(); toast(`${jobs.length} events marked as paid ✓`);
   if (affectedPocketIds.length) await checkPocketsForGoalCompletion(affectedPocketIds);
@@ -5058,10 +5399,16 @@ async function markPaid(id) {
   const j=lawnEvents.find(j=>j.id===id);
   const prev=j.status;
   const amount=eventAmount(j);
+  // Bank payment + more than one account: ask which account(s) it lands in.
+  let splits = [];
+  if (method === 'bank') {
+    splits = await askBankSplit(amount, { direction: 'in', title: 'Deposit into which account?' });
+    if (splits === null) return;
+  }
   const allocations = applyPocketRules(jobOf(j), amount);
-  lawnEvents=lawnEvents.map(j=>j.id===id?{...j,status:'paid',paymentMethod:method,paymentAmount:amount,...(allocations.length?{pocketAllocations:allocations}:{})}:j);
+  lawnEvents=lawnEvents.map(j=>j.id===id?{...j,status:'paid',paymentMethod:method,paymentAmount:amount,bankSplits:splits.length?splits:null,...(allocations.length?{pocketAllocations:allocations}:{})}:j);
   pendingEventWrites.add(id);
-  logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${method})`, { jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount, job: currentJobId });
+  logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${method}${acctSuffix(splits)})`, { jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount, job: currentJobId });
   save(); render(); reopenPanel(j.client); toast('Marked as paid ✓');
   if (allocations.length) await checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
 }
@@ -5082,7 +5429,7 @@ async function undoPaid(hid) {
     const label = job.client
       ? `${job.client} event (${fmt(job.date)})`
       : genericEntryLabel(job, getJob(getEntryJob(h)).config || {});
-    lawnEvents = lawnEvents.map(j=>j.id===h.jobId ? {...j, status:restore, paymentMethod:null, paymentAmount:null} : j);
+    lawnEvents = lawnEvents.map(j=>j.id===h.jobId ? {...j, status:restore, paymentMethod:null, paymentAmount:null, bankSplits:null} : j);
     pendingEventWrites.add(h.jobId);
     historyLog = historyLog.filter(h=>h.id!==hid);
     if (currentUser) await historyCol().doc(hid).delete().catch(e => console.warn('Could not delete the history entry — the undo itself still goes through:', e));
@@ -5093,7 +5440,7 @@ async function undoPaid(hid) {
   if (h.bulkJobIds) {
     h.bulkJobIds.forEach(jid => {
       const prev = h.prevStatuses?.[jid] || 'unpaid';
-      lawnEvents = lawnEvents.map(j=>j.id===jid ? {...j, status:prev, paymentMethod:null, paymentAmount:null} : j);
+      lawnEvents = lawnEvents.map(j=>j.id===jid ? {...j, status:prev, paymentMethod:null, paymentAmount:null, bankSplits:null} : j);
       pendingEventWrites.add(jid);
     });
     historyLog = historyLog.filter(h=>h.id!==hid);
@@ -5145,9 +5492,12 @@ async function addEvent() {
   // land (no bank/cash split) and can't be counted toward balance or tithe.
   if (status === 'paid') {
     const method = await promptPaymentMethod();
-    if (method) {
+    let splits = [];
+    if (method === 'bank') splits = await askBankSplit(amount, { direction: 'in', title: 'Deposit into which account?' });
+    if (method && splits !== null) {
       newJob.paymentMethod = method;
       newJob.paymentAmount = amount;
+      if (splits.length) newJob.bankSplits = splits;
       const allocations = applyPocketRules(jobOf(newJob), amount);
       if (allocations.length) newJob.pocketAllocations = allocations;
     } else {
@@ -5285,7 +5635,7 @@ function renderItHistory() {
   if (extras.length) wrap.innerHTML += `<div style="padding:10px 1.25rem;border-top:1px solid var(--border);text-align:center;display:flex;gap:8px;justify-content:center">${extras.join('')}</div>`;
 }
 
-function addItCheck() {
+async function addItCheck() {
   const dateStart = parseFlexibleDate(document.getElementById('it-start').value);
   const dateEnd   = parseFlexibleDate(document.getElementById('it-end').value);
   const amount    = parseFloat(document.getElementById('it-amount').value);
@@ -5293,8 +5643,13 @@ function addItCheck() {
   const titheDeductible = document.getElementById('it-tithe').checked;
   if (!dateStart || !dateEnd) { alert('Enter a valid pay period.'); return; }
   if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
+  let splits = [];
+  if (status === 'cashed') {
+    splits = await askBankSplit(effectiveEarnings({ amount, job: 'ca_it' }), { direction: 'in', title: 'Deposit the paycheck into which account?' });
+    if (splits === null) return;
+  }
   const allocations = status === 'cashed' ? applyPocketRules('ca_it', effectiveEarnings({ amount, job: 'ca_it' })) : [];
-  const newCheck = { id: 'it' + Date.now(), job: 'ca_it', dateStart, dateEnd, amount, status, titheDeductible, ...(allocations.length ? { pocketAllocations: allocations } : {}) };
+  const newCheck = { id: 'it' + Date.now(), job: 'ca_it', dateStart, dateEnd, amount, status, titheDeductible, ...(splits.length ? { bankSplits: splits } : {}), ...(allocations.length ? { pocketAllocations: allocations } : {}) };
   lawnEvents.push(newCheck);
   pendingEventWrites.add(newCheck.id);
   logHistory('add', `Added paycheck — ${itCheckLabel(newCheck)} ($${amount.toFixed(2)}, ${status === 'cashed' ? 'cashed' : 'not cashed'}${titheDeductible ? ', tithe' : ''})`, { job: 'ca_it' });
@@ -5325,13 +5680,16 @@ function quickRepeatItCheck(id) {
   toast('Paycheck repeated for today ✓');
 }
 
-function markCheckCashed(id) {
+async function markCheckCashed(id) {
   const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
   const prev = j.status;
   const amount = eventAmount(j);
+  // A cashed paycheck always deposits to the bank — with 2+ accounts, ask which.
+  const splits = await askBankSplit(effectiveEarnings(j), { direction: 'in', title: 'Deposit the paycheck into which account?' });
+  if (splits === null) return;
   const allocations = applyPocketRules('ca_it', effectiveEarnings(j));
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', bankSplits: splits.length ? splits : null, ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
   pendingEventWrites.add(id);
   logHistory('paid', `Marked paycheck cashed — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { jobId: id, prevStatus: prev, job: 'ca_it' });
   save(); render(); renderJobsGrid(); toast('Check marked as cashed ✓');
@@ -5342,7 +5700,7 @@ function uncashCheck(id) {
   const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
   reversePocketAllocations(j, 'check moved back to not cashed');
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', tithePaid: false, pocketAllocations: [] } : jb);
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', tithePaid: false, pocketAllocations: [], bankSplits: null } : jb);
   pendingEventWrites.add(id);
   logHistory('add', `Reversed cashed — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { job: 'ca_it' });
   save(); render(); renderJobsGrid(); toast('Check moved back to uncashed');
@@ -5650,13 +6008,16 @@ async function addGenericEntry(jobId) {
   save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); toast(`${cfg.entryNoun || 'Entry'} added ✓`);
 }
 
-function markGenericCashed(jobId, id) {
+async function markGenericCashed(jobId, id) {
   const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
   const prev = j.status;
   const amount = eventAmount(j);
+  // Cashed entries deposit to the bank — with 2+ accounts, ask which.
+  const splits = await askBankSplit(effectiveEarnings(j), { direction: 'in', title: 'Deposit into which account?' });
+  if (splits === null) return;
   const allocations = applyPocketRules(jobId, effectiveEarnings(j));
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', bankSplits: splits.length ? splits : null, ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
   pendingEventWrites.add(id);
   logHistory('paid', `Marked ${getJob(jobId).label} cashed — ${genericEntryLabel(j, getJob(jobId).config || {})} ($${amount.toFixed(2)})`, { jobId: id, prevStatus: prev, job: jobId });
   save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast('Marked as cashed ✓');
@@ -5667,7 +6028,7 @@ function uncashGenericEntry(jobId, id) {
   const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
   reversePocketAllocations(j, 'moved back to uncashed');
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', tithePaid: false, pocketAllocations: [] } : jb);
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', tithePaid: false, pocketAllocations: [], bankSplits: null } : jb);
   pendingEventWrites.add(id);
   logHistory('add', `Reversed cashed — ${genericEntryLabel(j, getJob(jobId).config || {})} ($${eventAmount(j).toFixed(2)})`, { job: jobId });
   save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast('Moved back to uncashed');
@@ -5856,6 +6217,132 @@ function closeAdminUsersModal() {
   closeAdminConfirm();
 }
 
+// ── Manage Bank Accounts (admin) ─────────────────────────────
+// One row per account holder, each bank account shown as a green chip. Click a
+// chip to rename it in place; the + chip adds another (unlimited). Accounts
+// are stored on that user's doc as bankAccounts.<id> = { name, created } — only
+// an admin writes them, and the default "Savings Account" always exists. Like
+// the jobs panel, a change shows on screen immediately and is rolled back (with
+// a toast) if Firestore rejects it.
+let adminBankUnsub = null;
+let adminBankUsers = [];
+let adminBankEdit = null;   // { uid, mode: 'rename', id } | { uid, mode: 'add' } — inline editor currently open
+
+const BANK_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18"/><path d="M5 21V10"/><path d="M19 21V10"/><path d="M9 21V10"/><path d="M15 21V10"/><path d="M12 3 3 8h18z"/></svg>';
+
+function openAdminBankModal() {
+  document.getElementById('admin-bank-modal').style.display = 'flex';
+  adminBankEdit = null;
+  renderAdminBankList();
+  if (adminBankUnsub) adminBankUnsub();
+  adminBankUnsub = db.collection('users').onSnapshot(snap => {
+    adminBankUsers = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    adminBankUsers.sort((a, b) =>
+      (a.displayName || usernameFromEmail(a.email) || a.uid).localeCompare(b.displayName || usernameFromEmail(b.email) || b.uid));
+    renderAdminBankList();
+  }, () => {
+    document.getElementById('admin-bank-list').innerHTML =
+      '<div class="modal-error" style="display:block">Could not load accounts — check the Firestore rules allow an admin to list the users collection.</div>';
+  });
+}
+
+function closeAdminBankModal() {
+  document.getElementById('admin-bank-modal').style.display = 'none';
+  if (adminBankUnsub) { adminBankUnsub(); adminBankUnsub = null; }
+  adminBankEdit = null;
+}
+
+function renderAdminBankList() {
+  const wrap = document.getElementById('admin-bank-list');
+  if (!wrap) return;
+  // A snapshot can arrive while a name is half-typed — keep the draft.
+  const liveInput = document.getElementById('aj-bank-input');
+  if (adminBankEdit && liveInput && wrap.contains(liveInput)) adminBankEdit.draft = liveInput.value;
+  if (!adminBankUsers.length) { wrap.innerHTML = '<div class="empty-state">No accounts found yet.</div>'; return; }
+  const ed = adminBankEdit;
+  const editor = (value, placeholder) => `<span class="aj-edit">
+      <input class="aj-edit-input" id="aj-bank-input" maxlength="40" placeholder="${ajEsc(placeholder)}" value="${ajEsc(value)}" aria-label="Account name" onkeydown="adminBankKey(event)" />
+      <button class="aj-edit-btn ok" onclick="adminBankCommit()" aria-label="Save" title="Save">✓</button>
+      <button class="aj-edit-btn" onclick="adminBankCancel()" aria-label="Cancel" title="Cancel">✕</button>
+    </span>`;
+  wrap.innerHTML = adminBankUsers.map(u => {
+    const uid = ajEsc(u.uid);
+    const who = ajEsc(adminUserLabel(u));
+    const accts = normalizeBankAccounts(u.bankAccounts);
+    const chips = accts.map(a => {
+      if (ed && ed.uid === u.uid && ed.mode === 'rename' && ed.id === a.id) return editor(ed.draft != null ? ed.draft : a.name, 'Account name');
+      return `<button class="aj-toggle on" data-uid="${uid}" data-acct="${ajEsc(a.id)}" title="Click to rename" onclick="adminBankStartRename(this.dataset.uid, this.dataset.acct)">${BANK_ICON_SVG}<span>${ajEsc(a.name)}</span></button>`;
+    }).join('');
+    const adding = ed && ed.uid === u.uid && ed.mode === 'add';
+    const tail = adding
+      ? editor(ed.draft != null ? ed.draft : '', 'New account name')
+      : `<button class="aj-add" data-uid="${uid}" aria-label="Add a bank account for ${who}" title="Add a bank account" onclick="adminBankStartAdd(this.dataset.uid)">+</button>`;
+    return `
+      <div class="admin-user-row">
+        <div class="admin-user-head">
+          <img src="${ajEsc(u.photoURL || '')}" onerror="this.style.display='none'" />
+          <div class="admin-user-id">
+            <div class="admin-user-name">${who}${u.isAdmin ? ' <span class="admin-badge-tag">admin</span>' : ''}</div>
+            <div class="admin-user-email">${ajEsc(u.email || u.uid)}</div>
+          </div>
+        </div>
+        <div class="admin-user-jobs">${chips}${tail}</div>
+      </div>`;
+  }).join('');
+  const inp = document.getElementById('aj-bank-input');
+  if (inp && ed) { inp.focus(); try { if (ed.draft == null) inp.select(); else inp.setSelectionRange(inp.value.length, inp.value.length); } catch (_) {} }
+}
+
+function adminBankStartRename(uid, id) { adminBankEdit = { uid, mode: 'rename', id }; renderAdminBankList(); }
+function adminBankStartAdd(uid) { adminBankEdit = { uid, mode: 'add' }; renderAdminBankList(); }
+function adminBankCancel() { adminBankEdit = null; renderAdminBankList(); }
+function adminBankKey(e) {
+  if (e.key === 'Enter') { e.preventDefault(); adminBankCommit(); }
+  else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); adminBankCancel(); }
+}
+
+async function adminBankCommit() {
+  const ed = adminBankEdit; if (!ed) return;
+  const inp = document.getElementById('aj-bank-input');
+  const name = ((inp && inp.value) || '').trim().replace(/\s+/g, ' ');
+  if (!name) { toast('Enter a name for the account'); if (inp) inp.focus(); return; }
+  const u = adminBankUsers.find(x => x.uid === ed.uid); if (!u) { adminBankCancel(); return; }
+  const who = adminUserLabel(u);
+  const accts = normalizeBankAccounts(u.bankAccounts);
+  if (accts.some(a => a.id !== ed.id && a.name.toLowerCase() === name.toLowerCase())) {
+    toast(who + ' already has an account named "' + name + '"'); if (inp) inp.focus(); return;
+  }
+  if (ed.mode === 'rename') {
+    const cur = accts.find(a => a.id === ed.id);
+    if (cur && cur.name === name) { adminBankCancel(); return; } // nothing changed
+  }
+  const prevRaw = u.bankAccounts;
+  const raw = Object.assign({}, prevRaw || {});
+  let id, payload;
+  if (ed.mode === 'add') {
+    id = 'ba' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const created = Date.now();
+    raw[id] = { name, created };
+    payload = { ['bankAccounts.' + id]: { name, created } };
+  } else {
+    id = ed.id;
+    raw[id] = Object.assign({}, raw[id] || {}, { name });
+    payload = { ['bankAccounts.' + id + '.name']: name };
+  }
+  // Show it right away; the live listener confirms it (or rolls it back).
+  u.bankAccounts = raw;
+  adminBankEdit = null;
+  renderAdminBankList();
+  try {
+    await trackWrite(() => db.collection('users').doc(ed.uid).update(payload));
+    toast(ed.mode === 'add' ? ('Added "' + name + '" for ' + who) : ('Renamed to "' + name + '" for ' + who));
+  } catch (e) {
+    const now = adminBankUsers.find(x => x.uid === ed.uid);
+    if (now) { now.bankAccounts = prevRaw; renderAdminBankList(); }
+    toast('Could not update that account — check Firestore rules.');
+  }
+}
+
 // ── Manage Users' Jobs ───────────────────────────────────────
 // Each account's row lists only the jobs that are live for it (green chips).
 // Clicking a chip asks for confirmation, then disables that job. The "+" at
@@ -5988,33 +6475,91 @@ async function adminToggleUserJob(uid, jobId, enable) {
   }
 }
 
+// Transfer endpoints are 'cash' or 'bank:<accountId>'. A user with a single
+// bank account keeps the original "Bank → Cash / Cash → Bank" direction list.
+function transferEndpointOptions(selected) {
+  const opts = [`<option value="cash"${selected === 'cash' ? ' selected' : ''}>Cash</option>`];
+  getBankAccounts().forEach(a => opts.push(`<option value="bank:${ajEsc(a.id)}"${selected === 'bank:' + a.id ? ' selected' : ''}>${ajEsc(a.name)}</option>`));
+  return opts.join('');
+}
+function parseTransferEndpoint(v) {
+  if (v === 'cash') return { method: 'cash', acct: null };
+  if (typeof v === 'string' && v.indexOf('bank:') === 0) return { method: 'bank', acct: v.slice(5) };
+  return null;
+}
+// "Cash" / "Savings Account" (or just "Bank" for a single-account user)
+function transferEndLabel(method, acct) {
+  if (method === 'cash') return 'Cash';
+  return hasMultipleAccounts() ? ajEsc(acctName(acct || DEFAULT_ACCT_ID)) : 'Bank';
+}
+// Method column for income / expense / gift rows
+function entryMethodLabel(e) {
+  if (e.method === 'cash') return 'Cash';
+  if (!hasMultipleAccounts()) return 'Bank';
+  const parts = Array.isArray(e.bankSplits) ? e.bankSplits.filter(x => x && parseFloat(x.amount) > 0) : [];
+  if (parts.length > 1) return 'Split · ' + parts.length + ' accounts';
+  return ajEsc(acctName(parts.length ? parts[0].acct : DEFAULT_ACCT_ID));
+}
+
 function updateOmFields() {
   const type = document.getElementById('om-type').value;
   document.getElementById('om-tithe-wrap').style.display = type === 'income' ? '' : 'none';
   const sel = document.getElementById('om-method');
+  const toSel = document.getElementById('om-method-to');
+  const toWrap = document.getElementById('om-to-wrap');
   const label = document.getElementById('om-method-label');
   const desc = document.getElementById('om-desc');
   if (type === 'transfer') {
-    sel.innerHTML = `<option value="bank-to-cash">Bank → Cash</option><option value="cash-to-bank">Cash → Bank</option>`;
-    label.textContent = 'Direction';
+    if (hasMultipleAccounts()) {
+      const valid = v => !!parseTransferEndpoint(v) && (v === 'cash' || getBankAccounts().some(a => 'bank:' + a.id === v));
+      const prevFrom = sel.value, prevTo = toSel.value;
+      sel.innerHTML = transferEndpointOptions(valid(prevFrom) ? prevFrom : 'bank:' + getBankAccounts()[0].id);
+      toSel.innerHTML = transferEndpointOptions(valid(prevTo) ? prevTo : 'cash');
+      label.textContent = 'From';
+      toWrap.style.display = '';
+    } else {
+      sel.innerHTML = `<option value="bank-to-cash">Bank → Cash</option><option value="cash-to-bank">Cash → Bank</option>`;
+      label.textContent = 'Direction';
+      toWrap.style.display = 'none';
+    }
     desc.placeholder = 'Optional note';
   } else {
-    if (sel.options[0] && sel.options[0].value === 'bank-to-cash') {
+    if (sel.options[0] && sel.options[0].value !== 'bank') {
       sel.innerHTML = `<option value="bank">Bank</option><option value="cash">Cash</option>`;
     }
+    toWrap.style.display = 'none';
     label.textContent = 'Method';
     desc.placeholder = 'e.g. Birthday money';
   }
 }
 
-// Quick-access buttons on the bank/cash balance cards: open the Income &
-// Expenses form pre-set to Transfer with the right direction already chosen.
-function quickTransfer(direction) {
+// Quick-access buttons on the balance cards: open the Income & Expenses form
+// pre-set to Transfer with the right places already chosen. direction is
+// 'bank-to-cash', 'cash-to-bank' or (2+ accounts) 'bank-to-bank'; acctId is the
+// account whose card was clicked.
+function quickTransfer(direction, acctId) {
   const form = document.getElementById('other-form');
   form.classList.add('open');
   document.getElementById('om-type').value = 'transfer';
   updateOmFields();
-  document.getElementById('om-method').value = direction;
+  const fromSel = document.getElementById('om-method');
+  if (hasMultipleAccounts()) {
+    const toSel = document.getElementById('om-method-to');
+    const accts = getBankAccounts();
+    const bal = computeBalances();
+    const byBalance = accts.slice().sort((a, b) => (bal.accounts[b.id] || 0) - (bal.accounts[a.id] || 0));
+    const src = (acctId && accts.some(a => a.id === acctId)) ? acctId : byBalance[0].id;
+    if (direction === 'cash-to-bank') {
+      fromSel.value = 'cash'; toSel.value = 'bank:' + src;
+    } else if (direction === 'bank-to-bank') {
+      const other = byBalance.find(a => a.id !== src);
+      fromSel.value = 'bank:' + src; toSel.value = 'bank:' + (other ? other.id : src);
+    } else {
+      fromSel.value = 'bank:' + src; toSel.value = 'cash';
+    }
+  } else {
+    fromSel.value = direction === 'cash-to-bank' ? 'cash-to-bank' : 'bank-to-cash';
+  }
   form.scrollIntoView({ behavior: 'smooth', block: 'center' });
   document.getElementById('om-amount').focus();
 }
@@ -6039,7 +6584,7 @@ function setJobEarnPercent(jobId, value) {
   render();
 }
 
-function addOtherMoney() {
+async function addOtherMoney() {
   const descRaw = document.getElementById('om-desc').value.trim();
   const date    = parseFlexibleDate(document.getElementById('om-date').value);
   const type    = document.getElementById('om-type').value;
@@ -6048,18 +6593,33 @@ function addOtherMoney() {
 
   let newEntry, historyMsg;
   if (type === 'transfer') {
-    const dir = document.getElementById('om-method').value;
-    const fromMethod = dir === 'bank-to-cash' ? 'bank' : 'cash';
-    const toMethod   = dir === 'bank-to-cash' ? 'cash' : 'bank';
+    let fromMethod, toMethod, fromAcct = null, toAcct = null;
+    if (hasMultipleAccounts()) {
+      const f = parseTransferEndpoint(document.getElementById('om-method').value);
+      const t = parseTransferEndpoint(document.getElementById('om-method-to').value);
+      if (!f || !t) { alert('Choose where the money moves from and to.'); return; }
+      if (f.method === t.method && f.acct === t.acct) { alert('Pick two different places to move money between.'); return; }
+      fromMethod = f.method; toMethod = t.method; fromAcct = f.acct; toAcct = t.acct;
+    } else {
+      const dir = document.getElementById('om-method').value;
+      fromMethod = dir === 'bank-to-cash' ? 'bank' : 'cash';
+      toMethod   = dir === 'bank-to-cash' ? 'cash' : 'bank';
+    }
     const desc = descRaw || 'Transfer';
-    newEntry = {id:'o'+Date.now(), desc, date, type:'transfer', amount, fromMethod, toMethod};
-    historyMsg = `Transferred $${amount.toFixed(2)} — ${fromMethod} → ${toMethod}${descRaw ? ' ('+descRaw+')' : ''}`;
+    newEntry = {id:'o'+Date.now(), desc, date, type:'transfer', amount, fromMethod, toMethod, ...(fromAcct ? { fromAcct } : {}), ...(toAcct ? { toAcct } : {})};
+    const endText = (m, a) => hasMultipleAccounts() ? (m === 'cash' ? 'cash' : acctName(a)) : m;
+    historyMsg = `Transferred $${amount.toFixed(2)} — ${endText(fromMethod, fromAcct)} → ${endText(toMethod, toAcct)}${descRaw ? ' ('+descRaw+')' : ''}`;
   } else {
     if (!descRaw) { alert('Please enter a description.'); return; }
     const method = document.getElementById('om-method').value;
     const titheDeductible = type === 'income' ? document.getElementById('om-tithe').checked : false;
+    let splits = [];
+    if (method === 'bank') {
+      splits = await askBankSplit(amount, { direction: type === 'expense' ? 'out' : 'in' });
+      if (splits === null) return;
+    }
     const pocketAllocations = type === 'income' ? applyPocketRules(GENERAL_INCOME_JOB_ID, amount) : [];
-    newEntry = {id:'o'+Date.now(), desc:descRaw, date, type, amount, method, titheDeductible, ...(pocketAllocations.length ? { pocketAllocations } : {})};
+    newEntry = {id:'o'+Date.now(), desc:descRaw, date, type, amount, method, titheDeductible, ...(splits.length ? { bankSplits: splits } : {}), ...(pocketAllocations.length ? { pocketAllocations } : {})};
     historyMsg = `Added ${type} — "${descRaw}" $${amount.toFixed(2)} on ${fmt(date)} (${method})`;
   }
   otherMoney.push(newEntry);
@@ -6083,7 +6643,7 @@ function quickRepeatOther(id) {
   if (e.type === 'transfer') { toast("Transfers can't be quick-repeated — add a new one"); return; }
   const today = todayISO();
   const amount = parseFloat(e.amount);
-  const newEntry = { id: 'o' + Date.now(), desc: e.desc, date: today, type: e.type, amount, method: e.method, ...(e.type === 'income' ? { titheDeductible: e.titheDeductible !== false } : {}) };
+  const newEntry = { id: 'o' + Date.now(), desc: e.desc, date: today, type: e.type, amount, method: e.method, ...(e.method === 'bank' && Array.isArray(e.bankSplits) && e.bankSplits.length ? { bankSplits: e.bankSplits } : {}), ...(e.type === 'income' ? { titheDeductible: e.titheDeductible !== false } : {}) };
   otherMoney.push(newEntry);
   pendingOtherWrites.add(newEntry.id);
   logHistory('other', `Repeated ${e.type} — "${e.desc}" $${amount.toFixed(2)} on ${fmt(today)}`, { job: null });
@@ -6158,10 +6718,6 @@ function editOther(id) {
   const row = document.getElementById('orow-'+id);
   row.classList.add('edit-row');
   const isTransfer = e.type === 'transfer';
-  const dirVal = isTransfer ? (e.fromMethod === 'bank' ? 'bank-to-cash' : 'cash-to-bank') : null;
-  const methodOptions = isTransfer
-    ? `<option value="bank-to-cash"${dirVal==='bank-to-cash'?' selected':''}>Bank → Cash</option><option value="cash-to-bank"${dirVal==='cash-to-bank'?' selected':''}>Cash → Bank</option>`
-    : `<option value="bank"${e.method!=='cash'?' selected':''}>Bank</option><option value="cash"${e.method==='cash'?' selected':''}>Cash</option>`;
   row.innerHTML = `
     <td><div class="date-field">
       <input id="eo-date-${id}" type="text" value="${isoToDisplay(e.date)}" placeholder="MM/DD/YYYY" />
@@ -6174,29 +6730,64 @@ function editOther(id) {
       <option value="gift"${e.type==='gift'?' selected':''}>Gift / birthday</option>
       <option value="income"${e.type==='income'?' selected':''}>Other income</option>
       <option value="expense"${e.type==='expense'?' selected':''}>Expense</option>
-      <option value="transfer"${isTransfer?' selected':''}>Transfer (bank ⇄ cash)</option>
+      <option value="transfer"${isTransfer?' selected':''}>Transfer (move money)</option>
     </select>
     <div id="eo-tithe-wrap-${id}" style="display:${e.type==='income'?'':'none'};margin-top:6px">
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer;margin-bottom:0;font-size:11px">
         <input type="checkbox" id="eo-tithe-${id}"${e.titheDeductible!==false?' checked':''} /> Tithe-deductible
       </label>
     </div></td>
-    <td><select id="eo-method-${id}">${methodOptions}</select></td>
+    <td id="eo-mcell-${id}" data-kind="${isTransfer ? 'transfer' : 'other'}">${eoMethodCellInner(id, e, e.type)}</td>
     <td><div class="row-actions">
       <button class="act-btn save" onclick="saveOther('${id}')">save</button>
       <button class="act-btn" onclick="render()">cancel</button>
     </div></td>`;
 }
 
+// The "method" cell of an entry's edit row. Transfers: where from / to (or the
+// original direction list for a single-account user). Everything else: Bank /
+// Cash, plus (2+ accounts, Bank) which account it is in.
+function eoMethodCellInner(id, e, type) {
+  const multi = hasMultipleAccounts();
+  const wasTransfer = !!e && e.type === 'transfer';
+  if (type === 'transfer') {
+    if (multi) {
+      const fromV = wasTransfer ? (e.fromMethod === 'bank' ? 'bank:' + (e.fromAcct || DEFAULT_ACCT_ID) : 'cash') : 'bank:' + DEFAULT_ACCT_ID;
+      const toV = wasTransfer ? (e.toMethod === 'bank' ? 'bank:' + (e.toAcct || DEFAULT_ACCT_ID) : 'cash') : 'cash';
+      return `<select id="eo-method-${id}" aria-label="From">${transferEndpointOptions(fromV)}</select>` +
+        `<div style="margin:4px 0 2px;font-size:10px;color:var(--text-faint);font-family:'JetBrains Mono',monospace">to</div>` +
+        `<select id="eo-method-to-${id}" aria-label="To">${transferEndpointOptions(toV)}</select>`;
+    }
+    const dirVal = wasTransfer ? (e.fromMethod === 'bank' ? 'bank-to-cash' : 'cash-to-bank') : 'bank-to-cash';
+    return `<select id="eo-method-${id}"><option value="bank-to-cash"${dirVal==='bank-to-cash'?' selected':''}>Bank → Cash</option><option value="cash-to-bank"${dirVal==='cash-to-bank'?' selected':''}>Cash → Bank</option></select>`;
+  }
+  const m = (e && e.type !== 'transfer' && e.method === 'cash') ? 'cash' : 'bank';
+  let html = `<select id="eo-method-${id}" onchange="toggleEoAcct('${id}')"><option value="bank"${m==='bank'?' selected':''}>Bank</option><option value="cash"${m==='cash'?' selected':''}>Cash</option></select>`;
+  if (multi) {
+    const splits = (e && Array.isArray(e.bankSplits)) ? e.bankSplits.filter(x => x && parseFloat(x.amount) > 0) : [];
+    const cur = splits.length > 1 ? '__keep' : (splits.length === 1 ? splits[0].acct : DEFAULT_ACCT_ID);
+    const opts = getBankAccounts().map(a => `<option value="${ajEsc(a.id)}"${cur === a.id ? ' selected' : ''}>${ajEsc(a.name)}</option>`).join('') +
+      (splits.length > 1 ? `<option value="__keep" selected>Split — keep as is</option>` : '');
+    html += `<select id="eo-acct-${id}" aria-label="Bank account" style="margin-top:6px;display:${m==='bank'?'':'none'}">${opts}</select>`;
+  }
+  return html;
+}
+function toggleEoAcct(id) {
+  const acct = document.getElementById('eo-acct-' + id);
+  if (acct) acct.style.display = document.getElementById('eo-method-' + id).value === 'bank' ? '' : 'none';
+}
+
 function toggleEoTithe(id) {
   const wrap = document.getElementById('eo-tithe-wrap-'+id);
   const type = document.getElementById('eo-type-'+id).value;
   wrap.style.display = type === 'income' ? '' : 'none';
-  const sel = document.getElementById('eo-method-'+id);
-  if (type === 'transfer') {
-    sel.innerHTML = `<option value="bank-to-cash">Bank → Cash</option><option value="cash-to-bank">Cash → Bank</option>`;
-  } else if (sel.options[0] && sel.options[0].value === 'bank-to-cash') {
-    sel.innerHTML = `<option value="bank">Bank</option><option value="cash">Cash</option>`;
+  // Switching between "transfer" and a normal entry swaps the whole method cell;
+  // switching between normal kinds (gift / income / expense) keeps the choice made.
+  const cell = document.getElementById('eo-mcell-'+id);
+  const kind = type === 'transfer' ? 'transfer' : 'other';
+  if (cell && cell.dataset.kind !== kind) {
+    cell.innerHTML = eoMethodCellInner(id, otherMoney.find(x => x.id === id), type);
+    cell.dataset.kind = kind;
   }
 }
 
@@ -6210,15 +6801,32 @@ function saveOther(id) {
   const old = otherMoney.find(e=>e.id===id);
   let updated, desc;
   if (type === 'transfer') {
-    const fromMethod = methodVal === 'bank-to-cash' ? 'bank' : 'cash';
-    const toMethod   = methodVal === 'bank-to-cash' ? 'cash' : 'bank';
+    let fromMethod, toMethod, fromAcct = null, toAcct = null;
+    if (hasMultipleAccounts()) {
+      const f = parseTransferEndpoint(methodVal);
+      const t = parseTransferEndpoint((document.getElementById('eo-method-to-'+id) || {}).value);
+      if (!f || !t) { alert('Choose where the money moves from and to.'); return; }
+      if (f.method === t.method && f.acct === t.acct) { alert('Pick two different places to move money between.'); return; }
+      fromMethod = f.method; toMethod = t.method; fromAcct = f.acct; toAcct = t.acct;
+    } else {
+      fromMethod = methodVal === 'bank-to-cash' ? 'bank' : 'cash';
+      toMethod   = methodVal === 'bank-to-cash' ? 'cash' : 'bank';
+    }
     desc = descRaw || 'Transfer';
-    updated = {...old, date, desc, amount, type, fromMethod, toMethod, method:null, titheDeductible:false};
+    updated = {...old, date, desc, amount, type, fromMethod, toMethod, fromAcct, toAcct, method:null, titheDeductible:false, bankSplits:null};
   } else {
     if (!descRaw) { alert('Please enter a description.'); return; }
     desc = descRaw;
     const titheDeductible = type === 'income' ? document.getElementById('eo-tithe-'+id).checked : false;
-    updated = {...old, date, desc, amount, type, method:methodVal, titheDeductible, fromMethod:null, toMethod:null};
+    // Bank accounts: cash has none; with 2+ accounts the picked account replaces any
+    // earlier tagging unless the entry was split and the user left it "as is".
+    let bankSplits = Array.isArray(old.bankSplits) && old.bankSplits.length ? old.bankSplits : null;
+    if (methodVal !== 'bank') bankSplits = null;
+    else if (hasMultipleAccounts()) {
+      const aSel = document.getElementById('eo-acct-'+id);
+      if (aSel && aSel.value && aSel.value !== '__keep') bankSplits = [{ acct: aSel.value, amount: roundCents(amount) }];
+    }
+    updated = {...old, date, desc, amount, type, method:methodVal, titheDeductible, fromMethod:null, toMethod:null, fromAcct:null, toAcct:null, bankSplits};
   }
   otherMoney = otherMoney.map(e => e.id===id ? updated : e);
   pendingOtherWrites.add(id);
@@ -6513,7 +7121,7 @@ function updateCarExpenseFormFields() {
   document.getElementById('car-exp-maint-type-wrap').style.display = cat === 'maintenance' ? '' : 'none';
 }
 
-function addCarExpense() {
+async function addCarExpense() {
   const category = document.getElementById('car-exp-category').value;
   const descRaw  = document.getElementById('car-exp-desc').value.trim();
   const date     = parseFlexibleDate(document.getElementById('car-exp-date').value);
@@ -6528,9 +7136,13 @@ function addCarExpense() {
     const avg = avgFillUpAmount();
     if (avg && amount > avg * 1.75 && !confirm(`That's $${amount.toFixed(2)} — well above your usual fill-up (around $${avg.toFixed(2)}). Add it anyway?`)) return;
   }
+  // Car expenses are always paid from the bank — with 2+ accounts, ask which.
+  const carSplits = await askBankSplit(amount, { direction: 'out', title: 'Pay this from which account?' });
+  if (carSplits === null) return;
   const desc = descRaw || ({ gas: 'Gas', insurance: 'Insurance', maintenance: 'Maintenance', registration: 'Registration' }[category] || 'Car expense');
   const newEntry = {
     id: 'o' + Date.now(), desc, date, type: 'expense', amount, method: 'bank',
+    ...(carSplits.length ? { bankSplits: carSplits } : {}),
     job: 'car', category,
     ...(category === 'gas' ? { gallons: parseFloat(gallonsRaw), filledToFull } : {}),
     ...(category === 'maintenance' && maintType ? { maintType } : {})
@@ -7747,8 +8359,13 @@ async function showPocketPurchaseFlow(pocketId) {
 
   const method = await _promptPurchaseMethod(pocket);
   if (!method) return;
+  let splits = [];
+  if (method === 'bank') {
+    splits = await askBankSplit(pocket.balance || 0, { direction: 'out', title: 'Pay for it from which account?' });
+    if (splits === null) return;
+  }
 
-  _completePurchase(pocketId, method);
+  _completePurchase(pocketId, method, splits);
 }
 
 function _promptPurchaseMethod(pocket) {
@@ -7777,7 +8394,7 @@ function _promptPurchaseMethod(pocket) {
   });
 }
 
-function _completePurchase(pocketId, method) {
+function _completePurchase(pocketId, method, splits) {
   const pocket = getPocket(pocketId);
   if (!pocket) return;
 
@@ -7793,7 +8410,8 @@ function _completePurchase(pocketId, method) {
     date: today,
     type: 'expense',
     amount: purchaseAmount,
-    method
+    method,
+    ...(splits && splits.length ? { bankSplits: splits } : {})
   };
   otherMoney.push(expEntry);
   pendingOtherWrites.add(expId);
@@ -8549,8 +9167,8 @@ function renderRpDashboard() {
         <div class="metric-value">$${titheOwed.toFixed(2)}</div>
         <div class="metric-sub">${titheOwed>0?`$${tithe.bank.toFixed(2)} bank · $${tithe.cash.toFixed(2)} cash`:'10% of paid events + other income'}</div>
       </div>
-      <div class="metric purple"><div class="metric-label">In bank</div><div class="metric-value">$${parseFloat(bal.bank||0).toFixed(2)}</div></div>
       <div class="metric"><div class="metric-label">Cash on hand</div><div class="metric-value" style="color:var(--amber)">$${parseFloat(bal.cash||0).toFixed(2)}</div></div>
+      <div class="metric purple"><div class="metric-label">In bank</div><div class="metric-value">$${parseFloat(bal.bank||0).toFixed(2)}</div></div>
     </div>
 
     <section>
@@ -9066,10 +9684,7 @@ function renderMobileOverview(d) {
       <div class="metric-value">$${d.titheOwed.toFixed(2)}</div>
       <div class="metric-sub">${d.titheOwed>0?`$${d.tithe.bank.toFixed(2)} bank · $${d.tithe.cash.toFixed(2)} cash`:'10% of paid events + other income'}</div>
     </div>
-    <div class="m-overview-pair">
-      <div class="metric purple"><div class="metric-label">In bank</div><div class="metric-value">$${parseFloat(d.balances.bank).toFixed(2)}</div></div>
-      <div class="metric"><div class="metric-label">Cash on hand</div><div class="metric-value" style="color:var(--amber)">$${parseFloat(d.balances.cash).toFixed(2)}</div></div>
-    </div>
+    <div class="m-overview-pair">${mobileCashAndBankHTML(d.balances)}</div>
   `;
   // Reuses the exact desktop chart renderers, just pointed at the mobile
   // element ids — and always the full history, since mobile has no
@@ -9276,8 +9891,8 @@ function renderMobileIncomeExpenses() {
     const amt = isTransfer ? `<div class="m-card-value" style="color:var(--blue)">$${parseFloat(e.amount).toFixed(2)}</div>`
       : `<div class="m-card-value ${isExp?'amount-neg':'amount-pos'}">${isExp?'-':'+'}$${parseFloat(e.amount).toFixed(2)}</div>`;
     const methodLine = isTransfer
-      ? `${e.fromMethod==='cash'?'Cash':'Bank'} → ${e.toMethod==='cash'?'Cash':'Bank'}`
-      : (e.method ? (e.method==='cash'?'Cash':'Bank') : '—');
+      ? `${transferEndLabel(e.fromMethod, e.fromAcct)} → ${transferEndLabel(e.toMethod, e.toAcct)}`
+      : (e.method ? entryMethodLabel(e) : '—');
     return `<div class="m-card">
       <div class="m-card-row">
         <div class="m-card-title">${e.desc}</div>
