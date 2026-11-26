@@ -4126,7 +4126,7 @@ function earnPercentFor(jobId) {
 // on that $200, not the raw $1000. Jobs with no override behave exactly as
 // before (100% — effectiveEarnings === eventAmount).
 function effectiveEarnings(j) {
-  return Math.round(eventAmount(j) * earnPercentFor(jobOf(j)) / 100 * 100) / 100;
+  return ceilCents(eventAmount(j) * earnPercentFor(jobOf(j)) / 100);
 }
 
 function fmt(d) { const [y,m,dy] = d.split('-'); return `${parseInt(m)}/${parseInt(dy)}/${y.slice(2)}`; }
@@ -4238,6 +4238,9 @@ let bankAccountsRaw = {};          // the user doc's bankAccounts map, as stored
 let bankSplitLastAcct = null;      // account picked last time (pre-selected next time)
 
 function roundCents(n) { return Math.round(n * 100) / 100; }
+// Always rounds UP to the next cent. The inner round strips floating-point noise
+// (e.g. 29 * 0.1 = 2.9000000000000004) so an exact cent amount never bumps up a cent.
+function ceilCents(n) { return Math.ceil(Math.round(n * 100 * 1e6) / 1e6) / 100; }
 
 function normalizeBankAccounts(rawIn) {
   const raw = (rawIn && typeof rawIn === 'object') ? rawIn : {};
@@ -4511,20 +4514,20 @@ function computeTithe() {
   // "Other income" is tithe-deductible only when its own checkbox says so
   // (defaults to true for entries created before this option existed).
   // Gift/birthday and expense entries are never eligible regardless.
-  const bank = Math.round((
+  const bank = ceilCents((
     lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && j.titheDeductible !== false && !j.tithePaid)
             .reduce((s, j) => s + eventAmount(j), 0) +
     lawnEvents.filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid)
             .reduce((s, j) => s + effectiveEarnings(j), 0) +
     otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method !== 'cash' && !e.tithePaid)
               .reduce((s, e) => s + parseFloat(e.amount), 0)
-  ) * 0.1 * 100) / 100;
-  const cash = Math.round((
+  ) * 0.1);
+  const cash = ceilCents((
     lawnEvents.filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && j.titheDeductible !== false && !j.tithePaid)
             .reduce((s, j) => s + eventAmount(j), 0) +
     otherMoney.filter(e => e.type === 'income' && e.titheDeductible !== false && e.method === 'cash' && !e.tithePaid)
               .reduce((s, e) => s + parseFloat(e.amount), 0)
-  ) * 0.1 * 100) / 100;
+  ) * 0.1);
   return { bank, cash, total: Math.round((bank + cash) * 100) / 100 };
 }
 
@@ -8790,7 +8793,7 @@ function rpEarnPercentFor(jobId) {
 // own jobEarnPercent instead of the live global. Backups taken before this
 // field existed have no jobEarnPercent, so every job falls back to 100%.
 function rpEffectiveEarnings(j) {
-  return Math.round(rpEventAmount(j) * rpEarnPercentFor(rpJobOf(j)) / 100 * 100) / 100;
+  return ceilCents(rpEventAmount(j) * rpEarnPercentFor(rpJobOf(j)) / 100);
 }
 function rpComputeBalances() {
   let bank = 0, cash = 0;
@@ -8819,20 +8822,20 @@ function rpComputeBalances() {
   return { bank: Math.round(bank * 100) / 100, cash: Math.round(cash * 100) / 100 };
 }
 function rpComputeTithe() {
-  const bank = Math.round((
+  const bank = ceilCents((
     (rpData.lawnEvents||[]).filter(j => j.status === 'paid' && j.paymentMethod === 'bank' && j.titheDeductible !== false && !j.tithePaid)
       .reduce((s,j)=>s+rpEventAmount(j),0) +
     (rpData.lawnEvents||[]).filter(j => j.status === 'cashed' && j.titheDeductible && !j.tithePaid)
       .reduce((s,j)=>s+rpEffectiveEarnings(j),0) +
     (rpData.otherMoney||[]).filter(e => e.type === 'income' && e.titheDeductible !== false && e.method !== 'cash' && !e.tithePaid)
       .reduce((s,e)=>s+parseFloat(e.amount),0)
-  ) * 0.1 * 100) / 100;
-  const cash = Math.round((
+  ) * 0.1);
+  const cash = ceilCents((
     (rpData.lawnEvents||[]).filter(j => j.status === 'paid' && j.paymentMethod === 'cash' && j.titheDeductible !== false && !j.tithePaid)
       .reduce((s,j)=>s+rpEventAmount(j),0) +
     (rpData.otherMoney||[]).filter(e => e.type === 'income' && e.titheDeductible !== false && e.method === 'cash' && !e.tithePaid)
       .reduce((s,e)=>s+parseFloat(e.amount),0)
-  ) * 0.1 * 100) / 100;
+  ) * 0.1);
   return { bank, cash, total: Math.round((bank + cash) * 100) / 100 };
 }
 function rpComputeNetCash() {
