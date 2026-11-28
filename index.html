@@ -1791,7 +1791,6 @@ html.is-mobile .m-admin-badge-btn { right: 62px; }
     <div id="bulk-bar" style="display:none;padding:8px 1.25rem;background:var(--surface2);border-top:1px solid var(--border);align-items:center;gap:10px">
       <span id="bulk-count" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-muted)"></span>
       <button class="act-btn success" onclick="bulkMarkPaid()" style="font-size:12px;padding:4px 14px">mark selected as paid</button>
-      <button class="act-btn danger" onclick="bulkDelete()" style="font-size:12px;padding:4px 14px">delete selected</button>
     </div>
   </section>
 
@@ -1853,7 +1852,6 @@ html.is-mobile .m-admin-badge-btn { right: 62px; }
       </div>
       <div class="header-actions">
         <span id="paid-events-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
-        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearPaidEvents()">Clear all</button>
       </div>
     </div>
     <div id="paid-events-body" style="display:none">
@@ -1885,7 +1883,7 @@ html.is-mobile .m-admin-badge-btn { right: 62px; }
     <button class="pill-btn" onclick="closeCaIt()">← All jobs</button>
     <div class="job-view-title">Collegedale Academy – IT</div>
     <div class="earn-percent-wrap">
-      <label for="it-earn-percent">Earn %</label>
+      <label for="it-earn-percent" title="Applies to checks you cash from now on. Checks you already cashed keep the % they were cashed at.">Earn %</label>
       <input type="number" id="it-earn-percent" min="1" max="100" step="1" onchange="setJobEarnPercent('ca_it', this.value)" />
     </div>
   </div>
@@ -1958,7 +1956,6 @@ html.is-mobile .m-admin-badge-btn { right: 62px; }
       </div>
       <div class="header-actions">
         <span id="it-cashed-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
-        <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearCashedChecks()">Clear all</button>
       </div>
     </div>
     <div id="it-cashed-body" style="display:none">
@@ -3489,7 +3486,7 @@ function jobHasNoClients(id) { return !!(getJob(id).config && getJob(id).config.
 function addDaysISO(iso, days) {
   const d = new Date(iso + 'T00:00:00');
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return localISO(d);
 }
 
 function ruleLabel(r) {
@@ -3518,7 +3515,7 @@ function generateLawnEventFromRule(rule, date) {
   const newJob = { id: 'l' + Date.now() + Math.floor(Math.random() * 1000), client: rule.client, date, status: 'unpaid', amount, job: rule.job || 'lawn_mowing', recurringId: rule.id };
   lawnEvents.push(newJob);
   pendingEventWrites.add(newJob.id);
-  logHistory('add', `Auto-added recurring event — ${rule.client} on ${fmt(date)} ($${amount})`, { job: rule.job || 'lawn_mowing' });
+  logHistory('add', `Auto-added recurring event — ${rule.client} on ${fmt(date)} ($${money(amount)})`, { job: rule.job || 'lawn_mowing' });
 }
 
 function generateItCheckFromRule(rule, dateStart) {
@@ -3617,6 +3614,7 @@ function addRecurringRuleFromForm() {
   const intervalDays = parseInt(document.getElementById('rec-interval').value, 10);
   if (!intervalDays || intervalDays < 1) { alert('Enter a repeat interval of at least 1 day.'); return; }
   const nextDate = parseFlexibleDate(document.getElementById('rec-next').value);
+  if (!nextDate) { badDate(); return; }
   const amountRaw = document.getElementById('rec-amount').value;
 
   let data;
@@ -3963,12 +3961,7 @@ function renderJobsGrid() {
         <div class="job-btn-label">${job.label}</div>
         <div class="job-btn-sub">${subLabel}</div>
       </button>`;
-  }).join('') + `
-      <button class="job-btn new-job-btn" onclick="openAddJobModal()">
-        <div class="job-btn-icon">+</div>
-        <div class="job-btn-label">New Job</div>
-        <div class="job-btn-sub">Have a code?</div>
-      </button>`;
+  }).join('');
 }
 
 // Figures out which job a history entry belongs to. New entries carry an
@@ -4125,37 +4118,90 @@ function earnPercentFor(jobId) {
 // at 20% earn-rate means $200 is the real income, and tithe (10%) is figured
 // on that $200, not the raw $1000. Jobs with no override behave exactly as
 // before (100% — effectiveEarnings === eventAmount).
+function earnPercentOf(j) {
+  // A cashed check keeps the Earn % it was cashed at (j.earnPercent), so changing the
+  // setting later only affects checks that haven't been cashed yet.
+  if (j.status === 'cashed' && typeof j.earnPercent === 'number' && j.earnPercent > 0) return j.earnPercent;
+  return earnPercentFor(jobOf(j));
+}
 function effectiveEarnings(j) {
-  return ceilCents(eventAmount(j) * earnPercentFor(jobOf(j)) / 100);
+  return ceilCents(eventAmount(j) * earnPercentOf(j) / 100);
 }
 
 function fmt(d) { const [y,m,dy] = d.split('-'); return `${parseInt(m)}/${parseInt(dy)}/${y.slice(2)}`; }
 function itCheckLabel(j) { return `${fmt(j.dateStart)} – ${fmt(j.dateEnd)}`; }
 
-function todayISO() { return new Date().toISOString().slice(0,10); }
+// Calendar date in the person's own timezone. (toISOString() is UTC, which flips
+// to "tomorrow" every evening in the US.)
+function localISO(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function todayISO() { return localISO(new Date()); }
+// Moves a Date by whole calendar months, clamping the day (Mar 31 minus a month is Feb 28, not Mar 3).
+function addMonthsClamped(d, months) {
+  const r = new Date(d.getFullYear(), d.getMonth() + months, 1);
+  const last = new Date(r.getFullYear(), r.getMonth() + 1, 0).getDate();
+  r.setDate(Math.min(d.getDate(), last));
+  return r;
+}
+// Whole days since 1970 for an ISO date (timezone-proof, for counting days between two dates).
+function isoDayNum(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return Math.round(Date.UTC(y, m - 1, d) / 86400000);
+}
+// Dollar amount with exactly two decimals, for messages.
+function money(n) { return (Number(n) || 0).toFixed(2); }
+// Whole-number percent of part/whole, rounded DOWN, worked in cents so 29 of 100 is 29 and not 28.
+function pctFloor(part, whole) {
+  const pc = Math.round(part * 100), wc = Math.round(whole * 100);
+  return wc > 0 ? Math.floor(pc * 100 / wc) : 0;
+}
+// Rounds amounts to whole percents that always add up to exactly 100 (largest remainder).
+function roundPercentsTo100(amounts) {
+  const total = amounts.reduce((t, a) => t + a, 0);
+  if (!(total > 0)) return amounts.map(() => 0);
+  const raw = amounts.map(a => a / total * 100);
+  const out = raw.map(Math.floor);
+  const left = 100 - out.reduce((t, v) => t + v, 0);
+  raw.map((r, i) => ({ i, frac: r - out[i] })).sort((a, b) => b.frac - a.frac).slice(0, left).forEach(o => { out[o.i]++; });
+  return out;
+}
 
 // Parses flexible typed date input into ISO 'YYYY-MM-DD'.
 // Blank -> today. "5/26" -> May 26, current year. "26" -> 26th of current month/year.
-function parseFlexibleDate(str) {
+function parseDateStrict(str) {
   str = (str || '').trim();
-  if (!str) return todayISO();
-  const parts = str.split(/[\/\-]/).map(p => p.trim()).filter(p => p !== '');
+  if (!str) return null;
+  const parts = str.split(/[\/\-]/).map(p => p.trim());
+  if (parts.length > 3 || parts.some(p => !/^\d+$/.test(p))) return null;
+  const nums = parts.map(p => parseInt(p, 10));
   const now = new Date();
   let month = now.getMonth() + 1, day = now.getDate(), year = now.getFullYear();
   if (parts.length === 1) {
-    day = parseInt(parts[0], 10);
+    day = nums[0];
   } else if (parts.length === 2) {
-    month = parseInt(parts[0], 10);
-    day = parseInt(parts[1], 10);
-  } else if (parts.length >= 3) {
-    month = parseInt(parts[0], 10);
-    day = parseInt(parts[1], 10);
-    year = parseInt(parts[2], 10);
-    if (year < 100) year += 2000;
+    month = nums[0]; day = nums[1];
+  } else if (parts[0].length === 4) {        // 2026-05-26
+    year = nums[0]; month = nums[1]; day = nums[2];
+  } else {                                    // 5/26/26 or 5/26/2026
+    month = nums[0]; day = nums[1]; year = nums[2];
+    if (parts[2].length <= 2) year += 2000;
+    else if (parts[2].length !== 4) return null;
   }
-  if (isNaN(month) || isNaN(day) || isNaN(year) || month < 1 || month > 12 || day < 1 || day > 31) return todayISO();
+  if (year < 1900 || year > 2200 || month < 1 || month > 12 || day < 1) return null;
+  const check = new Date(year, month - 1, day);
+  if (check.getFullYear() !== year || check.getMonth() !== month - 1 || check.getDate() !== day) return null; // e.g. 2/31
   return `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
 }
+// Add-entry forms: blank means today. Anything else must be a real date — returns null if it isn't,
+// and the caller shows badDate() instead of quietly using today.
+function parseFlexibleDate(str) {
+  if (!(str || '').trim()) return todayISO();
+  return parseDateStrict(str);
+}
+function badDate() { alert('Enter a valid date, like 5/26 or 5/26/2026.'); }
+function badPeriod() { alert('Enter both pay period dates, like 5/26/2026.'); }
+function periodOrder() { alert("The pay period can't end before it starts."); }
 
 // ── Shared list filter/sort helpers ─────────────────────────
 // Case-insensitive substring match across one or more fields; a blank query always matches.
@@ -4181,7 +4227,7 @@ function inDateRange(dateStr, from, to) {
 function filterDateVal(id) {
   const el = document.getElementById(id);
   const v = el ? el.value.trim() : '';
-  return v ? parseFlexibleDate(v) : '';
+  return v ? (parseDateStrict(v) || '') : '';
 }
 
 // Converts stored ISO date back to a typeable M/D/YYYY string for edit fields.
@@ -4197,7 +4243,7 @@ function openDatePicker(textId) {
   const textInput = document.getElementById(textId);
   const picker = document.getElementById(textId + '-picker');
   if (!textInput || !picker) return;
-  picker.value = parseFlexibleDate(textInput.value);
+  picker.value = parseFlexibleDate(textInput.value) || todayISO();
   if (picker.showPicker) { try { picker.showPicker(); return; } catch (e) {} }
   picker.focus();
   picker.click();
@@ -4561,13 +4607,12 @@ function renderClients() {
         <td style="width:32px"><input type="checkbox" class="event-cb" data-id="${j.id}" onclick="updateBulkBar()" /></td>
         <td class="mono">${fmt(j.date)}</td>
         <td style="color:var(--text-muted);font-size:12px">${j.client}${j.title ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px">${j.title}</div>` : ''}</td>
-        <td class="mono amount-pos">$${eventAmount(j)}</td>
+        <td class="mono amount-pos">$${money(eventAmount(j))}</td>
         <td>${statusBadge(j.status)}</td>
         <td><div class="row-actions">
           <button class="act-btn repeat" onclick="quickRepeatEvent('${j.id}')" title="Add another event for today, same client &amp; amount">↻ repeat</button>
           <button class="act-btn edit" onclick="editEvent('${j.id}')">edit</button>
           <button class="act-btn success" onclick="markPaid('${j.id}')">mark paid</button>
-          <button class="act-btn danger" onclick="deleteEvent('${j.id}')">delete</button>
         </div></td>
       </tr>`).join('');
 
@@ -4577,7 +4622,7 @@ function renderClients() {
           <div style="font-weight:500">${c.name}</div>
           ${jobCount > 0 ? `
           <button class="client-events-toggle" onclick="toggleClientEvents('${c.id}')">
-            ${jobCount} event${jobCount>1?'s':''} · $${owed} owed ▾
+            ${jobCount} event${jobCount>1?'s':''} · $${money(owed)} owed ▾
           </button>` : '<span style="font-size:11px;color:var(--text-muted)">no open events</span>'}
           <div style="flex:1"></div>
           <div style="color:var(--text-muted);font-size:12px">${c.note||''}</div>
@@ -4623,13 +4668,12 @@ function renderOpenEventsFlat(wrap) {
         <td><input type="checkbox" class="event-cb" data-id="${j.id}" onclick="updateBulkBar()" /></td>
         <td class="mono">${fmt(j.date)}</td>
         <td style="color:var(--text-muted);font-size:12px">${j.client}${j.title ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px">${j.title}</div>` : ''}</td>
-        <td class="mono amount-pos">$${eventAmount(j)}</td>
+        <td class="mono amount-pos">$${money(eventAmount(j))}</td>
         <td>${statusBadge(j.status)}</td>
         <td><div class="row-actions">
           <button class="act-btn repeat" onclick="quickRepeatEvent('${j.id}')" title="Add another event for today, same amount">↻ repeat</button>
           <button class="act-btn edit" onclick="editEvent('${j.id}')">edit</button>
           <button class="act-btn success" onclick="markPaid('${j.id}')">mark paid</button>
-          <button class="act-btn danger" onclick="deleteEvent('${j.id}')">delete</button>
         </div></td>
       </tr>`).join('')}</tbody></table></div>`;
 }
@@ -4673,7 +4717,7 @@ function saveClient(id) {
   const changes = [];
   if (old.name !== name) changes.push(`name: ${old.name} → ${name}`);
   if ((old.note||'') !== note) changes.push(`note: "${old.note||''}" → "${note}"`);
-  if (old.rate !== rate) changes.push(`rate: $${old.rate} → $${rate}/event`);
+  if (old.rate !== rate) changes.push(`rate: $${money(old.rate)} → $${money(rate)}/event`);
   const changeStr = changes.length ? changes.join(', ') : 'no changes';
   logHistory('client', `Edited client — ${name} (${changeStr})`, { job: currentJobId });
   save(); render(); toast('Client updated ✓');
@@ -4938,7 +4982,7 @@ function performTithePayment(tb, tc, splits) {
     return e;
   });
   affectedOtherIds.forEach(id => pendingOtherWrites.add(id));
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayISO();
   if (tb > 0) {
     const e1 = {id:'o'+Date.now()+'b', desc:'Tithe', date:today, type:'expense', amount:tb, method:'bank', ...(splits && splits.length ? { bankSplits: splits } : {})};
     otherMoney.push(e1);
@@ -4959,21 +5003,11 @@ function performTithePayment(tb, tc, splits) {
 function unpayEvent(id) {
   const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? {...jb, status: 'unpaid', paymentMethod: null, paymentAmount: null, bankSplits: null} : jb);
+  reversePocketAllocations(j, 'payment undone');
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? {...jb, status: 'unpaid', paymentMethod: null, paymentAmount: null, bankSplits: null, pocketAllocations: []} : jb);
   pendingEventWrites.add(id);
-  logHistory('add', `Restored event to unpaid — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`, { job: currentJobId });
+  logHistory('add', `Restored event to unpaid — ${j.client} on ${fmt(j.date)} ($${money(eventAmount(j))})`, { job: currentJobId });
   save(); render(); reopenPanel(j.client); toast('Event moved back to unpaid ✓');
-}
-
-function clearPaidEvents() {
-  const count = lawnEvents.filter(j => j.status === 'paid').length;
-  if (!count) return;
-  if (!confirm(`Delete all ${count} paid event${count>1?'s':''}? This cannot be undone.`)) return;
-  const paidIds = lawnEvents.filter(j => j.status === 'paid').map(j => j.id);
-  lawnEvents = lawnEvents.filter(j => j.status !== 'paid');
-  paidIds.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
-  logHistory('delete', `Cleared ${count} paid event${count>1?'s':''}`, { job: currentJobId });
-  save(); render(); toast(`${count} paid event${count>1?'s':''} cleared`);
 }
 
 function renderPaidEvents() {
@@ -4994,7 +5028,6 @@ function renderPaidEvents() {
         <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}</td>
         <td><div class="row-actions">
           <button class="act-btn success" onclick="unpayEvent('${j.id}')">undo</button>
-          <button class="act-btn danger" onclick="deleteEvent('${j.id}')">delete</button>
         </div></td>
       </tr>`).join('')}
     </tbody></table></div>`;
@@ -5227,7 +5260,7 @@ function addClient() {
   clients.push(newClient);
   clients.sort((a,b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
   pendingClientWrites.add(newClient.id);
-  logHistory('client',`Added client — ${name}${note?' ('+note+')':''} at $${rate}/event`, { job: currentJobId });
+  logHistory('client',`Added client — ${name}${note?' ('+note+')':''} at $${money(rate)}/event`, { job: currentJobId });
   document.getElementById('client-form').classList.remove('open');
   save(); renderClients();
   document.getElementById('cl-name').value='';
@@ -5286,7 +5319,7 @@ async function bulkMarkPaid() {
       const allocations = applyPocketRules(jobOf(j), amount);
       lawnEvents = lawnEvents.map(jb => jb.id===j.id ? {...jb, status:'paid', paymentMethod:m, paymentAmount:amount, bankSplits:splits.length?splits:null, ...(allocations.length?{pocketAllocations:allocations}:{})} : jb);
       pendingEventWrites.add(j.id);
-      logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${m}${acctSuffix(splits)})`, { jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount, job: currentJobId });
+      logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${money(amount)} (${m}${acctSuffix(splits)})`, { jobId:j.id, prevStatus:prev, paymentMethod:m, paymentAmount:amount, job: currentJobId });
       affectedPocketIds.push(...allocations.map(a => a.pocketId));
     }
     save(); render(); updateBulkBar(); toast(`Events marked as paid ✓`);
@@ -5335,7 +5368,7 @@ async function bulkMarkPaid() {
       ? fmt(dates[0])
       : `${fmt(dates[0])} – ${fmt(dates[dates.length-1])}`;
     const jobIds = cJobs.map(j => j.id);
-    logHistory('paid', `Marked ${client} paid — ${cJobs.length} event${cJobs.length>1?'s':''} (${dateRange}) — $${total} (${method})`, {
+    logHistory('paid', `Marked ${client} paid — ${cJobs.length} event${cJobs.length>1?'s':''} (${dateRange}) — $${money(total)} (${method})`, {
       id: 'h'+(hid+i),
       bulkJobIds: jobIds,
       prevStatuses: Object.fromEntries(cJobs.map(j=>[j.id, j.status])),
@@ -5351,27 +5384,6 @@ async function bulkMarkPaid() {
   if (affectedPocketIds.length) await checkPocketsForGoalCompletion(affectedPocketIds);
 }
 
-function bulkDelete() {
-  const checked = [...document.querySelectorAll('.event-cb:checked')];
-  if (!checked.length) return;
-  const ids = checked.map(c => c.dataset.id);
-  const jobs = ids.map(id => lawnEvents.find(j => j.id === id)).filter(Boolean);
-  if (!confirm(`Delete ${jobs.length} selected event${jobs.length > 1 ? 's' : ''}?`)) return;
-  jobs.forEach(j => {
-    logHistory('delete', `Deleted event — ${j.client} on ${fmt(j.date)} ($${eventAmount(j)})`, { job: currentJobId });
-    if (j.pocketAllocations && j.pocketAllocations.length) {
-      j.pocketAllocations.forEach(a => {
-        const pocket = getPocket(a.pocketId);
-        adjustPocketBalance(a.pocketId, -a.amount);
-        logHistory('pocket', `Reversed $${a.amount.toFixed(2)} set-aside in "${pocket ? pocket.name : 'a removed pocket'}" — event deleted`, { job: null, pocketId: a.pocketId });
-      });
-    }
-  });
-  lawnEvents = lawnEvents.filter(j => !ids.includes(j.id));
-  ids.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
-  save(); render(); updateBulkBar(); toast(`${jobs.length} event${jobs.length > 1 ? 's' : ''} deleted`);
-}
-
 function promptPaymentMethod(showIndividual = false, job = null) {
   return new Promise(resolve => {
     const modal = document.getElementById('payment-modal');
@@ -5383,7 +5395,7 @@ function promptPaymentMethod(showIndividual = false, job = null) {
       jobInfo.style.display = 'block';
       jobInfo.innerHTML =
         `<span style="color:var(--text)">${job.client}</span><br>` +
-        `${fmt(job.date)} &nbsp;·&nbsp; ${statusLabel} &nbsp;·&nbsp; <span style="color:var(--green)">$${eventAmount(job)}</span>`;
+        `${fmt(job.date)} &nbsp;·&nbsp; ${statusLabel} &nbsp;·&nbsp; <span style="color:var(--green)">$${money(eventAmount(job))}</span>`;
     } else {
       jobInfo.style.display = 'none';
     }
@@ -5411,7 +5423,7 @@ async function markPaid(id) {
   const allocations = applyPocketRules(jobOf(j), amount);
   lawnEvents=lawnEvents.map(j=>j.id===id?{...j,status:'paid',paymentMethod:method,paymentAmount:amount,bankSplits:splits.length?splits:null,...(allocations.length?{pocketAllocations:allocations}:{})}:j);
   pendingEventWrites.add(id);
-  logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${amount} (${method}${acctSuffix(splits)})`, { jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount, job: currentJobId });
+  logHistory('paid', `Marked ${j.client} event (${fmt(j.date)}) as paid — $${money(amount)} (${method}${acctSuffix(splits)})`, { jobId:id, prevStatus:prev, paymentMethod:method, paymentAmount:amount, job: currentJobId });
   save(); render(); reopenPanel(j.client); toast('Marked as paid ✓');
   if (allocations.length) await checkPocketsForGoalCompletion(allocations.map(a => a.pocketId));
 }
@@ -5432,7 +5444,8 @@ async function undoPaid(hid) {
     const label = job.client
       ? `${job.client} event (${fmt(job.date)})`
       : genericEntryLabel(job, getJob(getEntryJob(h)).config || {});
-    lawnEvents = lawnEvents.map(j=>j.id===h.jobId ? {...j, status:restore, paymentMethod:null, paymentAmount:null, bankSplits:null} : j);
+    reversePocketAllocations(job, 'payment undone');
+    lawnEvents = lawnEvents.map(j=>j.id===h.jobId ? {...j, status:restore, paymentMethod:null, paymentAmount:null, bankSplits:null, pocketAllocations:[], ...(j.status === 'cashed' ? { earnPercent: null } : {})} : j);
     pendingEventWrites.add(h.jobId);
     historyLog = historyLog.filter(h=>h.id!==hid);
     if (currentUser) await historyCol().doc(hid).delete().catch(e => console.warn('Could not delete the history entry — the undo itself still goes through:', e));
@@ -5443,7 +5456,8 @@ async function undoPaid(hid) {
   if (h.bulkJobIds) {
     h.bulkJobIds.forEach(jid => {
       const prev = h.prevStatuses?.[jid] || 'unpaid';
-      lawnEvents = lawnEvents.map(j=>j.id===jid ? {...j, status:prev, paymentMethod:null, paymentAmount:null, bankSplits:null} : j);
+      reversePocketAllocations(lawnEvents.find(j=>j.id===jid), 'payment undone');
+      lawnEvents = lawnEvents.map(j=>j.id===jid ? {...j, status:prev, paymentMethod:null, paymentAmount:null, bankSplits:null, pocketAllocations:[]} : j);
       pendingEventWrites.add(jid);
     });
     historyLog = historyLog.filter(h=>h.id!==hid);
@@ -5452,22 +5466,6 @@ async function undoPaid(hid) {
   }
 
   save(); render(); toast('Payment undone ✓');
-}
-
-function deleteEvent(id) {
-  if (!confirm('Delete this event?')) return;
-  const j=lawnEvents.find(j=>j.id===id);
-  if (j.pocketAllocations && j.pocketAllocations.length) {
-    j.pocketAllocations.forEach(a => {
-      const pocket = getPocket(a.pocketId);
-      adjustPocketBalance(a.pocketId, -a.amount);
-      logHistory('pocket', `Reversed $${a.amount.toFixed(2)} set-aside in "${pocket ? pocket.name : 'a removed pocket'}" — event deleted`, { job: null, pocketId: a.pocketId });
-    });
-  }
-  lawnEvents=lawnEvents.filter(j=>j.id!==id);
-  pendingEventDeletes.add(id); pendingEventWrites.delete(id);
-  logHistory('delete',`Deleted event — ${j.client} on ${fmt(j.date)}${j.title ? ` "${j.title}"` : ''} ($${eventAmount(j)})`, { job: currentJobId });
-  save(); render(); reopenPanel(j.client); toast('Event deleted');
 }
 
 function prefillEventAmount() {
@@ -5482,6 +5480,7 @@ async function addEvent() {
   const nc = jobHasNoClients(currentJobId);
   const client = nc ? getJob(currentJobId).label : document.getElementById('le-client').value;
   const date   = parseFlexibleDate(document.getElementById('le-date').value);
+  if (!date) { badDate(); return; }
   const status = document.getElementById('le-status').value;
   const raw    = document.getElementById('le-amount').value;
   if (nc && isNaN(parseFloat(raw))) { alert('Enter an amount.'); return; }
@@ -5510,7 +5509,7 @@ async function addEvent() {
 
   lawnEvents.push(newJob);
   pendingEventWrites.add(newJob.id);
-  logHistory('add', `Added event — ${client} on ${fmt(date)}${title ? ` "${title}"` : ''}, ${newJob.status}${newJob.paymentMethod ? ' ('+newJob.paymentMethod+')' : ''} ($${amount})`, { job: currentJobId });
+  logHistory('add', `Added event — ${client} on ${fmt(date)}${title ? ` "${title}"` : ''}, ${newJob.status}${newJob.paymentMethod ? ' ('+newJob.paymentMethod+')' : ''} ($${money(amount)})`, { job: currentJobId });
   save(); render();
   document.getElementById('event-form').classList.remove('open');
   document.getElementById('le-date').value = '';
@@ -5532,7 +5531,7 @@ function quickAddEventForClient(clientId) {
   const newJob = { id: 'l' + Date.now(), client: c.name, date: today, status: 'unpaid', amount: c.rate, job: jobOf(c) };
   lawnEvents.push(newJob);
   pendingEventWrites.add(newJob.id);
-  logHistory('add', `Quick-added event — ${c.name} on ${fmt(today)} ($${c.rate})`, { job: jobOf(c) });
+  logHistory('add', `Quick-added event — ${c.name} on ${fmt(today)} ($${money(c.rate)})`, { job: jobOf(c) });
   save(); render(); reopenPanel(c.name);
   toast(`Logged today's visit for ${c.name} ✓`);
 }
@@ -5548,7 +5547,7 @@ function quickRepeatEvent(id) {
   const newJob = { id: 'l' + Date.now(), client: j.client, date: today, status: 'unpaid', amount, job: jobOf(j) };
   lawnEvents.push(newJob);
   pendingEventWrites.add(newJob.id);
-  logHistory('add', `Repeated event — ${j.client} on ${fmt(today)} ($${amount})`, { job: jobOf(j) });
+  logHistory('add', `Repeated event — ${j.client} on ${fmt(today)} ($${money(amount)})`, { job: jobOf(j) });
   save(); render(); reopenPanel(j.client);
   toast('Event repeated for today ✓');
 }
@@ -5583,13 +5582,12 @@ function renderItUncashedChecks() {
     <tbody>${uncashed.map(j => `
       <tr id="it-row-${j.id}">
         <td class="mono">${itCheckLabel(j)}</td>
-        <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}${earnPercentFor(jobOf(j)) !== 100 ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px">→ $${effectiveEarnings(j).toFixed(2)} earned (${earnPercentFor(jobOf(j))}%)</div>` : ''}</td>
+        <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}${earnPercentOf(j) !== 100 ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px">→ $${effectiveEarnings(j).toFixed(2)} earned (${earnPercentOf(j)}%)</div>` : ''}</td>
         <td class="mono" style="font-size:11px;color:var(--text-faint)">${j.titheDeductible ? '✓ tithe' : '—'}</td>
         <td><div class="row-actions">
           <button class="act-btn repeat" onclick="quickRepeatItCheck('${j.id}')" title="Add another paycheck starting today, same amount &amp; period length">↻ repeat</button>
           <button class="act-btn edit" onclick="editItCheck('${j.id}')">edit</button>
           <button class="act-btn success" onclick="markCheckCashed('${j.id}')">mark cashed</button>
-          <button class="act-btn danger" onclick="deleteItCheck('${j.id}')">delete</button>
         </div></td>
       </tr>`).join('')}
     </tbody></table></div>`;
@@ -5609,13 +5607,12 @@ function renderItCashedChecks() {
     <tbody>${cashed.map(j => `
       <tr id="it-row-${j.id}">
         <td class="mono">${itCheckLabel(j)}</td>
-        <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}${earnPercentFor(jobOf(j)) !== 100 ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px">→ $${effectiveEarnings(j).toFixed(2)} earned (${earnPercentFor(jobOf(j))}%)</div>` : ''}</td>
+        <td class="mono amount-pos">$${eventAmount(j).toFixed(2)}${earnPercentOf(j) !== 100 ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px">→ $${effectiveEarnings(j).toFixed(2)} earned (${earnPercentOf(j)}%)</div>` : ''}</td>
         <td class="mono" style="font-size:11px;color:var(--text-faint)">${j.titheDeductible ? '✓ tithe' : '—'}</td>
         <td><div class="row-actions">
           <button class="act-btn repeat" onclick="quickRepeatItCheck('${j.id}')" title="Add another paycheck starting today, same amount &amp; period length">↻ repeat</button>
           <button class="act-btn edit" onclick="editItCheck('${j.id}')">edit</button>
           <button class="act-btn success" onclick="uncashCheck('${j.id}')">undo</button>
-          <button class="act-btn danger" onclick="deleteItCheck('${j.id}')">delete</button>
         </div></td>
       </tr>`).join('')}
     </tbody></table></div>`;
@@ -5639,12 +5636,13 @@ function renderItHistory() {
 }
 
 async function addItCheck() {
-  const dateStart = parseFlexibleDate(document.getElementById('it-start').value);
-  const dateEnd   = parseFlexibleDate(document.getElementById('it-end').value);
+  const dateStart = parseDateStrict(document.getElementById('it-start').value);
+  const dateEnd   = parseDateStrict(document.getElementById('it-end').value);
   const amount    = parseFloat(document.getElementById('it-amount').value);
   const status    = document.getElementById('it-status').value;
   const titheDeductible = document.getElementById('it-tithe').checked;
-  if (!dateStart || !dateEnd) { alert('Enter a valid pay period.'); return; }
+  if (!dateStart || !dateEnd) { badPeriod(); return; }
+  if (dateEnd < dateStart) { periodOrder(); return; }
   if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
   let splits = [];
   if (status === 'cashed') {
@@ -5652,7 +5650,7 @@ async function addItCheck() {
     if (splits === null) return;
   }
   const allocations = status === 'cashed' ? applyPocketRules('ca_it', effectiveEarnings({ amount, job: 'ca_it' })) : [];
-  const newCheck = { id: 'it' + Date.now(), job: 'ca_it', dateStart, dateEnd, amount, status, titheDeductible, ...(splits.length ? { bankSplits: splits } : {}), ...(allocations.length ? { pocketAllocations: allocations } : {}) };
+  const newCheck = { id: 'it' + Date.now(), job: 'ca_it', dateStart, dateEnd, amount, status, titheDeductible, ...(status === 'cashed' ? { earnPercent: earnPercentFor('ca_it') } : {}), ...(splits.length ? { bankSplits: splits } : {}), ...(allocations.length ? { pocketAllocations: allocations } : {}) };
   lawnEvents.push(newCheck);
   pendingEventWrites.add(newCheck.id);
   logHistory('add', `Added paycheck — ${itCheckLabel(newCheck)} ($${amount.toFixed(2)}, ${status === 'cashed' ? 'cashed' : 'not cashed'}${titheDeductible ? ', tithe' : ''})`, { job: 'ca_it' });
@@ -5692,7 +5690,7 @@ async function markCheckCashed(id) {
   const splits = await askBankSplit(effectiveEarnings(j), { direction: 'in', title: 'Deposit the paycheck into which account?' });
   if (splits === null) return;
   const allocations = applyPocketRules('ca_it', effectiveEarnings(j));
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', bankSplits: splits.length ? splits : null, ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', earnPercent: earnPercentFor(jobOf(jb)), bankSplits: splits.length ? splits : null, ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
   pendingEventWrites.add(id);
   logHistory('paid', `Marked paycheck cashed — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { jobId: id, prevStatus: prev, job: 'ca_it' });
   save(); render(); renderJobsGrid(); toast('Check marked as cashed ✓');
@@ -5703,32 +5701,10 @@ function uncashCheck(id) {
   const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
   reversePocketAllocations(j, 'check moved back to not cashed');
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', tithePaid: false, pocketAllocations: [], bankSplits: null } : jb);
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', pocketAllocations: [], bankSplits: null, earnPercent: null } : jb);
   pendingEventWrites.add(id);
   logHistory('add', `Reversed cashed — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { job: 'ca_it' });
   save(); render(); renderJobsGrid(); toast('Check moved back to uncashed');
-}
-
-function deleteItCheck(id) {
-  if (!confirm('Delete this paycheck?')) return;
-  const j = lawnEvents.find(j => j.id === id);
-  if (j.status === 'cashed') reversePocketAllocations(j, 'paycheck deleted');
-  lawnEvents = lawnEvents.filter(jb => jb.id !== id);
-  pendingEventDeletes.add(id); pendingEventWrites.delete(id);
-  logHistory('delete', `Deleted paycheck — ${itCheckLabel(j)} ($${eventAmount(j).toFixed(2)})`, { job: 'ca_it' });
-  save(); render(); renderJobsGrid(); toast('Paycheck deleted');
-}
-
-function clearCashedChecks() {
-  const toDelete = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'cashed');
-  if (!toDelete.length) return;
-  if (!confirm(`Delete all ${toDelete.length} cashed check${toDelete.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
-  toDelete.forEach(j => reversePocketAllocations(j, 'cashed checks cleared'));
-  const ids = toDelete.map(j => j.id);
-  lawnEvents = lawnEvents.filter(j => !ids.includes(j.id));
-  ids.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
-  logHistory('delete', `Cleared ${ids.length} cashed check${ids.length > 1 ? 's' : ''}`, { job: 'ca_it' });
-  save(); render(); renderJobsGrid(); toast(`${ids.length} cashed check${ids.length > 1 ? 's' : ''} cleared`);
 }
 
 function editItCheck(id) {
@@ -5767,24 +5743,34 @@ function editItCheck(id) {
     </td>`;
 }
 
-function saveItCheck(id) {
-  const dateStart = parseFlexibleDate(document.getElementById('ite-start-' + id).value);
-  const dateEnd   = parseFlexibleDate(document.getElementById('ite-end-' + id).value);
+async function saveItCheck(id) {
+  const dateStart = parseDateStrict(document.getElementById('ite-start-' + id).value);
+  const dateEnd   = parseDateStrict(document.getElementById('ite-end-' + id).value);
   const amount    = parseFloat(document.getElementById('ite-amount-' + id).value);
   const status    = document.getElementById('ite-status-' + id).value;
   const titheDeductible = document.getElementById('ite-tithe-' + id).checked;
+  if (!dateStart || !dateEnd) { badPeriod(); return; }
+  if (dateEnd < dateStart) { periodOrder(); return; }
   if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
   const old = lawnEvents.find(j => j.id === id);
   let pocketAllocations = old.pocketAllocations || [];
+  let statusFields = {};
   if (old.status !== 'cashed' && status === 'cashed') {
-    pocketAllocations = applyPocketRules('ca_it', effectiveEarnings({ amount, job: 'ca_it' }));
+    // Newly cashed through the edit form: same steps as "mark cashed" — pick the deposit
+    // account(s), set money aside for pockets, and lock in the current Earn %.
+    const earned = effectiveEarnings({ amount, job: 'ca_it' });
+    const splits = await askBankSplit(earned, { direction: 'in', title: 'Deposit into which account?' });
+    if (splits === null) return;
+    pocketAllocations = applyPocketRules('ca_it', earned);
+    statusFields = { bankSplits: splits.length ? splits : null, earnPercent: earnPercentFor('ca_it') };
   } else if (old.status === 'cashed' && status !== 'cashed') {
     reversePocketAllocations(old, 'paycheck edited back to not cashed');
     pocketAllocations = [];
+    statusFields = { bankSplits: null, earnPercent: null };
   }
-  lawnEvents = lawnEvents.map(j => j.id === id ? { ...j, dateStart, dateEnd, amount, status, titheDeductible, pocketAllocations } : j);
+  lawnEvents = lawnEvents.map(j => j.id === id ? { ...j, dateStart, dateEnd, amount, status, titheDeductible, pocketAllocations, ...statusFields } : j);
   pendingEventWrites.add(id);
-  logHistory('add', `Edited paycheck — ${itCheckLabel(old)} → ${fmt(dateStart)}–${fmt(dateEnd)}, $${amount.toFixed(2)}, ${status}`, { job: 'ca_it' });
+  logHistory('add', `Edited paycheck — ${itCheckLabel(old)} → ${fmt(dateStart)}–${fmt(dateEnd)}, $${money(amount)}, ${status}`, { job: 'ca_it' });
   save(); render(); renderJobsGrid(); toast('Paycheck updated ✓');
   if (old.status !== 'cashed' && status === 'cashed' && pocketAllocations.length) {
     checkPocketsForGoalCompletion(pocketAllocations.map(a => a.pocketId));
@@ -5905,7 +5891,6 @@ function buildGenericJobShell(jobId) {
         <div class="section-title">Cashed</div>
         <div class="header-actions">
           <span id="gj-closed-summary" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-faint)"></span>
-          <button class="pill-btn danger" tabindex="-1" onclick="event.stopPropagation(); clearGenericCashed('${jobId}')">Clear all</button>
         </div>
       </div>
       <div id="gj-closed-body" style="display:none"><div id="gj-closed-wrap"><div class="empty-state">Nothing cashed yet.</div></div></div>
@@ -5934,7 +5919,6 @@ function genericTableHtml(list, jobId, cfg, isOpen) {
             ? `<button class="act-btn edit" onclick="editGenericEntry('${jobId}','${j.id}')">edit</button>
                <button class="act-btn success" onclick="markGenericCashed('${jobId}','${j.id}')">mark cashed</button>`
             : `<button class="act-btn success" onclick="uncashGenericEntry('${jobId}','${j.id}')">undo</button>`}
-          <button class="act-btn danger" onclick="deleteGenericEntry('${jobId}','${j.id}')">delete</button>
         </div></td>
       </tr>`).join('')}
     </tbody></table></div>`;
@@ -5989,11 +5973,14 @@ async function addGenericEntry(jobId) {
 
   let dateFields;
   if (dateMode === 'single') {
-    dateFields = { date: parseFlexibleDate(document.getElementById('gj-date').value) };
+    const d = parseFlexibleDate(document.getElementById('gj-date').value);
+    if (!d) { badDate(); return; }
+    dateFields = { date: d };
   } else {
-    const dateStart = parseFlexibleDate(document.getElementById('gj-start').value);
-    const dateEnd = parseFlexibleDate(document.getElementById('gj-end').value);
-    if (!dateStart || !dateEnd) { alert('Enter a valid pay period.'); return; }
+    const dateStart = parseDateStrict(document.getElementById('gj-start').value);
+    const dateEnd = parseDateStrict(document.getElementById('gj-end').value);
+    if (!dateStart || !dateEnd) { badPeriod(); return; }
+    if (dateEnd < dateStart) { periodOrder(); return; }
     dateFields = { dateStart, dateEnd };
   }
   const titheDeductible = titheMode === 'toggle' ? document.getElementById('gj-tithe').checked : (titheMode === 'always');
@@ -6020,7 +6007,7 @@ async function markGenericCashed(jobId, id) {
   const splits = await askBankSplit(effectiveEarnings(j), { direction: 'in', title: 'Deposit into which account?' });
   if (splits === null) return;
   const allocations = applyPocketRules(jobId, effectiveEarnings(j));
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', bankSplits: splits.length ? splits : null, ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'cashed', earnPercent: earnPercentFor(jobOf(jb)), bankSplits: splits.length ? splits : null, ...(allocations.length ? { pocketAllocations: allocations } : {}) } : jb);
   pendingEventWrites.add(id);
   logHistory('paid', `Marked ${getJob(jobId).label} cashed — ${genericEntryLabel(j, getJob(jobId).config || {})} ($${amount.toFixed(2)})`, { jobId: id, prevStatus: prev, job: jobId });
   save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast('Marked as cashed ✓');
@@ -6031,32 +6018,10 @@ function uncashGenericEntry(jobId, id) {
   const j = lawnEvents.find(j => j.id === id);
   if (!j) return;
   reversePocketAllocations(j, 'moved back to uncashed');
-  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', tithePaid: false, pocketAllocations: [], bankSplits: null } : jb);
+  lawnEvents = lawnEvents.map(jb => jb.id === id ? { ...jb, status: 'uncashed', pocketAllocations: [], bankSplits: null, earnPercent: null } : jb);
   pendingEventWrites.add(id);
   logHistory('add', `Reversed cashed — ${genericEntryLabel(j, getJob(jobId).config || {})} ($${eventAmount(j).toFixed(2)})`, { job: jobId });
   save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast('Moved back to uncashed');
-}
-
-function deleteGenericEntry(jobId, id) {
-  if (!confirm('Delete this entry?')) return;
-  const j = lawnEvents.find(j => j.id === id);
-  if (j.status === 'cashed') reversePocketAllocations(j, 'entry deleted');
-  lawnEvents = lawnEvents.filter(jb => jb.id !== id);
-  pendingEventDeletes.add(id); pendingEventWrites.delete(id);
-  logHistory('delete', `Deleted entry — ${genericEntryLabel(j, getJob(jobId).config || {})} ($${eventAmount(j).toFixed(2)})`, { job: jobId });
-  save(); render(); renderJobsGrid(); renderGenericJobOpen(jobId); renderGenericJobClosed(jobId); toast('Entry deleted');
-}
-
-function clearGenericCashed(jobId) {
-  const toDelete = lawnEvents.filter(j => j.job === jobId && j.status === 'cashed');
-  if (!toDelete.length) return;
-  if (!confirm(`Delete all ${toDelete.length} cashed entr${toDelete.length > 1 ? 'ies' : 'y'}? This cannot be undone.`)) return;
-  toDelete.forEach(j => reversePocketAllocations(j, 'cashed entries cleared'));
-  const ids = toDelete.map(j => j.id);
-  lawnEvents = lawnEvents.filter(j => !ids.includes(j.id));
-  ids.forEach(id => { pendingEventDeletes.add(id); pendingEventWrites.delete(id); });
-  logHistory('delete', `Cleared ${ids.length} cashed entr${ids.length > 1 ? 'ies' : 'y'}`, { job: jobId });
-  save(); render(); renderJobsGrid(); renderGenericJobClosed(jobId); toast('Cleared');
 }
 
 function editGenericEntry(jobId, id) {
@@ -6105,9 +6070,18 @@ function saveGenericEntry(jobId, id) {
   const amount = parseFloat(document.getElementById('gje-amount-' + id).value);
   if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
 
-  const dateFields = dateMode === 'single'
-    ? { date: parseFlexibleDate(document.getElementById('gje-date-' + id).value) }
-    : { dateStart: parseFlexibleDate(document.getElementById('gje-start-' + id).value), dateEnd: parseFlexibleDate(document.getElementById('gje-end-' + id).value) };
+  let dateFields;
+  if (dateMode === 'single') {
+    const d = parseDateStrict(document.getElementById('gje-date-' + id).value);
+    if (!d) { badDate(); return; }
+    dateFields = { date: d };
+  } else {
+    const ds = parseDateStrict(document.getElementById('gje-start-' + id).value);
+    const de = parseDateStrict(document.getElementById('gje-end-' + id).value);
+    if (!ds || !de) { badPeriod(); return; }
+    if (de < ds) { periodOrder(); return; }
+    dateFields = { dateStart: ds, dateEnd: de };
+  }
   const titheDeductible = titheMode === 'toggle' ? document.getElementById('gje-tithe-' + id).checked : (titheMode === 'always');
 
   lawnEvents = lawnEvents.map(j => j.id === id ? { ...j, ...dateFields, amount, titheDeductible } : j);
@@ -6582,6 +6556,16 @@ function setJobEarnPercent(jobId, value) {
   let pct = parseFloat(value);
   if (isNaN(pct) || pct <= 0) pct = 100;
   if (pct > 100) pct = 100;
+  // Before the new % takes effect, lock the current % onto every check of this job
+  // that's already cashed, so this change only applies to checks cashed from now on.
+  const oldPct = earnPercentFor(jobId);
+  lawnEvents = lawnEvents.map(j => {
+    if (jobOf(j) === jobId && j.status === 'cashed' && !(typeof j.earnPercent === 'number' && j.earnPercent > 0)) {
+      pendingEventWrites.add(j.id);
+      return { ...j, earnPercent: oldPct };
+    }
+    return j;
+  });
   jobEarnPercent = { ...jobEarnPercent, [jobId]: pct };
   save();
   render();
@@ -6590,6 +6574,7 @@ function setJobEarnPercent(jobId, value) {
 async function addOtherMoney() {
   const descRaw = document.getElementById('om-desc').value.trim();
   const date    = parseFlexibleDate(document.getElementById('om-date').value);
+  if (!date) { badDate(); return; }
   const type    = document.getElementById('om-type').value;
   const amount  = parseFloat(document.getElementById('om-amount').value);
   if (isNaN(amount) || amount <= 0) { alert('Please enter a valid amount greater than 0.'); return; }
@@ -6636,6 +6621,7 @@ async function addOtherMoney() {
   updateOmFields();
   document.getElementById('om-tithe').checked=true;
   toast(type==='transfer' ? 'Transfer added ✓' : 'Entry added ✓');
+  if (newEntry.pocketAllocations && newEntry.pocketAllocations.length) checkPocketsForGoalCompletion(newEntry.pocketAllocations.map(a => a.pocketId));
 }
 
 // Duplicates an income/expense/gift entry for today (transfers aren't
@@ -6646,12 +6632,15 @@ function quickRepeatOther(id) {
   if (e.type === 'transfer') { toast("Transfers can't be quick-repeated — add a new one"); return; }
   const today = todayISO();
   const amount = parseFloat(e.amount);
-  const newEntry = { id: 'o' + Date.now(), desc: e.desc, date: today, type: e.type, amount, method: e.method, ...(e.method === 'bank' && Array.isArray(e.bankSplits) && e.bankSplits.length ? { bankSplits: e.bankSplits } : {}), ...(e.type === 'income' ? { titheDeductible: e.titheDeductible !== false } : {}) };
+  // Income sets money aside for pockets exactly like adding it normally does.
+  const pocketAllocations = e.type === 'income' ? applyPocketRules(GENERAL_INCOME_JOB_ID, amount) : [];
+  const newEntry = { id: 'o' + Date.now(), desc: e.desc, date: today, type: e.type, amount, method: e.method, ...(e.method === 'bank' && Array.isArray(e.bankSplits) && e.bankSplits.length ? { bankSplits: e.bankSplits } : {}), ...(e.type === 'income' ? { titheDeductible: e.titheDeductible !== false } : {}), ...(pocketAllocations.length ? { pocketAllocations } : {}) };
   otherMoney.push(newEntry);
   pendingOtherWrites.add(newEntry.id);
   logHistory('other', `Repeated ${e.type} — "${e.desc}" $${amount.toFixed(2)} on ${fmt(today)}`, { job: null });
   save(); render();
   toast('Entry repeated for today ✓');
+  if (pocketAllocations.length) checkPocketsForGoalCompletion(pocketAllocations.map(a => a.pocketId));
 }
 
 function deleteOther(id) {
@@ -6662,7 +6651,9 @@ function deleteOther(id) {
   logHistory('delete',`Deleted entry — "${e.desc}" $${parseFloat(e.amount).toFixed(2)}`, { job: e.job ?? null });
   if (e.job === 'car' && e.type === 'expense') {
     const pocket = carPocket();
-    if (pocket) adjustPocketBalance(pocket.id, parseFloat(e.amount)); // reverse the draw-down
+    // Give back exactly what was taken out (older entries with no record get the full amount).
+    const refund = typeof e.pocketDrawn === 'number' ? e.pocketDrawn : parseFloat(e.amount);
+    if (pocket && refund > 0) adjustPocketBalance(pocket.id, refund);
   }
   reversePocketAllocations(e, 'entry deleted');
   save(); render(); toast('Entry deleted');
@@ -6682,10 +6673,10 @@ function editEvent(id) {
     </div></td>
     <td>${jobHasNoClients(jobOf(j)) ? `<input type="hidden" id="ee-client-${id}" value="${j.client}" />` : `<select id="ee-client-${id}">${clientOpts}</select>`}<input type="text" id="ee-title-${id}" value="${j.title || ''}" placeholder="Title (optional)" style="margin-top:4px;font-size:11px;padding:5px 8px" /></td>
     <td><input id="ee-amount-${id}" type="number" value="${eventAmount(j)}" min="0" step="0.01" /></td>
-    <td><select id="ee-status-${id}">
+    <td><select id="ee-status-${id}"${j.status==='paid'?' disabled title="Use undo on the paid list to change this"':''}>
       <option value="unpaid"${j.status==='unpaid'?' selected':''}>Unpaid</option>
       <option value="check"${j.status==='check'?' selected':''}>Check coming</option>
-      <option value="paid"${j.status==='paid'?' selected':''}>Paid</option>
+      ${j.status==='paid' ? '<option value="paid" selected>Paid</option>' : ''}
     </select></td>
     <td><div class="row-actions">
       <button class="act-btn save" onclick="saveEvent('${id}')">save</button>
@@ -6694,13 +6685,16 @@ function editEvent(id) {
 }
 
 function saveEvent(id) {
-  const date   = parseFlexibleDate(document.getElementById('ee-date-'+id).value);
+  const date   = parseDateStrict(document.getElementById('ee-date-'+id).value);
   const client = document.getElementById('ee-client-'+id).value;
-  const status = document.getElementById('ee-status-'+id).value;
   const amount = parseFloat(document.getElementById('ee-amount-'+id).value);
   const title  = document.getElementById('ee-title-'+id).value.trim();
+  if (!date) { badDate(); return; }
   if (isNaN(amount) || amount < 0) { alert('Enter a valid amount.'); return; }
   const old = lawnEvents.find(j=>j.id===id);
+  // A paid event keeps its status here (take a payment back with "undo", which also takes back its
+  // pocket set-asides). An unpaid event can't be flipped to paid here — "mark paid" asks how it was paid.
+  const status = old.status === 'paid' ? 'paid' : document.getElementById('ee-status-'+id).value;
   lawnEvents = lawnEvents.map(j => {
     if (j.id !== id) return j;
     const updated = {...j, date, client, status, amount};
@@ -6708,7 +6702,7 @@ function saveEvent(id) {
     return updated;
   });
   pendingEventWrites.add(id);
-  logHistory('add', `Edited event — ${old.client} ${fmt(old.date)} → ${client} ${fmt(date)}${title ? ` "${title}"` : ''}, $${amount}, ${status}`, { job: currentJobId });
+  logHistory('add', `Edited event — ${old.client} ${fmt(old.date)} → ${client} ${fmt(date)}${title ? ` "${title}"` : ''}, $${money(amount)}, ${status}`, { job: currentJobId });
   save();
   render();
   const c = clients.find(c => c.name === client) || clients.find(c => c.name === old.client);
@@ -6795,7 +6789,8 @@ function toggleEoTithe(id) {
 }
 
 function saveOther(id) {
-  const date     = parseFlexibleDate(document.getElementById('eo-date-'+id).value);
+  const date     = parseDateStrict(document.getElementById('eo-date-'+id).value);
+  if (!date) { badDate(); return; }
   const descRaw  = document.getElementById('eo-desc-'+id).value.trim();
   const amount   = parseFloat(document.getElementById('eo-amount-'+id).value);
   const type     = document.getElementById('eo-type-'+id).value;
@@ -6831,6 +6826,18 @@ function saveOther(id) {
     }
     updated = {...old, date, desc, amount, type, method:methodVal, titheDeductible, fromMethod:null, toMethod:null, fromAcct:null, toAcct:null, bankSplits};
   }
+  // A car expense takes money out of the Car pocket when it's added. If its amount changes, give back
+  // what was taken and take out the new amount (never more than the pocket holds).
+  if (old.job === 'car' && old.type === 'expense' && type === 'expense' && amount !== parseFloat(old.amount)) {
+    const carPk = carPocket();
+    if (carPk) {
+      const oldDrawn = typeof old.pocketDrawn === 'number' ? old.pocketDrawn : (parseFloat(old.amount) || 0);
+      adjustPocketBalance(carPk.id, oldDrawn);
+      const newDrawn = Math.max(0, Math.min(amount, getPocket(carPk.id).balance || 0));
+      if (newDrawn > 0) adjustPocketBalance(carPk.id, -newDrawn);
+      updated = { ...updated, pocketDrawn: newDrawn };
+    }
+  }
   otherMoney = otherMoney.map(e => e.id===id ? updated : e);
   pendingOtherWrites.add(id);
   logHistory('other', `Edited entry — "${old.desc}" → "${desc}" $${amount.toFixed(2)}`, { job: null });
@@ -6856,8 +6863,10 @@ let trendsRange = 'all';
 function getCashFlowEvents() {
   const flows = [];
   lawnEvents.forEach(j => {
-    if (j.job === 'ca_it') {
-      if (j.status === 'cashed') flows.push({ date: j.dateEnd, amount: effectiveEarnings(j), kind: 'income' });
+    if (j.status === 'cashed') {
+      // Pay-period jobs (CA-IT and any custom one): the earned share, dated at the period's end.
+      const d = j.dateEnd || j.date;
+      if (d) flows.push({ date: d, amount: effectiveEarnings(j), kind: 'income' });
     } else if (j.status === 'paid') {
       flows.push({ date: j.date, amount: eventAmount(j), kind: 'income' });
     }
@@ -6903,9 +6912,7 @@ function buildMonthlyTotals() {
 function rangeCutoffStr(range, len) {
   const months = { '1m': 1, '3m': 3, '6m': 6, '1y': 12 }[range];
   if (!months) return null;
-  const cutoff = new Date();
-  cutoff.setMonth(cutoff.getMonth() - months);
-  return cutoff.toISOString().slice(0, len);
+  return localISO(addMonthsClamped(new Date(), -months)).slice(0, len);
 }
 
 function filterTimelineByRange(timeline, range) {
@@ -7054,7 +7061,8 @@ let carTargetDate = null; // breakeven date picker — local UI state, not persi
 function getOdometerEntry(date) { return odometerLog.find(o => o.date === date); }
 
 function submitOdometerForm() {
-  const date = parseFlexibleDate(document.getElementById('car-odo-date').value) || todayISO();
+  const date = parseFlexibleDate(document.getElementById('car-odo-date').value);
+  if (!date) { badDate(); return; }
   const odometer = parseInt(document.getElementById('car-odo-value').value, 10);
   const jobId = document.getElementById('car-odo-job').value;
   const jobMilesRaw = document.getElementById('car-odo-job-miles').value;
@@ -7103,9 +7111,13 @@ function carPocket() { return pockets.find(p => p.linkedJob === 'car') || null; 
 // since this is money leaving a pocket rather than being set aside into one.
 function drawDownCarPocket(amount) {
   const pocket = carPocket();
-  if (!pocket || !amount) return;
-  adjustPocketBalance(pocket.id, -amount);
-  logHistory('pocket', `Car expense drew down $${amount.toFixed(2)} from "${pocket.name}"`, { job: 'car', pocketId: pocket.id });
+  if (!pocket || !amount) return 0;
+  // Takes out only what the pocket actually holds, and reports it so the expense can give back exactly that.
+  const drawn = Math.min(amount, Math.max(0, pocket.balance || 0));
+  if (drawn <= 0) return 0;
+  adjustPocketBalance(pocket.id, -drawn);
+  logHistory('pocket', `Car expense drew down $${drawn.toFixed(2)} from "${pocket.name}"`, { job: 'car', pocketId: pocket.id });
+  return drawn;
 }
 
 // ── Car expenses (otherMoney, job:'car') ───────────────────────────────
@@ -7128,6 +7140,7 @@ async function addCarExpense() {
   const category = document.getElementById('car-exp-category').value;
   const descRaw  = document.getElementById('car-exp-desc').value.trim();
   const date     = parseFlexibleDate(document.getElementById('car-exp-date').value);
+  if (!date) { badDate(); return; }
   const amount   = parseFloat(document.getElementById('car-exp-amount').value);
   const gallonsRaw = document.getElementById('car-exp-gallons').value;
   const filledToFull = document.getElementById('car-exp-full').checked;
@@ -7153,7 +7166,8 @@ async function addCarExpense() {
   otherMoney.push(newEntry);
   pendingOtherWrites.add(newEntry.id);
   logHistory('other', `Added car ${category} — "${desc}" $${amount.toFixed(2)} on ${fmt(date)}`, { job: 'car' });
-  drawDownCarPocket(amount);
+  const pocketDrawn = drawDownCarPocket(amount);
+  if (pocketDrawn > 0) newEntry.pocketDrawn = pocketDrawn;
   // A gas entry can log that same day's odometer reading in one go — see
   // upsertOdometerReading's silent option, so this is one save/render/toast.
   if (category === 'gas' && odoRaw !== '' && !isNaN(parseInt(odoRaw, 10))) {
@@ -7219,9 +7233,16 @@ function dailyMileageDeltas() {
 // is due on/before `beforeDate` but hasn't generated an actual entry yet —
 // the "expected/pending bills" the breakeven figure needs to hold back.
 function carPendingBills(beforeDate) {
-  return recurringRules
+  // Every occurrence of each recurring car bill that falls on or before beforeDate — a weekly bill
+  // counts once per week, not just once.
+  const end = isoDayNum(beforeDate);
+  return roundCents(recurringRules
     .filter(r => r.active && r.job === 'car' && r.nextDate && r.nextDate <= beforeDate)
-    .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    .reduce((sum, r) => {
+      const every = Math.max(1, parseInt(r.intervalDays, 10) || 1);
+      const times = Math.min(400, Math.floor((end - isoDayNum(r.nextDate)) / every) + 1);
+      return sum + (parseFloat(r.amount) || 0) * times;
+    }, 0));
 }
 
 // Average MPG (needs 2+ fill-ups with a matching odometer reading on both
@@ -7332,10 +7353,14 @@ function closeCarJob() {
 }
 
 function setCarChartRange() {
-  const start = document.getElementById('car-chart-start').value;
-  const end   = document.getElementById('car-chart-end').value;
-  if (start) carChartState.start = parseFlexibleDate(start);
-  if (end)   carChartState.end   = parseFlexibleDate(end);
+  const startRaw = document.getElementById('car-chart-start').value.trim();
+  const endRaw   = document.getElementById('car-chart-end').value.trim();
+  const start = startRaw ? parseDateStrict(startRaw) : null;
+  const end   = endRaw ? parseDateStrict(endRaw) : null;
+  if ((startRaw && !start) || (endRaw && !end)) { badDate(); return; }
+  if ((end || carChartState.end) < (start || carChartState.start)) { alert("The chart range can't end before it starts."); return; }
+  if (start) carChartState.start = start;
+  if (end)   carChartState.end   = end;
   const bars = parseInt(document.getElementById('car-chart-bars').value, 10);
   if (bars > 0) carChartState.bars = bars;
   renderCarView();
@@ -7343,7 +7368,8 @@ function setCarChartRange() {
 
 function setCarTargetDate() {
   const v = parseFlexibleDate(document.getElementById('car-target-date').value);
-  if (v) carTargetDate = v;
+  if (!v) { badDate(); return; }
+  carTargetDate = v;
   renderCarView();
 }
 
@@ -7503,18 +7529,14 @@ function defaultChartRange() {
 // day-count approximation.
 function presetRange(preset) {
   const end = new Date();
-  const start = new Date(end);
-  const steps = {
-    '7d': () => start.setDate(start.getDate() - 7),
-    '2w': () => start.setDate(start.getDate() - 14),
-    '1m': () => start.setMonth(start.getMonth() - 1),
-    '2m': () => start.setMonth(start.getMonth() - 2),
-    '6m': () => start.setMonth(start.getMonth() - 6),
-    '1y': () => start.setFullYear(start.getFullYear() - 1)
-  };
-  if (steps[preset]) steps[preset]();
-  const toIso = d => d.toISOString().slice(0, 10);
-  return { start: toIso(start), end: toIso(end) };
+  let start = new Date(end);
+  if (preset === '7d') start.setDate(start.getDate() - 7);
+  else if (preset === '2w') start.setDate(start.getDate() - 14);
+  else if (preset === '1m') start = addMonthsClamped(end, -1);
+  else if (preset === '2m') start = addMonthsClamped(end, -2);
+  else if (preset === '6m') start = addMonthsClamped(end, -6);
+  else if (preset === '1y') start = addMonthsClamped(end, -12);
+  return { start: localISO(start), end: localISO(end) };
 }
 
 // which: 'main' or 'car' — leaves bar count untouched, only sets the range.
@@ -7576,10 +7598,8 @@ function bucketFlows(flows, start, end, barCount, opts = {}) {
   }
   if (opts.checkOdometerGaps) {
     const logged = new Set(odometerLog.map(o => o.date));
-    const oneDay = 86400000;
-    for (let t = startMs; t < endMs; t += oneDay) {
-      const iso = new Date(t).toISOString().slice(0, 10);
-      if (!logged.has(iso)) buckets[bucketIndexFor(t)].hasGap = true;
+    for (let d = new Date(startMs); d.getTime() < endMs; d.setDate(d.getDate() + 1)) {
+      if (!logged.has(localISO(d))) buckets[bucketIndexFor(d.getTime())].hasGap = true;
     }
   }
   const daySpan = span / 86400000 / barCount;
@@ -7680,10 +7700,14 @@ function renderComboChart(state, flows, wrapId, opts = {}) {
 }
 
 function setMainChartRange() {
-  const start = document.getElementById('main-chart-start').value;
-  const end   = document.getElementById('main-chart-end').value;
-  if (start) mainChartState.start = parseFlexibleDate(start);
-  if (end)   mainChartState.end   = parseFlexibleDate(end);
+  const startRaw = document.getElementById('main-chart-start').value.trim();
+  const endRaw   = document.getElementById('main-chart-end').value.trim();
+  const start = startRaw ? parseDateStrict(startRaw) : null;
+  const end   = endRaw ? parseDateStrict(endRaw) : null;
+  if ((startRaw && !start) || (endRaw && !end)) { badDate(); return; }
+  if ((end || mainChartState.end) < (start || mainChartState.start)) { alert("The chart range can't end before it starts."); return; }
+  if (start) mainChartState.start = start;
+  if (end)   mainChartState.end   = end;
   const bars = parseInt(document.getElementById('main-chart-bars').value, 10);
   if (bars > 0) mainChartState.bars = bars;
   renderMainChart();
@@ -7719,10 +7743,13 @@ function renderFundsDistribution(barId = 'funds-bar-wrap', legendId = 'funds-leg
     });
   }
 
+  // Whole-number labels that always add up to exactly 100%.
+  const labelPcts = total > 0 ? roundPercentsTo100(segments.map(s => s.amount)) : [100];
+
   wrap.innerHTML = `<div class="funds-bar-track">${segments.map((s, i) => {
     const pct = Math.min(100, total > 0 ? (s.amount / total * 100) : 100);
     if (pct <= 0) return ''; // exact-zero categories (e.g. Savings fully absorbed) get no bar segment, just a legend entry
-    const pctRound = Math.round(pct);
+    const pctRound = labelPcts[i];
     const isFree = i === 0;
     const fill = isFree
       ? `repeating-linear-gradient(135deg, rgba(255,255,255,0.08) 0 6px, transparent 6px 12px), ${glossGradient(s.color)}`
@@ -7733,7 +7760,7 @@ function renderFundsDistribution(barId = 'funds-bar-wrap', legendId = 'funds-leg
   }).join('')}</div>`;
 
   legend.innerHTML = segments.map((s, i) => {
-    const pct = Math.round(total > 0 ? (s.amount / total * 100) : 100);
+    const pct = labelPcts[i];
     return `<div class="funds-legend-item" data-key="seg-${i}">
       <span class="funds-swatch" style="background-image:${glossGradient(s.color)}"></span>
       <span class="funds-legend-name">${s.label}</span>
@@ -7835,7 +7862,7 @@ function applyPocketSort() {
 function pocketGoalPct(p) {
   const item = getWishlistItem(p.wishlistItemId);
   const price = item ? parseFloat(item.price) : null;
-  return price ? Math.round((p.balance || 0) / price * 100) : null;
+  return price ? pctFloor(p.balance || 0, price) : null;
 }
 
 function sortedPockets() {
@@ -7868,7 +7895,7 @@ function renderPocketsList() {
   wrap.innerHTML = sortedPockets().map(p => {
     const item = getWishlistItem(p.wishlistItemId);
     const price = item ? parseFloat(item.price) : null;
-    const rawPct = price ? Math.round((p.balance || 0) / price * 100) : null;
+    const rawPct = price ? pctFloor(p.balance || 0, price) : null;
     const pct = rawPct !== null ? Math.min(100, rawPct) : null;
     const isComplete = price && (p.balance || 0) >= price;
     const color = getPocketColor(p.id);
@@ -8046,10 +8073,12 @@ function deletePocketRule(id) {
 function executeMoveFunds() {
   const from = document.getElementById('mv-from').value;
   const to = document.getElementById('mv-to').value;
-  const amount = parseFloat(document.getElementById('mv-amount').value);
+  const amountRaw = document.getElementById('mv-amount').value.trim();
+  const amount = parseFloat(amountRaw);
   if (!from || !to) { alert('Choose a source and destination.'); return; }
   if (from === to) { alert('Source and destination must be different.'); return; }
   if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
+  if (!/^\d*\.?\d{0,2}$/.test(amountRaw)) { alert('Enter an amount with at most 2 decimal places.'); return; }
 
   const fromLabel = from === 'free' ? 'Free / Savings' : (getPocket(from) ? getPocket(from).name : 'Unknown');
   const toLabel   = to === 'free'   ? 'Free / Savings' : (getPocket(to)   ? getPocket(to).name   : 'Unknown');
@@ -8141,7 +8170,7 @@ function addWishlistItem() {
   const desc     = document.getElementById('wl-desc').value.trim();
   if (!title) { alert('Please enter a title.'); return; }
   if (isNaN(price) || price < 0) { alert('Please enter a valid price.'); return; }
-  const newItem = {id:'w'+Date.now(), title, price, category, link, desc, date: new Date().toISOString().slice(0,10)};
+  const newItem = {id:'w'+Date.now(), title, price, category, link, desc, date: todayISO()};
   wishlist.push(newItem);
   pendingWishlistWrites.add(newItem.id);
   logHistory('other', `Added to wishlist — "${title}" $${price.toFixed(2)} (${category==='other'?'Other':'Item'})`, { job: null });
@@ -8792,8 +8821,12 @@ function rpEarnPercentFor(jobId) {
 // Mirrors the live effectiveEarnings(), reading percent from the backup's
 // own jobEarnPercent instead of the live global. Backups taken before this
 // field existed have no jobEarnPercent, so every job falls back to 100%.
+function rpEarnPercentOf(j) {
+  if (j.status === 'cashed' && typeof j.earnPercent === 'number' && j.earnPercent > 0) return j.earnPercent;
+  return rpEarnPercentFor(rpJobOf(j));
+}
 function rpEffectiveEarnings(j) {
-  return ceilCents(rpEventAmount(j) * rpEarnPercentFor(rpJobOf(j)) / 100);
+  return ceilCents(rpEventAmount(j) * rpEarnPercentOf(j) / 100);
 }
 function rpComputeBalances() {
   let bank = 0, cash = 0;
@@ -8867,8 +8900,9 @@ function rpRuleAmountDisplay(r) {
 function rpGetCashFlowEvents() {
   const flows = [];
   (rpData.lawnEvents || []).forEach(j => {
-    if (j.job === 'ca_it') {
-      if (j.status === 'cashed') flows.push({ date: j.dateEnd, amount: rpEffectiveEarnings(j), kind: 'income' });
+    if (j.status === 'cashed') {
+      const d = j.dateEnd || j.date;
+      if (d) flows.push({ date: d, amount: rpEffectiveEarnings(j), kind: 'income' });
     } else if (j.status === 'paid') {
       flows.push({ date: j.date, amount: rpEventAmount(j), kind: 'income' });
     }
@@ -9025,10 +9059,13 @@ function rpRenderFundsDistribution(barId, legendId) {
     });
   }
 
+  // Whole-number labels that always add up to exactly 100%.
+  const labelPcts = total > 0 ? roundPercentsTo100(segments.map(s => s.amount)) : [100];
+
   wrap.innerHTML = `<div class="funds-bar-track">${segments.map((s, i) => {
     const pct = Math.min(100, total > 0 ? (s.amount / total * 100) : 100);
     if (pct <= 0) return '';
-    const pctRound = Math.round(pct);
+    const pctRound = labelPcts[i];
     const isFree = i === 0;
     const fill = isFree
       ? `repeating-linear-gradient(135deg, rgba(255,255,255,0.08) 0 6px, transparent 6px 12px), ${glossGradient(s.color)}`
@@ -9039,7 +9076,7 @@ function rpRenderFundsDistribution(barId, legendId) {
   }).join('')}</div>`;
 
   legend.innerHTML = segments.map((s, i) => {
-    const pct = Math.round(total > 0 ? (s.amount / total * 100) : 100);
+    const pct = labelPcts[i];
     return `<div class="funds-legend-item" data-key="seg-${i}">
       <span class="funds-swatch" style="background-image:${glossGradient(s.color)}"></span>
       <span class="funds-legend-name">${s.label}</span>
@@ -9733,14 +9770,14 @@ function renderMobileJobs() {
     html += `<div class="m-section-label">${getJob('ca_it').label}</div>`;
     const uncashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'uncashed').sort((a,b) => b.dateEnd.localeCompare(a.dateEnd));
     const cashed = lawnEvents.filter(j => j.job === 'ca_it' && j.status === 'cashed').sort((a,b) => b.dateEnd.localeCompare(a.dateEnd));
-    const uncashedTotal = uncashed.reduce((s,j) => s + eventAmount(j), 0);
-    const cashedTotal = cashed.reduce((s,j) => s + eventAmount(j), 0);
+    const uncashedTotal = uncashed.reduce((s,j) => s + effectiveEarnings(j), 0);
+    const cashedTotal = cashed.reduce((s,j) => s + effectiveEarnings(j), 0);
     html += `<div class="m-card">
       <div class="m-card-row"><div class="m-card-title">Uncashed checks</div><div class="m-card-value">$${uncashedTotal.toFixed(2)}</div></div>
       ${uncashed.length ? `
         <button class="m-expand-toggle" onclick="mToggleSub('m-sub-uncashed')">▾ ${uncashed.length} check${uncashed.length>1?'s':''}</button>
         <div class="m-sub-rows" id="m-sub-uncashed">
-          ${uncashed.map(j => `<div class="m-sub-row"><span class="m-sub-row-main">${itCheckLabel(j)}</span><span class="m-sub-row-amt">$${eventAmount(j).toFixed(2)}</span></div>`).join('')}
+          ${uncashed.map(j => `<div class="m-sub-row"><span class="m-sub-row-main">${itCheckLabel(j)}${earnPercentOf(j) !== 100 ? ` · $${eventAmount(j).toFixed(2)} check @ ${earnPercentOf(j)}%` : ''}</span><span class="m-sub-row-amt">$${effectiveEarnings(j).toFixed(2)}</span></div>`).join('')}
         </div>` : `<div class="m-card-sub">No uncashed checks</div>`}
     </div>
     <div class="m-card">
@@ -9748,7 +9785,7 @@ function renderMobileJobs() {
       ${cashed.length ? `
         <button class="m-expand-toggle" onclick="mToggleSub('m-sub-cashed')">▾ ${cashed.length} check${cashed.length>1?'s':''}</button>
         <div class="m-sub-rows" id="m-sub-cashed">
-          ${cashed.map(j => `<div class="m-sub-row"><span class="m-sub-row-main">${itCheckLabel(j)}</span><span class="m-sub-row-amt">$${eventAmount(j).toFixed(2)}</span></div>`).join('')}
+          ${cashed.map(j => `<div class="m-sub-row"><span class="m-sub-row-main">${itCheckLabel(j)}${earnPercentOf(j) !== 100 ? ` · $${eventAmount(j).toFixed(2)} check @ ${earnPercentOf(j)}%` : ''}</span><span class="m-sub-row-amt">$${effectiveEarnings(j).toFixed(2)}</span></div>`).join('')}
         </div>` : `<div class="m-card-sub">No cashed checks yet</div>`}
     </div>`;
   }
@@ -9776,14 +9813,13 @@ function renderMobileJobs() {
     const isPeriodic = job.kind === 'periodic_income';
     const items = lawnEvents.filter(j => j.job === job.id);
     const open = items.filter(j => isPeriodic ? j.status === 'uncashed' : j.status !== 'paid');
-    const openTotal = open.reduce((s,j) => s + eventAmount(j), 0);
+    const openTotal = open.reduce((s,j) => s + (isPeriodic ? effectiveEarnings(j) : eventAmount(j)), 0);
     html += `<div class="m-card">
       <div class="m-card-row"><div class="m-card-title">${isPeriodic ? 'Uncashed' : 'Open'}</div><div class="m-card-value">$${openTotal.toFixed(2)}</div></div>
       <div class="m-card-sub">${open.length ? open.length + ' entr' + (open.length>1?'ies':'y') : (isPeriodic ? 'All clear' : 'All settled')} — full detail on desktop</div>
     </div>`;
   });
 
-  html += `<button class="m-job-add-btn" onclick="openAddJobModal()">+ New Job — have a code?</button>`;
 
   wrap.innerHTML = html;
 }
@@ -9802,7 +9838,7 @@ function renderMobilePockets() {
     pocketsHtml = pockets.map(p => {
       const item = getWishlistItem(p.wishlistItemId);
       const price = item ? parseFloat(item.price) : null;
-      const pct = price ? Math.min(100, Math.round((p.balance||0) / price * 100)) : null;
+      const pct = price ? Math.min(100, pctFloor(p.balance||0, price)) : null;
       const isComplete = price && (p.balance||0) >= price;
       const color = getPocketColor(p.id);
       const rulesForPocket = pocketRules.filter(r => r.pocketId === p.id);
